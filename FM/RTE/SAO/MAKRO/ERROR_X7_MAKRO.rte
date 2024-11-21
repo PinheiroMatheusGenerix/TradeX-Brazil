@@ -1,0 +1,279 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M80_MAKRO_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M91COM.inc"
+#include "include/M80.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    
+    
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAKRO"]
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+nLinha := 0
+nLinha2 := 0
+nLinha2 := 0
+
+
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	 		
+      exit(1)
+   endif
+
+
+
+endbegin
+
+!===========================================================
+
+
+end
+   
+	bQueryTemResul := FALSE
+	TRACE := find(build(sHOME,"/trace"),ESTADO ="Entregue no XMS",SENTIDO="I",MODIFIED <build("now-5M"),MODIFIED >build("now-3d"),PERFIL="MAKRO")aCREATED
+
+	while valid(TRACE) do
+		bQueryTemResul := FALSE
+		bGeraMailM62EmSucesso := FALSE
+		print("TRACEINDEX ",TRACE.INDEX,NL)
+		if length(TRACE.LIBEXC) > 0 then
+				
+			tQuery := 	build("SELECT A.NUMEXC, A.DATEXC, A.HEUEXC, A.LIBEXC , A.TYPEXC,  C.CODMDU, C.NUMMSG, C.LIBMSG, B.VARMSG, B.DTAMVT FROM FGE50FM",tToInfologPrefixFilename,".GEJEX A,  FGE50FM",tToInfologPrefixFilename,".GEREX B, LGE50POR65.APMSGF C "\
+			"WHERE B.NUMEXC= A.NUMEXC AND C.CODMDU = B.CODMDU AND C.NUMMSG=B.NUMMSG AND A.LIBEXC= '",TRACE.LIBEXC,"' AND A.TYPEXC<>'PRP' AND C.NUMMSG <>144 ORDER BY A.DATEXC, A.HEUEXC, B.NUMREX ")
+
+
+						if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+									 print("FATAL ", tfSqlErrorStr())
+									exit(1)
+							
+						endif
+
+						if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+							 print("FATAL ", tfSqlErrorStr())
+									exit(1)
+
+						endif
+						nLinha := 0
+						remove(taLIBMSG)
+						remove(taVARMSG)
+						while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+							bQueryTemResul := TRUE	
+							nLinha++
+							taLIBMSG[nLinha] := peel(taDb2Array["LIBMSG"]," ")
+							taVARMSG[nLinha] := peel(taDb2Array["VARMSG"]," ")
+							if nLinha = 9999 then
+								break
+							endif
+
+							remove(taDb2Array)
+
+						endwhile
+						
+					
+
+						if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+							print("FATAL", tfSqlErrorStr())
+									exit(1)
+						endif
+
+
+						
+						
+						
+
+			
+
+
+
+					
+		endif		
+
+	
+	
+	
+	if bQueryTemResul = TRUE then
+		!faz email erros
+		nMessageID := cMessageID
+			tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/Erro",nMessageID:R010,".txt")
+		print("Erro de integracao do arquivo ",TRACE.REDE,"!",NL,NL) >> tArquivoEmailErro
+		nTempLinha := 1
+		
+		while nTempLinha<= nLinha do 
+			print(replace(taLIBMSG[nTempLinha],"$","")," ",taVARMSG[nTempLinha],NL) >> tArquivoEmailErro
+			nTempLinha++
+		endwhile
+		close(tArquivoEmailErro)
+		if substr(TRACE.LIBEXC,1,5) = "order" then
+			tSistema := "[WMW]"
+		endif
+		if substr(TRACE.LIBEXC,1,5) = "route" then
+			tSistema := "[WMW]"
+			bGeraMailM62EmSucesso := TRUE
+			
+		endif
+		if substr(TRACE.LIBEXC,1,5) = "Prout" then
+			tSistema := "[WMW]"
+			
+		endif
+
+		if substr(TRACE.LIBEXC,1,6) = "m40com" then
+			tSistema := "[MBS]"
+		endif
+		
+		if substr(TRACE.LIBEXC,1,6) = "m40com" or substr(TRACE.LIBEXC,1,6) = "artcom" or substr(TRACE.LIBEXC,1,6) = "barcom"  or substr(TRACE.LIBEXC,1,6) = "supcom" then
+			tSistema := "[MBS]"
+		endif
+		
+		tArquivoEmailErroFinal := build(tArquivoEmailErro,"2")
+		tMudaEncoding := build("iconv -f UTF-8 -t MS-ANSI ",tArquivoEmailErro," >> ",tArquivoEmailErroFinal)
+		!iconv -f UTF-8 -t MS-ANSI Erro0000000772.txt >> Erro0000000772.txt2
+		log("executing command ",tMudaEncoding,NL)
+			nRet := system(tMudaEncoding)
+
+				log("nRet ", nRet,NL)
+			close(tArquivoEmailErro)
+		remove(tArquivoEmailErro)
+				close(tArquivoEmailErro)
+		
+		
+			tSubjectEmail := build(tSistema,"_Erro_de_integracao_WMS_do_arquivo_",TRACE.REDE)
+		tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EmailErroXMS ",tArquivoEmailErroFinal)
+			log("executing command ",tCmdEmailErro,NL)
+			nRet := system(tCmdEmailErro)
+
+				log("nRet ", nRet,NL)
+				close(tArquivoEmailErroFinal)
+		remove(tArquivoEmailErroFinal)
+		
+		
+									TRACE.ESTADO :="Erro de Integracao no WMS"
+									print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+									print("Erro de Integracao no WMS",NL) >> TRACE.Detail
+									while nTempLinha<= nLinha do 
+										print(replace(taNUMMSG[nTempLinha],"$","")," ",taVARMSG[nTempLinha],NL) >> TRACE.Detail
+									endwhile
+									close(TRACE.Detail)
+									flush(TRACE)
+									
+
+	else !sem resultados da query
+	
+									TRACE.ESTADO :="Integrada no WMS"
+									print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+									print("Integrada no WMS",NL) >> TRACE.Detail
+									!print(build("SYSLOG.INDEX=",SYSLOG.INDEX,NL,SYSLOG.INFO,NL)) >> TRACE.Detail
+									close(TRACE.Detail)
+									flush(TRACE)
+									if substr(TRACE.LIBEXC,1,5) = "route" then
+									
+										close(TRACE.In)
+										tFile := build(sHOME,"/FromMakro/",TRACE.REDE)
+										close(tFile)
+										copy(TRACE.In,tFile)
+										close(TRACE.In)
+										close(tFile)
+										tCmd := build("edisend EnviaMail62Suces ",tFile)
+										system(tCmd)
+									
+									
+									
+									
+									
+									endif
+									
+									
+									
+									if substr(TRACE.LIBEXC,1,5) = "Prout" then
+									
+										if  TRACE.ESTADO = "Recebida" then
+											close(TRACE.Out)
+											tFile := build(sHOME,"/ToInfolog/",TRACE.FICHEIROSAIDA)
+											close(tFile)
+											copy(TRACE.Out,tFile)
+											close(TRACE.Out)
+											close(tFile)
+											TRACE.ESTADO := "Reprocessada Aut."
+										
+										endif
+									
+									
+									
+									
+									
+									endif
+									
+									
+	endif
+	
+	
+	
+	
+	
+	
+	
+	
+	TRACE := find()
+endwhile
+bfSqlClose(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+

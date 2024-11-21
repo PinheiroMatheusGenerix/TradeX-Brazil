@@ -1,0 +1,1382 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+
+schema "XML/FMBrasil/SHIPPING_ORDER-SAP-FMLOG-IWAY_OUP_V09.xsd" validating
+message "XML/FMBrasil/SHIPPING_ORDER-SAP-FMLOG-IWAY_OUP.dtd" receiving, passthru
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_uomcoty/fmbrasil_uomcoty.cfg" fmbrasil_uomcoty
+base "../fmbrasil_dlvnumcoty/fmbrasil_dlvnumcoty.cfg" fmbrasil_dlvnumcoty,autoflush off
+base "../fmbrasil_dlvnumcoty/fmbrasil_dlvnumcoty.cfg" fmbrasil_dlvnumcoty2, readonly
+
+#define TX_PROG_INFO "M50_COTY_SAP_XML_IN"
+#include "include/generix_func.inc"
+#include "include/M50.inc"
+#include "include/M40.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   PROCESS_ERRONEOUS := TRUE
+
+   pXML.INCONVIN := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+   nPos := 1
+   nRec := 1
+   tInternalOrdTyp := ""
+      tDIPREC := ""
+    tDIPLIV := ""
+   
+if not(valid(MESSAGE_IN)) then
+      bfMajtrace40("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"ERRO ESQUEMA",build("Schema not matched file IN",NL))
+      exit(1)
+endif
+
+
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+  
+  
+  
+
+  
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    nNumeroLinha := 0
+    nNumeroCabecalho := 0
+	nMainIndex := 0
+   nNumeroLinha := 0
+endbegin
+
+
+
+!===========================================================
+
+
+
+
+
+
+
+segment SSAP_StorageLoc gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1
+
+
+ 
+   tNUMOPE := eESAP_StorageLoc   ! C  
+	
+endsegment
+
+
+
+
+
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG : C 1/unbound 
+segment SHostAdrId gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   !taCODCLI[nNumeroCabecalho] := eEHostAdrId   ! C  
+   tHostAdrId := eEHostAdrId
+endsegment
+
+segment SAdrTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+	tAdrTyp := eEAdrTyp
+   if eEAdrTyp = "WE" then ! C
+		tCODCLI := tHostAdrId
+	endif
+	if eEAdrTyp = "SP" then ! C
+	tCODTRA := tHostAdrId
+	
+	endif
+	
+	if eEAdrTyp = "OSO" then ! C
+		tCODFOU := tHostAdrId
+		taCODFOU[nNumeroCabecalho] := tCODFOU
+	endif
+endsegment
+
+segment SAdrNam1 gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+    if tAdrTyp = "WE" then ! C
+		tNOMCLI := eEAdrNam1   ! C 
+		
+	endif
+	if tAdrTyp = "OSO" then ! C
+		tNOMFOU := eEAdrNam1   ! C 
+		taNOMFOU[nNumeroCabecalho] := tNOMFOU
+	endif
+endsegment
+
+
+segment SAdrLn1 gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   if tAdrTyp = "WE" then ! C
+	  tAD1CLI := eEAdrLn1   ! C  
+		
+	endif
+	if tAdrTyp = "OSO" then ! C
+		tAD1FOU := eEAdrLn1   ! C 
+		taAD1FOU[nNumeroCabecalho] := tAD1FOU
+	endif
+endsegment
+
+segment SAdrLn2 gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   if tAdrTyp = "WE" then ! C
+	  tAD2CLI := eEAdrLn2   ! C 
+	endif
+	if tAdrTyp = "OSO" then ! C
+		tAD2FOU := eEAdrLn2   ! C
+		taAD2FOU[nNumeroCabecalho] := tAD2FOU
+	endif
+endsegment
+
+segment SAdrCty gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   if tAdrTyp = "WE" then ! C
+		tVILCLI := eEAdrCty   ! C  
+		 
+endif
+	if tAdrTyp = "OSO" then ! C
+		tVILFOU := eEAdrCty   ! C 
+		taVILFOU[nNumeroCabecalho] := tVILFOU
+	endif
+endsegment
+
+segment SAdrPsz gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   if tAdrTyp = "WE" then ! C
+		tCPICLI := eEAdrPsz   ! C  
+	endif
+	if tAdrTyp = "OSO" then ! C
+		tCPIFOU := eEAdrPsz   ! C 
+		taCPIFOU[nNumeroCabecalho] := tCPIFOU
+	endif
+endsegment
+
+segment SCtryName gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   if tAdrTyp = "WE" then ! C
+		tPAYCLI := eECtryName   ! C  
+	endif
+	
+	if tAdrTyp = "OSO" then ! C
+		tPAYFOU := eECtryName   ! C 
+		taPAYFOU[nNumeroCabecalho] := tPAYFOU
+	endif
+endsegment
+
+
+segment SRgnCod gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1 
+   if tAdrTyp = "WE" then ! C
+      tCODRGT:= eERgnCod   ! C 
+
+		tVILCLI := build(tVILCLI, " - ",tCODRGT)   ! C  
+		
+	  
+	endif
+	
+	
+	if tAdrTyp = "OSO" then ! C
+		tCODRGTOSO:= eERgnCod   ! C 
+		tVILFOU := build(tVILFOU, " - ",tCODRGTOSO)   ! C  
+		taVILFOU[nNumeroCabecalho] := tVILFOU
+	endif
+endsegment
+
+
+segment SPhnNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGCUSTOMER_SEG     ! C 1/1
+   if tAdrTyp = "WE" then ! C 
+		tTELCLI :=  eEPhnNum
+		
+	endif
+	if tAdrTyp = "OSO" then ! C
+		tTELFOU :=  eEPhnNum
+		taTELFOU[nNumeroCabecalho] := tTELFOU
+	endif
+endsegment
+
+segment SSF_HostAdrId gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+
+	nNumeroCabecalho++
+	taDTILIV40[nNumeroCabecalho] := "" 
+   taHEILIV40[nNumeroCabecalho] := ""   
+   taDTIREC40[nNumeroCabecalho] := ""  
+   taHEIREC40[nNumeroCabecalho] := ""    
+endsegment
+
+
+
+
+segment SCarCod gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+ 
+  ! tCODTRA := eECarCod  
+endsegment
+
+
+segment SEarly_ShpDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+   tDATEXP  :=  tfConvertDate(eEEarly_ShpDte , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD")   ! C  
+	tHEUEXP  :=  tfConvertDate(eEEarly_ShpDte , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")   ! C  
+endsegment
+
+
+
+segment SLate_ShpDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+if length(tDATEXP) = 0 then
+	  tDATEXP  :=  tfConvertDate(eELate_ShpDte , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD")   ! C  
+	tHEUEXP  :=  tfConvertDate(eELate_ShpDte , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")   ! C
+endif
+endsegment
+
+segment SEarly_DlvDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+  tDTILIV :=  tfConvertDate(eEEarly_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD")   ! C  tfConvertDate( , "YYYY-MM-DD" , "YYYYMMDD")   ! C  
+	tHEILIV  :=  tfConvertDate(eEEarly_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")   ! C
+	
+	  tDTIREC :=  tfConvertDate(eEEarly_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD")   ! C  tfConvertDate( , "YYYY-MM-DD" , "YYYYMMDD")   ! C  
+	tHEIREC  :=  tfConvertDate(eEEarly_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")   ! C
+	
+   taDTILIV40[nNumeroCabecalho] := tDTILIV 
+   taHEILIV40[nNumeroCabecalho] := tHEILIV  
+   taDTIREC40[nNumeroCabecalho] := tDTIREC 
+   taHEIREC40[nNumeroCabecalho] := tHEIREC    
+   
+	
+endsegment
+
+segment SLate_DlvDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1
+if length(tDTILIV) = 0 then 
+   tDTILIV :=    tfConvertDate(eELate_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD")
+   tHEILIV  :=  tfConvertDate(eELate_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")   ! C
+      tDTIREC :=    tfConvertDate(eELate_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD")
+   tHEIREC  :=  tfConvertDate(eELate_DlvDte , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")   ! C
+   
+   taDTILIV40[nNumeroCabecalho] := tDTILIV 
+   taHEILIV40[nNumeroCabecalho] := tHEILIV  
+   taDTIREC40[nNumeroCabecalho] := tDTIREC 
+   taHEIREC40[nNumeroCabecalho] := tHEIREC    
+   
+endif
+endsegment
+/*
+segment SFF_HostAdrId gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+   eEFF_HostAdrId   ! C  
+
+endsegment
+
+segment SBT_HostAdrId gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+   eEBT_HostAdrId   ! C  
+
+endsegment
+*/
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG : C 1/unbound 
+segment SDlvNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+      
+   tREFLIV := eEDlvNum   ! C  
+    tREFREC := eEDlvNum
+	taREFREC40[nNumeroCabecalho] := tREFREC
+endsegment
+/*
+segment SOrdTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEOrdTyp   ! C  
+
+endsegment
+*/
+segment SEntDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+  tEntDte := eEEntDte   ! C  
+	taEntDte40[nNumeroCabecalho] := tEntDte
+endsegment
+/*
+segment SST_HostAdrId gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEST_HostAdrId   ! C  
+
+endsegment
+*/
+segment SInternalOrdTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+ !if length(eEInternalOrdTyp) > 0 then
+  !tInternalOrdTyp := eEInternalOrdTyp   ! C  
+!endif 
+
+
+endsegment
+
+
+/*
+segment SCompany gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eECompany   ! C  
+
+endsegment
+
+segment SDivision gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEDivision   ! C  
+
+endsegment
+
+segment SDeptNo gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEDeptNo   ! C  
+
+endsegment
+
+segment SStoreNo gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEStoreNo   ! C  
+
+endsegment
+
+segment SDCNo gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEDCNo   ! C  
+
+endsegment
+
+segment SParCpoNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEParCpoNum   ! C  
+
+endsegment
+
+segment SParCpoDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEParCpoDte   ! C  
+
+endsegment
+
+segment SParCpoTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEParCpoTyp   ! C  
+
+endsegment
+
+segment SParCpoTypDesc gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEParCpoTypDesc   ! C  
+
+endsegment
+
+segment SFrtPmtTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEFrtPmtTyp   ! C  
+
+endsegment
+
+segment SSortMthd gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eESortMthd   ! C  
+
+endsegment
+
+segment SSupNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eESupNum   ! C  
+
+endsegment
+
+segment SSupNumZU gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eESupNumZU   ! C  
+
+endsegment
+
+segment SInvPmtTrm gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEInvPmtTrm   ! C  
+
+endsegment
+
+segment SExportFlg gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEExportFlg   ! C  
+
+endsegment
+
+segment SIncoTerm gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEIncoTerm   ! C  
+
+endsegment
+
+segment SIncoQual gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEIncoQual   ! C  
+
+endsegment
+
+segment SPickType gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEPickType   ! C  
+
+endsegment
+*/
+
+/*
+
+
+
+
+
+
+
+*/
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG : C 1/unbound 
+segment SDlvLin gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+nNumeroLinha++
+taNumeroCabecalho[nNumeroLinha] := build(nNumeroCabecalho)
+baProdutoDuplicado[nNumeroLinha] := FALSE
+baConsideraHeader[nNumeroLinha] := TRUE
+    if length(build(number(eEDlvLin)))  = 6 then
+       tNumeroLinhaTemp := (build(substr(eEDlvLin,1,1),substr(eEDlvLin,3,4)))
+   else
+       tNumeroLinhaTemp := (build(number(eEDlvLin):R05.0))
+   endif
+
+
+taNLILIV[nNumeroLinha] := tNumeroLinhaTemp   ! C 
+endsegment
+
+segment SMaterialNumber gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   taCODPRO[nNumeroLinha] := eEMaterialNumber   ! C 
+
+endsegment
+
+
+/*
+segment SItemCategory gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eEItemCategory   ! C  
+
+endsegment
+
+segment SParentLine gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eEParentLine   ! C  
+
+endsegment
+
+segment SCustParPoNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECustParPoNum   ! C  
+
+endsegment
+*/
+segment SCpoNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+if length(eECpoNum) > 0 then
+  tCpoNum := eECpoNum   ! C  
+endif
+endsegment
+
+
+
+/*
+segment SCpoDte gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECpoDte   ! C  
+
+endsegment
+
+segment SCpoTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECpoTyp   ! C  
+
+endsegment
+
+segment SCpoTypDesc gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECpoTypDesc   ! C  
+
+endsegment
+*/
+segment SLotNum gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   taCODLOT[nNumeroLinha] := eELotNum   ! C   
+
+endsegment
+
+segment SLinQty gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+
+
+				
+   taUVCCDE[nNumeroLinha] := eELinQty   ! C  
+endsegment
+
+
+segment SDlvLinUoMBuOM gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+
+   if length(eEDlvLinUoMBuOM) > 0 then
+							   fmbrasil_uomcoty := find(build(sHOME,"/fmbrasil_uomcoty"),ISO=eEDlvLinUoMBuOM)
+							   if valid(fmbrasil_uomcoty) then
+									tUOMConvertida := fmbrasil_uomcoty.UMI
+									
+								else
+									tUOMConvertida := eEDlvLinUoMBuOM
+								 endif
+									
+					else
+						tUOMConvertida := eEDlvLinUoMBuOM
+					endif
+   taUNICDE[nNumeroLinha] := tUOMConvertida !eEDlvLinUoMBuOM   ! C  
+endsegment
+
+
+
+
+
+segment SShipmentNumber gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+  
+   taShipmentNumber[nNumeroLinha] := eEShipmentNumber   ! C 
+ taShipmentNumber40CAB[nNumeroCabecalho] := taShipmentNumber[nNumeroLinha]
+endsegment
+
+segment SShipmentNumber_SEP gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+  
+   taShipmentNumber_SEP[nNumeroLinha] := eEShipmentNumber_SEP   ! C 
+ 
+endsegment
+
+segment STypeOperation gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   !if length(tInternalOrdTyp) = 0 then
+   tInternalOrdTyp := eETypeOperation   ! C 
+ !endif   
+endsegment
+
+segment SNumberNotaFiscal gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+  ! if length(tDIPREC) = 0 then
+   tDIPREC := eENumberNotaFiscal   ! C
+   taDIPREC40[nNumeroCabecalho] := tDIPREC
+    tDIPLIV := eENumberNotaFiscal
+!	endif
+	
+	
+	
+	taInternalOrdTyp[nNumeroCabecalho] := tInternalOrdTyp
+	taInternalOrdTypLinha[nNumeroLinha] := tInternalOrdTyp
+	
+	
+	taCODCLI[nNumeroLinha] := tCODCLI
+	taCODTRA[nNumeroLinha] := tCODTRA
+	!taREFLIV[nNumeroLinha] := tREFLIV
+	taDTILIV[nNumeroLinha] := tDTILIV
+	taHEILIV[nNumeroLinha] := tHEILIV
+	taCODTLI[nNumeroLinha] := tCODTLI
+	taCODRGT[nNumeroLinha] := tCODRGT
+	taEntDte[nNumeroLinha] := tEntDte
+	taDATEXP[nNumeroLinha] := tDATEXP
+	taHEUEXP[nNumeroLinha] := tHEUEXP
+	                        
+	taDIPLIV[nNumeroLinha] := tDIPLIV
+	taNOMCLI[nNumeroLinha] := tNOMCLI
+	taAD1CLI[nNumeroLinha] := tAD1CLI
+	taAD2CLI[nNumeroLinha] := tAD2CLI
+	taVILCLI[nNumeroLinha] := tVILCLI
+	                        
+	taVILCLI[nNumeroLinha] := tVILCLI
+	taPAYCLI[nNumeroLinha] := tPAYCLI
+	taTELCLI[nNumeroLinha] := tTELCLI
+	taCODCLI[nNumeroLinha] := tCODCLI
+	taCPICLI[nNumeroLinha] := tCPICLI
+	
+	taDlvNum[nNumeroLinha] := tREFLIV
+	
+	
+	if tInternalOrdTyp = "SC" then
+		taREFLIV[nNumeroLinha] := tREFLIV
+	else
+	
+		if number(taShipmentNumber_SEP[nNumeroLinha]) <> number(eENumberNotaFiscal) then
+			taREFLIV[nNumeroLinha] := build(tREFLIV,"/",eENumberNotaFiscal)
+		else
+			taREFLIV[nNumeroLinha] := build(number(taShipmentNumber_SEP[nNumeroLinha]))
+			taCODCLI[nNumeroLinha]	:=   "ZSEP"
+			taNOMCLI [nNumeroLinha]	:=   "ZSEP"
+		endif
+	endif
+endsegment
+
+
+
+ 
+/*
+segment SCstPrt gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECstPrt   ! C  
+
+endsegment
+
+segment SMinShelf gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eEMinShelf   ! C  
+
+endsegment
+
+segment SUntPrc gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eEUntPrc   ! C  
+
+endsegment
+
+segment SCrncyName gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECrncyName   ! C  
+
+endsegment
+
+segment SCstRtlPrc gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_LINE_SEG     ! C 1/1 
+   eECstRtlPrc   ! C  
+
+endsegment
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_HDR_SEG : C 1/unbound 
+segment SNotTyp gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_HDR_SEG     ! C 1/1 
+   eENotTyp   ! C  
+
+endsegment
+
+segment SLocaleId gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_HDR_SEG     ! C 1/1 
+   eELocaleId   ! C  
+
+endsegment
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_HDR_SEG,gGDELIVERY_NOTE_LIN_SEG : C 1/unbound 
+segment SNotFmt gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_HDR_SEG,gGDELIVERY_NOTE_LIN_SEG     ! C 1/1 
+   eENotFmt   ! C  
+
+endsegment
+
+segment SNotTxt gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_HDR_SEG,gGDELIVERY_NOTE_LIN_SEG     ! C 1/1 
+   eENotTxt   ! C  
+
+endsegment
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_ATTRIBUTE_SEG : C 1/unbound 
+segment SAttribNam gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_ATTRIBUTE_SEG     ! C 1/1 
+   eEAttribNam   ! C  
+
+endsegment
+
+segment SAttribVal gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_ATTRIBUTE_SEG     ! C 1/1 
+   eEAttribVal   ! C  
+
+endsegment
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_ITEM_SEG : C 1/unbound 
+segment SNotTypItem gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_ITEM_SEG     ! C 1/1 
+   eENotTypItem   ! C  
+
+endsegment
+
+segment SLocaleIdItem gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_ITEM_SEG     ! C 1/1 
+   eELocaleIdItem   ! C  
+
+endsegment
+
+! Group gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_ITEM_SEG,gGDELIVERY_NOTE_ITEM_LIN_SEG : C 1/unbound 
+segment SNotFmtItem gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_ITEM_SEG,gGDELIVERY_NOTE_ITEM_LIN_SEG     ! C 1/1 
+   eENotFmtItem   ! C  
+
+endsegment
+
+segment SNotTxtItem gGSHIPPING_ORDER-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG,gGDELIVERY_NOTE_ITEM_SEG,gGDELIVERY_NOTE_ITEM_LIN_SEG     ! C 1/1 
+   eENotTxtItem   ! C  
+
+endsegment
+*/
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+
+
+end
+
+log("tInternalOrdTyp ",tInternalOrdTyp,NL)
+
+
+nTempNumeroCabecalho := 1
+log("nNumeroCabecalho ",nNumeroCabecalho,NL)
+while nTempNumeroCabecalho <= nNumeroCabecalho do
+					if taInternalOrdTyp[nTempNumeroCabecalho] = "TR" or taInternalOrdTyp[nTempNumeroCabecalho] = "DV"  then ! se for M40
+					 nMessageID := cMessageID
+
+					  
+					  
+						tFileOut40 := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+					  tFileOutTemp40 := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+					  !tFileOut40 := build(sHOME,"/rte/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+					  tNameOut40 := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+
+
+					!===========================================================
+
+
+					!===========================================================
+
+
+					!===========================================================
+
+					 
+						 R_00HEADER_CODEXC("00")
+						 R_00HEADER_SEPEXC(".")
+						 R_00HEADER_SCOEXC("00")
+						 R_00HEADER_TRTEXC("")
+						 R_00HEADER_EMTEXC("FM") 
+						 R_00HEADER_RCTEXC("")
+						 R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+						 R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+						 R_00HEADER_NUMEXC("0000000")
+						 R_00HEADER_ACQEXC("0")
+						 R_00HEADER_VEREXC("5.00") 
+						 R_00HEADER_NOMSYS("")  
+						 R_00HEADER_NOMDTQ("M40")
+						 R_00HEADER_BIBDTQ("")
+						 R_00HEADER_LIBEXC(build(nMessageID:R010))
+						 R_00HEADER_BIBDST("")
+						 R_00HEADER_PGMDST("")
+						 R_00HEADER_PARDST("")
+						 R_00HEADER_CODACT("")
+						 R_00HEADER_IGLSIT("")
+						 R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+						 R_00HEADER_IMAEXC("")  
+						 R_00HEADER_DISEXC("")
+						 
+						 flush(0,0,NL) >> tFileOutTemp40   !ESCRITA DO HEADER M00.00
+						 nContadorLinhasEscritas++
+					 
+
+
+
+					   R_40HEADER_CODEXC("40")
+					   R_40HEADER_SEPEXC(".")
+					   R_40HEADER_SCOEXC("00")
+					   
+					   R_40HEADER_REFREC(taREFREC40[nTempNumeroCabecalho])
+					   
+					   R_40HEADER_EDIFOU(tCODFOU)
+					   R_40HEADER_CODFOU(tCODFOU)
+					  R_40HEADER_CODTRA(tCODTRA )
+
+					   tCODTRE := taInternalOrdTyp[nTempNumeroCabecalho]
+						  R_40HEADER_CODTRE(tCODTRE)
+					R_40HEADER_CODACT(tCODACTConst )
+					R_40HEADER_DTIREC(taDTIREC40[nTempNumeroCabecalho])
+					R_40HEADER_HEIREC(taHEIREC40[nTempNumeroCabecalho])
+					 tMSGREC := build("DATA CRIACAO: ",tfConvertDate(taEntDte40[nTempNumeroCabecalho] , "YYYY-MM-DD" , "DD/MM/YYYY"))
+					R_40HEADER_MSGREC(tMSGREC)
+					
+					
+					
+					
+					
+					
+					
+					if number(substr(taShipmentNumber40CAB[nTempNumeroCabecalho],1,30)) > 0 then
+														R_40HEADER_MSGREC1(build(number(substr(taShipmentNumber40CAB[nTempNumeroCabecalho],1,30))))
+													else
+														R_40HEADER_MSGREC1(substr(taShipmentNumber40CAB[nTempNumeroCabecalho],1,30))
+													endif
+					
+						flush(0,0,NL) >> tFileOutTemp40 !ESCRITA DO HEADER M00.00
+					nContadorLinhasEscritas++
+
+
+
+					R_40_01ORDHEADER_CODEXC("40")
+					R_40_01ORDHEADER_SEPEXC(".")
+					 R_40_01ORDHEADER_SCOEXC("01")
+
+					   R_40_01ORDHEADER_REFREC(taREFREC40[nTempNumeroCabecalho])   ! C  
+					   R_40_01ORDHEADER_DIPREC(taDIPREC40[nTempNumeroCabecalho])   ! C  
+					 
+					   R_40_01ORDHEADER_NOMFOU(tNOMFOU)   ! C  
+					   R_40_01ORDHEADER_AD1FOU(tAD1FOU)   ! C  
+						R_40_01ORDHEADER_AD2FOU(tAD2FOU)   ! C  
+
+					   R_40_01ORDHEADER_VILFOU(tVILFOU)   ! C  
+					   R_40_01ORDHEADER_PAYFOU(tPAYFOU)   ! C  
+					   R_40_01ORDHEADER_TELFOU(tTELFOU)   ! C  
+					 
+					   R_40_01ORDHEADER_DISEXC(tDISEXC)   ! C  
+						  flush(0,0,NL) >> tFileOutTemp40   !ESCRITA DO HEADER M00.00
+						  nContadorLinhasEscritas++
+
+
+
+					R_40_02ORDHEADER_CODEXC("40")
+					R_40_02ORDHEADER_SEPEXC(".")
+					 R_40_02ORDHEADER_SCOEXC("02")
+					 
+					   R_40_02ORDHEADER_REFREC(taREFREC40[nTempNumeroCabecalho])   ! C  
+					   R_40_02ORDHEADER_CPIFOU(tCPIFOU)   ! C  
+					 
+						  flush(0,0,NL) >> tFileOutTemp40   !ESCRITA DO HEADER M00.00
+						  nContadorLinhasEscritas++
+
+
+
+
+						  nContadorLinhasEncomenda := 1
+						  
+						  
+							 nContador := 8
+							 print("ve ",peel(taREGISTO[nContador+1],"\""),NL)
+
+					nContadorTmpTOTAL := 1
+
+
+					   nTempNumeroLinha2 := 1
+					   while nTempNumeroLinha2  <= nNumeroLinha do
+					   
+							if taNumeroCabecalho[nTempNumeroLinha2] =  build(nTempNumeroCabecalho) then
+					   
+					   
+					   
+								   
+					   
+
+										   ! fazer aqui um while e validar
+										   R_40_20M40_CODEXC("40")
+										   R_40_20M40_SEPEXC(".")
+										   R_40_20M40_SCOEXC("20")
+										   R_40_20M40_CODACT(tCODACTConst )
+
+										   R_40_20M40_REFREC(taREFREC40[nTempNumeroCabecalho])
+										   R_40_20M40_CODPRO(taCODPRO[nTempNumeroLinha2])
+										   R_40_20M40_UVCREA(build(number(taUVCCDE[nTempNumeroLinha2 ]):R09.0))
+										   R_40_20M40_NLIREC(build(number(taNLILIV[nTempNumeroLinha2 ]))) 
+										   R_40_20M40_UNICDE(taUNICDE[nTempNumeroLinha2] )
+										   R_40_20M40_INDUNI("1")
+										   
+										   R_40_20M40_CODLOT(taCODLOT[nTempNumeroLinha2])
+										
+										
+										   R_40_20M40_NUMOPE(tNUMOPE)
+										   if tCODTRE = "DV" then
+												R_40_20M40_MOTIMM(tCODTRE)
+										   endif
+										
+										 flush(0,0,NL) >> tFileOutTemp40 !ESCRITA DO HEADER M00.00
+										nContadorLinhasEscritas++
+
+
+
+
+					   
+									   nContadorLinhasEncomenda++
+									   nContadorTmpTOTAL++
+							endif
+					   nTempNumeroLinha2++ 
+						
+					   endwhile
+
+
+						
+						
+						
+						R_40_99TRAILLER_CODEXC("40")
+					   R_40_99TRAILLER_SEPEXC(".")
+					   R_40_99TRAILLER_SCOEXC("99")
+					  ! R_40_99TRAILLER_CODACT("ELG")
+
+					   R_40_99TRAILLER_REFREC(taREFREC40[nTempNumeroCabecalho] )
+					   R_40_99TRAILLER_CUMLIG(build(number(tCUMLIG) :R04.0)) !ver conversao e  por erro!!!!!
+						flush(0,0,NL) >> tFileOutTemp40 !ESCRITA DO HEADER M00.00
+					   nContadorLinhasEscritas++
+					   
+					   
+					   
+						R_TRAILLER_CODEXC("99")
+						R_TRAILLER_SEPEXC(".")
+						R_TRAILLER_SCOEXC("00")
+						R_TRAILLER_TRTEXC("")
+						R_TRAILLER_EMTEXC("FM")
+						R_TRAILLER_RCTEXC("")
+						R_TRAILLER_DATEXC(time("now" ,"%Y%m%d"))
+						R_TRAILLER_HEUEXC(time("now" ,"H%M%S"))
+						R_TRAILLER_NUMEXC("")
+						tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+						!print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+						R_TRAILLER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+						!R_TRAILLER_NOMSYS("")
+						!R_TRAILLER_NOMDTQ("")
+						!R_TRAILLER_BIBDTQ("")
+						!R_TRAILLER_IDEMSG("")
+						!R_TRAILLER_DISEXC("")
+
+						flush(0,0,NL)  >> tFileOutTemp40
+						close(tFileOutTemp40)
+
+
+					   
+					copy(tFileOutTemp40,tFileOut40)
+						close(tFileOutTemp40)
+						remove(tFileOutTemp40)
+							close(tFileOut40)
+
+					   bfMajtrace40("Recebida","0",taREFREC[nTempNumeroLinha],tDataDocumento,tFileInput,tFileOut40,"Produtos","")
+						close(tFileOut40)
+						endif
+
+					!===========================================================
+
+
+					!===========================================================
+							
+						nTempNumeroCabecalho++
+endwhile
+		
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+  
+  
+			  
+
+			nTempNumeroLinha := 1
+			while nTempNumeroLinha  <= nNumeroLinha do
+			  if taInternalOrdTypLinha[nTempNumeroLinha] = "SC" or taInternalOrdTypLinha[nTempNumeroLinha] = "VD"  then
+				   nTempNumeroLinha2 := nTempNumeroLinha+1
+				   while nTempNumeroLinha2  <= nNumeroLinha do
+						if taInternalOrdTypLinha[nTempNumeroLinha2] = "SC" or taInternalOrdTypLinha[nTempNumeroLinha2] = "VD"  then
+							  if taREFLIV[nTempNumeroLinha2] = taREFLIV[nTempNumeroLinha] then
+								 baConsideraHeader[nTempNumeroLinha2] := FALSE
+							  endif
+							  
+							  
+								if taREFLIV[nTempNumeroLinha2] = taREFLIV[nTempNumeroLinha] and taCODPRO[nTempNumeroLinha2] = taCODPRO[nTempNumeroLinha] then !and taCODLOT[nTempNumeroLinha2] = taCODLOT[nTempNumeroLinha] then
+									baProdutoDuplicado[nTempNumeroLinha2] := TRUE
+									taUVCCDE[nTempNumeroLinha] := build(number(taUVCCDE[nTempNumeroLinha])+ number(taUVCCDE[nTempNumeroLinha2]))
+									!taPDBCOL[nTempNumeroLinha] := build(number(taPDBCOL[nTempNumeroLinha])+ number(taPDBCOL[nTempNumeroLinha2]))
+							  endif
+
+					  
+					  endif
+					  nTempNumeroLinha2 ++
+					endwhile
+			   
+			   
+			   
+			   endif
+			   nTempNumeroLinha ++
+			endwhile
+
+			!===========================================================
+					
+					
+					
+
+			nTempNumeroLinha2 := 1
+			while nTempNumeroLinha2  <= nNumeroLinha do
+				if taInternalOrdTypLinha[nTempNumeroLinha2] = "SC" or taInternalOrdTypLinha[nTempNumeroLinha2] = "VD"  then
+
+								fmbrasil_dlvnumcoty2 := find(build(sHOME,"/fmbrasil_dlvnumcoty"),REFLIV = taREFLIV[nTempNumeroLinha2],DLVNUM = taDlvNum[nTempNumeroLinha2])
+								if valid(fmbrasil_dlvnumcoty2) then
+									!ja existe esta entrada e nao faz nada
+								else
+									fmbrasil_dlvnumcoty := new(build(sHOME,"/fmbrasil_dlvnumcoty"))
+									fmbrasil_dlvnumcoty.REFLIV := taREFLIV[nTempNumeroLinha2]
+									fmbrasil_dlvnumcoty.DLVNUM := taDlvNum[nTempNumeroLinha2]
+								
+									flush(fmbrasil_dlvnumcoty)	
+								endif
+
+								if baConsideraHeader[nTempNumeroLinha2] = TRUE then
+								
+								
+								
+								
+								
+														
+								
+								
+								
+													 nMessageID := cMessageID
+													   tFileOut50 := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+													  tFileOutTemp50 := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+													 ! tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+													  tNameOut50 := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+													 R_0000HEADER_CODEXC("00")
+													 R_0000HEADER_SEPEXC(".")
+													 R_0000HEADER_SCOEXC("00")
+													 R_0000HEADER_TRTEXC("")
+													 R_0000HEADER_EMTEXC("FM") 
+													 R_0000HEADER_RCTEXC("")
+													 R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
+													 R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
+													 R_0000HEADER_NUMEXC("0000000")
+													 R_0000HEADER_ACQEXC("0")
+													 R_0000HEADER_VEREXC("5.00") 
+													 R_0000HEADER_NOMSYS("")  
+													 R_0000HEADER_NOMDTQ("M50")
+													 R_0000HEADER_BIBDTQ("")
+													 R_0000HEADER_LIBEXC(build(nMessageID:R010))
+													 R_0000HEADER_BIBDST("")
+													 R_0000HEADER_PGMDST("")
+													 R_0000HEADER_PARDST("")
+													 R_0000HEADER_CODACT("")
+													 R_0000HEADER_IGLSIT("")
+													 R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
+													 R_0000HEADER_IMAEXC("")  
+													 !R_0000HEADER_DISEXC("")
+													 
+													 flush(0,0,NL) >> tFileOutTemp50   !ESCRITA DO HEADER M00.00
+													 nContadorLinhasEscritas++
+							 
+
+							 
+													   R_5000ORDERHEADER_CODEXC("50")
+													   R_5000ORDERHEADER_SEPEXC(".")
+													   R_5000ORDERHEADER_SCOEXC("00")
+													 R_5000ORDERHEADER_CODACT(tCODACTConst)
+													 R_5000ORDERHEADER_CODCLI(taCODCLI[nTempNumeroLinha2] )  
+													 
+													 R_5000ORDERHEADER_CODTRA(taCODTRA[nTempNumeroLinha2] )
+
+													 R_5000ORDERHEADER_REFLIV(taREFLIV[nTempNumeroLinha2] )
+													   R_5000ORDERHEADER_DTILIV(taDTILIV[nTempNumeroLinha2] )
+													   R_5000ORDERHEADER_HEILIV(taHEILIV[nTempNumeroLinha2] )
+													 
+													 tCODTLI := taInternalOrdTypLinha[nTempNumeroLinha2]
+													   R_5000ORDERHEADER_CODTLI(tCODTLI)
+													   R_5000ORDERHEADER_CODRGT(taCODRGT[nTempNumeroLinha2] )
+													   tMSGLIV := build("DATA CRIACAO: ",tfConvertDate(taEntDte[nTempNumeroLinha2] , "YYYY-MM-DD" , "DD/MM/YYYY")) !," PEDIDO CLIENTE: ",tCpoNum)
+
+													  R_5000ORDERHEADER_MSGLIV1(substr(taMSGLIV[nTempNumeroLinha2],1,30))
+													   R_5000ORDERHEADER_MSGLIV2(substr(taMSGLIV[nTempNumeroLinha2],31,30))
+														R_5000ORDERHEADER_TOULIV(substr(taShipmentNumber[nTempNumeroLinha2],(length(taShipmentNumber[nTempNumeroLinha2])-3),4))
+												flush(0,0,NL) >> tFileOutTemp50 !ESCRITA DO HEADER M00.00
+											nContadorLinhasEscritas++
+
+
+
+
+													   R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
+													   R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
+													   R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
+													   R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACTConst)
+													   R_5001ORDERHEADER_COMPLEMENT_CODCLI(taCODCLI[nTempNumeroLinha2])  
+
+													R_5001ORDERHEADER_COMPLEMENT_DATEXP(taDATEXP[nTempNumeroLinha2])
+													R_5001ORDERHEADER_COMPLEMENT_HEUEXP(taHEUEXP[nTempNumeroLinha2])
+													   R_5001ORDERHEADER_COMPLEMENT_REFLIV(taREFLIV[nTempNumeroLinha2])
+
+													R_5001ORDERHEADER_COMPLEMENT_DIPLIV(taDIPLIV[nTempNumeroLinha2])
+													if number(substr(taShipmentNumber[nTempNumeroLinha2],1,20)) > 0 then
+														R_5001ORDERHEADER_COMPLEMENT_CRILIV(build(number(substr(taShipmentNumber[nTempNumeroLinha2],1,20))))
+													else
+														R_5001ORDERHEADER_COMPLEMENT_CRILIV(substr(taShipmentNumber[nTempNumeroLinha2],1,20))
+													endif
+													   flush(0,0,NL) >> tFileOutTemp50   !ESCRITA DO HEADER M00.00
+													nContadorLinhasEscritas++
+
+
+													R_5010_CODEXC("50")
+													   R_5010_SEPEXC(".")
+													   R_5010_SCOEXC("10")
+													 R_5010_CODACT(tCODACTConst)
+													
+														 R_5010_NOMCLI(taNOMCLI[nTempNumeroLinha2])
+													R_5010_AD1CLI(taAD1CLI[nTempNumeroLinha2])
+													R_5010_AD2CLI(taAD2CLI[nTempNumeroLinha2])
+													R_5010_VILCLI(taVILCLI[nTempNumeroLinha2])
+											
+													R_5010_VILCLI(taVILCLI[nTempNumeroLinha2])
+													R_5010_PAYCLI(taPAYCLI[nTempNumeroLinha2])
+													R_5010_TELCLI(taTELCLI[nTempNumeroLinha2])
+													R_5010_CATCLI("STD")
+													 R_5010_CODCLI(taCODCLI[nTempNumeroLinha2]) 
+													 R_5010_CPICLI(taCPICLI[nTempNumeroLinha2])
+										
+
+													 R_5010_REFLIV(taREFLIV[nTempNumeroLinha2])
+													  
+													   
+													flush(0,0,NL) >> tFileOutTemp50 !ESCRITA DO HEADER M00.00
+													nContadorLinhasEscritas++
+
+
+
+
+
+
+													  nContadorLinhasEncomenda := 1
+													  
+													  
+														
+														nContadorTmpTOTAL := 1
+														nContadorSeqLinhasM50 := 0
+														
+																				
+													nTempNumeroLinha3 := 1
+													while nTempNumeroLinha3  <= nNumeroLinha do
+
+														if baProdutoDuplicado[nTempNumeroLinha3] = FALSE and taREFLIV[nTempNumeroLinha3] = taREFLIV[nTempNumeroLinha2] then
+													   
+																R_5020ORDERLINE_CODEXC("50")
+																R_5020ORDERLINE_SEPEXC(".")
+																R_5020ORDERLINE_SCOEXC("20")
+																R_5020ORDERLINE_CODACT(tCODACTConst)
+																R_5020ORDERLINE_CODCLI(taCODCLI[nTempNumeroLinha3])
+																!R_5020ORDERLINE_NOMCLI(taCODCLI[nTempNumeroLinha3])
+																R_5020ORDERLINE_CODPRO(taCODPRO[nTempNumeroLinha3])
+															 R_5020ORDERLINE_CODLOT(taCODLOT[nTempNumeroLinha3])
+																R_5020ORDERLINE_QTECDE(taUVCCDE[nTempNumeroLinha3])
+																R_5020ORDERLINE_UNICDE(taUNICDE[nTempNumeroLinha3])
+																R_5020ORDERLINE_REFLIV(taREFLIV[nTempNumeroLinha3])
+																nContadorSeqLinhasM50++
+																R_5020ORDERLINE_NLILIV(build(nContadorSeqLinhasM50:R05.0))
+																!R_5020ORDERLINE_MSGLIV(build(build(number(peel(S_DETALHE_CodigoProduto,"\"")):L17),build(number(peel(S_DETALHE_Quantidade,"\"")):R09)))
+																flush(0,0,NL) >> tFileOutTemp50 !ESCRITA DO HEADER M00.00
+																nContadorLinhasEscritas++
+
+
+													   
+															   nContadorLinhasEncomenda++
+															   nContadorTmpTOTAL++
+
+
+
+														endif
+														nTempNumeroLinha3++
+													endwhile
+
+													R_5099ORDERFOOTER_CODEXC("50")
+													   R_5099ORDERFOOTER_SEPEXC(".")
+													   R_5099ORDERFOOTER_SCOEXC("99")
+													   R_5099ORDERFOOTER_CUMLIG(build(number(tCUMLIG) :R04.0))!ver conversao
+													R_5099ORDERFOOTER_CODACT(tCODACTConst)
+													R_5099ORDERFOOTER_CODCLI(taCODCLI[nTempNumeroLinha2]) !(taCODCLI[nTempNumeroLinha])
+													   !tTotalLinhas
+													 R_5099ORDERFOOTER_REFLIV(taREFLIV[nTempNumeroLinha2])
+														
+															flush(0,0,NL) >> tFileOutTemp50 !ESCRITA DO HEADER M00.00
+													   nContadorLinhasEscritas++
+								
+							   
+							   
+							   
+								   
+													 R_9900FILEFOOTER_CODEXC("99")
+													R_9900FILEFOOTER_SEPEXC(".")
+													R_9900FILEFOOTER_SCOEXC("00")
+													R_9900FILEFOOTER_TRTEXC("")
+													R_9900FILEFOOTER_EMTEXC("FM")
+													R_9900FILEFOOTER_RCTEXC("")
+													R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+													R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+													R_9900FILEFOOTER_NUMEXC("")
+													tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+													!print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+													R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+													!R_9900FILEFOOTER_NOMSYS("")
+													!R_9900FILEFOOTER_NOMDTQ("")
+													!R_9900FILEFOOTER_BIBDTQ("")
+													!R_9900FILEFOOTER_IDEMSG("")
+													!R_9900FILEFOOTER_DISEXC("")
+
+													flush(0,0,NL)  >> tFileOutTemp50
+													close(tFileOutTemp50)
+
+												copy(tFileOutTemp50,tFileOut50)
+													close(tFileOutTemp50)
+												remove(tFileOutTemp50)
+													close(tFileOut50)
+
+													   
+												bfMajtrace50("Recebida","0",taREFREC[nTempNumeroLinha2],taDataDocumento[nTempNumeroLinha2],tFileInput,tFileOut,"Produtos","")
+													close(tFileOut50)			
+										endif
+					
+					endif
+			   
+				  nTempNumeroLinha2++ 
+				
+			   endwhile
+
+
+  
+		
+		
+		
+exit(0)
+
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace50(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "PEDIDO"
+   TRACE.NUMDOC := taREFLIV[nTempNumeroLinha2]
+   TRACE.DATDOC := substr(taDTILIV[nTempNumeroLinha2],1,10)
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pGW.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut50
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut50,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+if nMainIndex = 0 then
+close(SYSLOG.e)
+copy(SYSLOG.e,TRACE.In)
+close(SYSLOG.e)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+
+
+if tError="0" then
+close(tFileOut50)
+copy(tFileOut50,TRACE.Out)
+close(tFileOut50)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace40(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut40,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "RECEBIMENTO E DEVOLUCAO"
+   TRACE.NUMDOC := taREFREC40[nTempNumeroCabecalho]
+   TRACE.DATDOC := substr(taDTIREC40[nTempNumeroCabecalho],1,10)
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+   TRACE.REDE := pGW.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut40
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut40,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.e)
+copy(SYSLOG.e,TRACE.In)
+close(SYSLOG.e)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+if tError="0" then
+close(tFileOut40)
+copy(tFileOut40,TRACE.Out)
+close(tFileOut40)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+

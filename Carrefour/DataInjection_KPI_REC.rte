@@ -1,0 +1,581 @@
+%@(#) $Id:  M40_HENKEL_CSV_IN.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M40_HENKEL_CSV_IN.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M40_HENKEL_CSV_IN
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M40_HENKEL_CSV_IN
+!
+!===========================================================================================================
+
+! base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "DataInjection_KPI_REC"
+#include "include/generix_func.inc"
+#include "include/DataInjection_KPI_REC.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	! PROCESS_ERRONEOUS := TRUE
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+    tAmbiente := substr(pEDISEND.ORIGINAL.NAME, 20, index(pEDISEND.ORIGINAL.NAME, ".csv") - 20)
+    nLine := 0
+
+	load(0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+    ! COVERTENDO NOME DO AMBIENTE
+        switch tAmbiente
+            case "CDA":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDA"]
+            case "PTAM":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenamePTAM"]
+            case "CDAM":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDAM"]
+            case "PTDC":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenamePTDC"]
+            case "CDD":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDD"]
+            case "PTSP":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenamePTSP"]
+            case "PTMG":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenamePTMG"]
+            case "CDMG":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDMG"]
+            case "CDCJ":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDCJ"]
+            case "CDX":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDX"]
+            case "CDPE":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDPE"]
+            case "CDRS":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDRS"]
+            case "CDRE":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDRE"]
+            case "CDMR":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDMR"]
+            case "CDPH":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDPH"]
+            case "CDBA":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenameCDBA"]
+            case "PLCJ":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenamePLCJ"]
+            case "PTBF":
+                tAmbienteCompleto := taPARAM["ToInfologPrefixFilenamePTBF"]
+            default:
+                log("O ambiente ",tAmbiente," do arquivo enviado não existe!", NL)
+                bfMajtrace("Erro de Traducao","1","","Produtos",build("O ambiente ",tAmbiente," do arquivo enviado não existe!"))
+                exit(1)
+        endswitch
+    ! FIM COVERTENDO NOME DO AMBIENTE
+
+    nMainIndex := 0
+
+
+    tDbBaseInsert := "CRFWMSI"
+    
+    tDbBaseUpdate := "CRFWMSU"
+    
+    tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= "GNXBR21"
+	tDbUrl		:= taPARAM["WMSDBURL"]
+    
+    ! INCIANDO AS BASES DE DADOS
+        bfSqlInit()
+        
+        if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+            print("FATAL ",tfSqlErrorStr())
+            bfSqlClose(tDbBase)
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+            
+            exit(1)
+        endif
+
+        if not bfSqlJdbc(tDbBaseInsert, tDbUsername, tDbPassword, tDbUrl) then
+            print("FATAL ",tfSqlErrorStr())
+            bfSqlClose(tDbBase)
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+            
+            exit(1)
+        endif
+
+        if not bfSqlJdbc(tDbBaseUpdate, tDbUsername, tDbPassword, tDbUrl) then
+            print("FATAL ",tfSqlErrorStr())
+            bfSqlClose(tDbBase)
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+            
+            exit(1)
+        endif
+    ! FIM INCIANDO AS BASES DE DADOS
+endbegin
+
+!===========================================================
+line(not "" and not 13:";;;;;;;;;;;;;")
+	S_REGISTO
+    nLine++
+
+    ! LEITURA DE VALORES
+        taTicket[nLine] := S_REGISTO_Ticket
+        taTipo[nLine] := S_REGISTO_Tipo
+        taFilial[nLine] := S_REGISTO_Filial
+        taLocalEntrega[nLine] := S_REGISTO_LocalEntrega
+        taSetorEntrega[nLine] := S_REGISTO_SetorEntrega
+        taData[nLine] := S_REGISTO_Data
+        taHora[nLine] := S_REGISTO_Hora
+        taStatus[nLine] := S_REGISTO_Status
+        taDataEntrega[nLine] := S_REGISTO_DataEntrega
+        taValorTotalAgendamento[nLine] := S_REGISTO_ValorTotalAgendamento
+        taInspecionar[nLine] := S_REGISTO_Inspecionar
+        taObservacao[nLine] := S_REGISTO_Observacao
+        taNumeroDocumento[nLine] := S_REGISTO_NumeroDocumento
+        taSetorPedido[nLine] := S_REGISTO_SetorPedido
+        taFornecedor[nLine] := S_REGISTO_Fornecedor
+        taCNPJFornecedor[nLine] := S_REGISTO_CNPJFornecedor
+        taDataOriginal[nLine] := S_REGISTO_DataOriginal
+        taStatusDocumento[nLine] := S_REGISTO_StatusDocumento
+        taValorTotal[nLine] := S_REGISTO_ValorTotal
+        taSaldo[nLine] := S_REGISTO_Saldo
+        taValorAgendadoDocumento[nLine] := S_REGISTO_ValorAgendadoDocumento
+        taValorEntregue[nLine] := S_REGISTO_ValorEntregue
+        taTransportador[nLine] := S_REGISTO_Transportador
+        taAgendadoPor[nLine] := S_REGISTO_AgendadoPor
+        taPlacaCarreta[nLine] := S_REGISTO_PlacaCarreta
+        taEstorno[nLine] := S_REGISTO_Estorno
+        taVolume[nLine] := S_REGISTO_Volume
+    ! FIM LEITURA DE VALORES
+
+    ! LEITURA COLUNAS
+        taColunaLida[1] := taTicket[1]
+        taColunaLida[2] := taTipo[1]
+        taColunaLida[3] := taFilial[1]
+        taColunaLida[4] := taLocalEntrega[1]
+        taColunaLida[5] := taSetorEntrega[1]
+        taColunaLida[6] := taData[1]
+        taColunaLida[7] := taHora[1]
+        taColunaLida[8] := taStatus[1]
+        taColunaLida[9] := taDataEntrega[1]
+        taColunaLida[10] := taValorTotalAgendamento[1]
+        taColunaLida[11] := taInspecionar[1]
+        taColunaLida[12] := taObservacao[1]
+        taColunaLida[13] := taNumeroDocumento[1]
+        taColunaLida[14] := taSetorPedido[1]
+        taColunaLida[15] := taFornecedor[1]
+        taColunaLida[16] := taCNPJFornecedor[1]
+        taColunaLida[17] := taDataOriginal[1]
+        taColunaLida[18] := taStatusDocumento[1]
+        taColunaLida[19] := taValorTotal[1]
+        taColunaLida[20] := taSaldo[1]
+        taColunaLida[21] := taValorAgendadoDocumento[1]
+        taColunaLida[22] := taValorEntregue[1]
+        taColunaLida[23] := taTransportador[1]
+        taColunaLida[24] := taAgendadoPor[1]
+        taColunaLida[25] := taPlacaCarreta[1]
+        taColunaLida[26] := taEstorno[1]
+        taColunaLida[27] := taVolume[1]
+    ! FIM LEITURA COLUNAS
+
+    ! COLUNAS PADRÃO
+        taColunaPadrao[1] := "*Ticket"
+        taColunaPadrao[2] := "Tipo"
+        taColunaPadrao[3] := "Filial"
+        taColunaPadrao[4] := "Local de entrega"
+        taColunaPadrao[5] := "Setor da entrega"
+        taColunaPadrao[6] := "Data"
+        taColunaPadrao[7] := "Hora"
+        taColunaPadrao[8] := "Status"
+        taColunaPadrao[9] := "Data da entrega"
+        taColunaPadrao[10] := "Valor total do agendamento (R$)"
+        taColunaPadrao[11] := "Inspecionar"
+        taColunaPadrao[12] := "Observa*o"
+        taColunaPadrao[13] := "N*mero do documento"
+        taColunaPadrao[14] := "Setor do pedido"
+        taColunaPadrao[15] := "Fornecedor"
+        taColunaPadrao[16] := "CNPJ do fornecedor"
+        taColunaPadrao[17] := "Data original"
+        taColunaPadrao[18] := "Status do documento"
+        taColunaPadrao[19] := "Valor total (R$)"
+        taColunaPadrao[20] := "Saldo (R$)"
+        taColunaPadrao[21] := "Valor agendado do documento (R$)"
+        taColunaPadrao[22] := "Valor entregue (R$)"
+        taColunaPadrao[23] := "Transportador"
+        taColunaPadrao[24] := "Agendado por"
+        taColunaPadrao[25] := "Placa da carreta"
+        taColunaPadrao[26] := "Estorno"
+        taColunaPadrao[27] := "Volume"
+        nTotColumn := 27
+    ! FIM COLUNAS PADRÃO
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+! End statements section
+
+end
+    nCurLine := 0
+    nCurColumn := 0
+    nMessageID := cMessageID
+
+    ! CRIANDO OS DOCUMENTOS DE LOG
+        tFileOut := build(sHOME,"/DocTemp/","DATAINJECTION_KPI_REC_",tAmbienteCompleto,"_",build(nMessageID:R015),".txt")
+        tFileOutTemp := build(sHOME,"/DocTemp/Temp/","DATAINJECTION_KPI_REC_",tAmbienteCompleto,"_",build(nMessageID:R015),".txt")
+        tNameOut := build("DATAINJECTION_KPI_REC_",tAmbienteCompleto,"_",build(nMessageID:R015),".txt")
+    !FIM CRIANDO OS DOCUMENTOS DE LOG
+
+    while nCurLine < nLine do
+        nCurLine++
+
+        ! VERIFICA SE AS COLUNAS ESTÃO NO LUGAR CERTO
+        if nCurLine = 1 then
+            log(NL, "VERIFICAÇÃO DE COLUNAS ---------------------------", NL)
+            while nCurColumn < nTotColumn do
+                nCurColumn++
+                if compare(substr(peel(taColunaLida[nCurColumn], " "), 1, EOL), taColunaPadrao[nCurColumn]) = TRUE then
+                    log("Coluna '",taColunaLida[nCurColumn],"' verificada.", NL)
+                else
+                    log("Erro. Valor esperado: ",taColunaPadrao[nCurColumn]," / Valor encontrado: ",substr(peel(taColunaLida[nCurColumn], " "), 1, EOL), NL)
+                    bfMajtrace("Erro de Traducao","1",taNumeroDocumento[nCurLine],"Produtos",build("Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: ",substr(peel(taColunaPadrao[nCurColumn], " "), 1, EOL),". Value Received: ",taColunaLida[nCurColumn],"."))
+                    exit(1)
+                endif
+            endwhile
+            log("FIM VERIFICAÇÃO DE COLUNAS -----------------------", NL, NL)
+        endif
+
+        if nCurLine >= 2 then
+            tQuery := build("SELECT * ", NL," "\
+                            "FROM ",tAmbienteCompleto,".SVCQRNS ", NL," "\
+                            "WHERE NBRTCK = '",taTicket[nCurLine],"' ", NL," "\
+                            "AND NBRDOC = '",taNumeroDocumento[nCurLine],"' ")
+
+            log("QUERY --------------------------------------------", NL)
+            log(tQuery,NL)
+            log("--------------------------------------------------", NL, NL)
+
+            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                print("FATAL ", tfSqlErrorStr())
+                bfMajtrace("Erro de Traducao","1",taNumeroDocumento[nCurLine],"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                exit(1)
+            endif
+
+            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                print("FATAL ", tfSqlErrorStr())
+                bfMajtrace("Erro de Traducao","1",taNumeroDocumento[nCurLine],"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                exit(1)
+            endif
+
+            ! VERIFICA SE A QUERY TEM RESULTADO
+            bTemResultado := FALSE
+            if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+                bTemResultado := TRUE
+
+                ! NÂO DEIXANDO OS VALORES NUMERICOS SEREM VAZIOS
+                    if length(taData[nCurLine]) = 0 then
+                        taData[nCurLine] := "0"
+                    endif
+                    if length(taHora[nCurLine]) = 0 then
+                        taHora[nCurLine] := "0"
+                    endif
+                    if length(taDataEntrega[nCurLine]) = 0 then
+                        taDataEntrega[nCurLine] := "0"
+                    endif
+                    if length(taValorTotalAgendamento[nCurLine]) = 0 then
+                        taValorTotalAgendamento[nCurLine] := "0"
+                    endif
+                    if length(taDataOriginal[nCurLine]) = 0 then
+                        taDataOriginal[nCurLine] := "0"
+                    endif
+                    if length(taValorTotal[nCurLine]) = 0 then
+                        taValorTotal[nCurLine] := "0"
+                    endif
+                    if length(taSaldo[nCurLine]) = 0 then
+                        taSaldo[nCurLine] := "0"
+                    endif
+                    if length(taValorAgendadoDocumento[nCurLine]) = 0 then
+                        taValorAgendadoDocumento[nCurLine] := "0"
+                    endif
+                    if length(taValorEntregue[nCurLine]) = 0 then
+                        taValorEntregue[nCurLine] := "0"
+                    endif
+                    if length(taEstorno[nCurLine]) = 0 then
+                        taEstorno[nCurLine] := "0"
+                    endif
+                    if length(taVolume[nCurLine]) = 0 then
+                        taVolume[nCurLine] := "0"
+                    endif
+                ! FIM NÂO DEIXANDO OS VALORES NUMERICOS SEREM VAZIOS
+
+                bfQueryUpdate(taTicket[nCurLine],taTipo[nCurLine],taFilial[nCurLine],taLocalEntrega[nCurLine],taSetorEntrega[nCurLine],taData[nCurLine],taHora[nCurLine],taStatus[nCurLine],taDataEntrega[nCurLine],taValorTotalAgendamento[nCurLine],taInspecionar[nCurLine],taObservacao[nCurLine],taNumeroDocumento[nCurLine],taSetorPedido[nCurLine],taFornecedor[nCurLine],taCNPJFornecedor[nCurLine],taDataOriginal[nCurLine],taStatusDocumento[nCurLine],taValorTotal[nCurLine],taSaldo[nCurLine],taValorAgendadoDocumento[nCurLine],taValorEntregue[nCurLine],taTransportador[nCurLine],taAgendadoPor[nCurLine],taPlacaCarreta[nCurLine],taEstorno[nCurLine],taVolume[nCurLine])
+                remove(taDb2Array)
+            endif
+            
+            ! CASO A QUERY NÃO TIVER RESULTADO
+            if bTemResultado = FALSE then
+                ! NÂO DEIXANDO OS VALORES NUMERICOS SEREM VAZIOS
+                    if length(taData[nCurLine]) = 0 then
+                        taData[nCurLine] := "0"
+                    endif
+                    if length(taHora[nCurLine]) = 0 then
+                        taHora[nCurLine] := "0"
+                    endif
+                    if length(taDataEntrega[nCurLine]) = 0 then
+                        taDataEntrega[nCurLine] := "0"
+                    endif
+                    if length(taValorTotalAgendamento[nCurLine]) = 0 then
+                        taValorTotalAgendamento[nCurLine] := "0"
+                    endif
+                    if length(taDataOriginal[nCurLine]) = 0 then
+                        taDataOriginal[nCurLine] := "0"
+                    endif
+                    if length(taValorTotal[nCurLine]) = 0 then
+                        taValorTotal[nCurLine] := "0"
+                    endif
+                    if length(taSaldo[nCurLine]) = 0 then
+                        taSaldo[nCurLine] := "0"
+                    endif
+                    if length(taValorAgendadoDocumento[nCurLine]) = 0 then
+                        taValorAgendadoDocumento[nCurLine] := "0"
+                    endif
+                    if length(taValorEntregue[nCurLine]) = 0 then
+                        taValorEntregue[nCurLine] := "0"
+                    endif
+                    if length(taEstorno[nCurLine]) = 0 then
+                        taEstorno[nCurLine] := "0"
+                    endif
+                    if length(taVolume[nCurLine]) = 0 then
+                        taVolume[nCurLine] := "0"
+                    endif
+                ! FIM NÂO DEIXANDO OS VALORES NUMERICOS SEREM VAZIOS
+
+                bfQueryInsert(taTicket[nCurLine],taTipo[nCurLine],taFilial[nCurLine],taLocalEntrega[nCurLine],taSetorEntrega[nCurLine],taData[nCurLine],taHora[nCurLine],taStatus[nCurLine],taDataEntrega[nCurLine],taValorTotalAgendamento[nCurLine],taInspecionar[nCurLine],taObservacao[nCurLine],taNumeroDocumento[nCurLine],taSetorPedido[nCurLine],taFornecedor[nCurLine],taCNPJFornecedor[nCurLine],taDataOriginal[nCurLine],taStatusDocumento[nCurLine],taValorTotal[nCurLine],taSaldo[nCurLine],taValorAgendadoDocumento[nCurLine],taValorEntregue[nCurLine],taTransportador[nCurLine],taAgendadoPor[nCurLine],taPlacaCarreta[nCurLine],taEstorno[nCurLine],taVolume[nCurLine])
+            endif
+
+            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                print("FATAL", tfSqlErrorStr())
+                bfMajtrace("Erro de Traducao","1",taNumeroDocumento[nCurLine],"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                exit(1)
+            endif
+        endif
+    endwhile
+
+    ! PASSA AS INFORMAÇÕES DA VARIÁVEL TEMPORÁRIA PARA A FINAL
+    close(tFileOutTemp)
+    copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+    remove(tFileOutTemp)
+    close(tFileOut)
+
+    ! GERA UM TRACE
+    bfMajtrace("Recebida","0",taNumeroDocumento[nCurLine],"","")
+
+    remove(tFileOut)
+
+    ! FECHA OS BANCOS DE DADOS UTILIZADOS
+    bfSqlClose(tDbBase)
+    bfSqlClose(tDbBaseInsert)
+    bfSqlClose(tDbBaseUpdate)
+
+    exit(0)
+endend
+
+!===========================================================
+
+function bfQueryUpdate(tTicket,tTipo,tFilial,tLocalEntrega,tSetorEntrega,tData,tHora,tStatus,tDataEntrega,tValorTotalAgendamento,tInspecionar,tObservacao,tNumeroDocumento,tSetorPedido,tFornecedor,tCNPJFornecedor,tDataOriginal,tStatusDocumento,tValorTotal,tSaldo,tValorAgendadoDocumento,tValorEntregue,tTransportador,tAgendadoPor,tPlacaCarreta,tEstorno,tVolume)
+    tQueryUpdate := build("UPDATE ",tAmbienteCompleto,".SVCQRNS ", NL," "\
+                          "SET NBRTCK = '",tTicket,"', ", NL," "\
+                          "TYPTCK = '",tTipo,"', ", NL," "\
+                          "CODFLL = '",tFilial,"', ", NL," "\
+                          "LOCLIV = '",tLocalEntrega,"', ", NL," "\
+                          "SECLIV = '",tSetorEntrega,"', ", NL," "\
+                          "DATPRV = '",tfConvertDate(tData, "DD/MM/YYYY" , "YYYYMMDD"),"', ", NL," "\
+                          "HEUPRV = '",tfConvertDate(tHora, "HH:MM","HHMM"),"', ", NL," "\
+                          "ETASIT = '",tStatus,"', ", NL," "\
+                          "DATLIV = '",tDataEntrega,"', ", NL," "\
+                          "VALRDV = '",replace(replace(tValorTotalAgendamento, ",", ""), ".", ""),"', ", NL," "\
+                          "BESINS = '",tInspecionar,"', ", NL," "\
+                          "SAIOBS = '",tObservacao,"', ", NL," "\
+                          "NBRDOC = '",tNumeroDocumento,"', ", NL," "\
+                          "SECCDE = '",tSetorPedido,"', ", NL," "\
+                          "NOMFOU = '",tFornecedor,"', ", NL," "\
+                          "CODFOU = '",tCNPJFornecedor,"', ", NL," "\
+                          "DATORI = '",tfConvertDate(tDataOriginal, "DD/MM/YYYY" , "YYYYMMDD"),"', ", NL," "\
+                          "ETADOC = '",tStatusDocumento,"', ", NL," "\
+                          "VALTOT = '",replace(replace(tValorTotal, ",", ""), ".", ""),"', ", NL," "\
+                          "VALSLD = '",replace(replace(tSaldo, ",", ""), ".", ""),"', ", NL," "\
+                          "VALPRV = '",replace(replace(tValorAgendadoDocumento, ",", ""), ".", ""),"', ", NL," "\
+                          "VALLIV = '",replace(replace(tValorEntregue, ",", ""), ".", ""),"', ", NL," "\
+                          "NOMTRA = '",tTransportador,"', ", NL," "\
+                          "PLNUTI = '",tAgendadoPor,"', ", NL," "\
+                          "IMMREC = '",tPlacaCarreta,"', ", NL," "\
+                          "QTERET = '",replace(replace(tEstorno, ",", ""), ".", ""),"', ", NL," "\
+                          "VOLCDE = '",replace(tVolume, ",", ""),"' ", NL," "\
+                          "WHERE NBRTCK = '",tTicket,"' ", NL," "\
+                          "AND NBRDOC = '",tNumeroDocumento,"' ", NL," "\
+                          "WITH NONE ")
+    
+    log("QUERY UPDATE -------------------------------------", NL)
+    log(tQueryUpdate,NL)
+    print(tQueryUpdate,NL,NL) >> tFileOutTemp
+    log("--------------------------------------------------", NL, NL)
+
+    if not bfSqlSet(tDbBaseUpdate, "UPDATEdb2", tQueryUpdate) then
+        log(tfSqlErrorStr(), NL)
+        exit(27)
+    endif
+
+    if not bfSqlExec(tDbBaseUpdate, "UPDATEdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(28)
+    endif
+
+    if not bfSqlCommit(tDbBaseUpdate, "UPDATEdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(29)
+    endif
+
+    if not bfSqlFree(tDbBaseUpdate, "UPDATEdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(30)
+    endif
+endfunction
+
+function bfQueryInsert(tTicket,tTipo,tFilial,tLocalEntrega,tSetorEntrega,tData,tHora,tStatus,tDataEntrega,tValorTotalAgendamento,tInspecionar,tObservacao,tNumeroDocumento,tSetorPedido,tFornecedor,tCNPJFornecedor,tDataOriginal,tStatusDocumento,tValorTotal,tSaldo,tValorAgendadoDocumento,tValorEntregue,tTransportador,tAgendadoPor,tPlacaCarreta,tEstorno,tVolume)    
+    tQueryInsert := build("INSERT INTO ",tAmbienteCompleto,".SVCQRNS ", NL," "\
+                          "VALUES('",tTicket,"', ", NL," "\
+                          "'",tTipo,"', ", NL," "\
+                          "'",tFilial,"', ", NL," "\
+                          "'",tLocalEntrega,"', ", NL," "\
+                          "'",tSetorEntrega,"', ", NL," "\
+                          "",tfConvertDate(tData, "DD/MM/YYYY" , "YYYYMMDD"),", ", NL," "\
+                          "",tfConvertDate(tHora, "HH:MM","HHMM"),", ", NL," "\
+                          "'",tStatus,"', ", NL," "\
+                          "",tDataEntrega,", ", NL," "\
+                          "",replace(replace(tValorTotalAgendamento, ",", ""), ".", ""),", ", NL," "\
+                          "'",tInspecionar,"', ", NL," "\
+                          "'",tObservacao,"', ", NL," "\
+                          "'",tNumeroDocumento,"', ", NL," "\
+                          "'",tSetorPedido,"', ", NL," "\
+                          "'",tFornecedor,"', ", NL," "\
+                          "'",tCNPJFornecedor,"', ", NL," "\
+                          "",tfConvertDate(tDataOriginal, "DD/MM/YYYY" , "YYYYMMDD"),", ", NL," "\
+                          "'",tStatusDocumento,"', ", NL," "\
+                          "",replace(replace(tValorTotal, ",", ""), ".", ""),", ", NL," "\
+                          "",replace(replace(tSaldo, ",", ""), ".", ""),", ", NL," "\
+                          "",replace(replace(tValorAgendadoDocumento, ",", ""), ".", ""),", ", NL," "\
+                          "",replace(replace(tValorEntregue, ",", ""), ".", ""),", ", NL," "\
+                          "'",tTransportador,"', ", NL," "\
+                          "'",tAgendadoPor,"', ", NL," "\
+                          "'",tPlacaCarreta,"', ", NL," "\
+                          "",replace(replace(tEstorno, ",", ""), ".", ""),", ", NL," "\
+                          "",replace(tVolume, ",", ""),", ", NL," "\
+                          "'', ", NL," "\
+                          "'', ", NL," "\
+                          "'', ", NL," "\
+                          "'', ", NL," "\
+                          "",0,", ", NL," "\
+                          "",0,", ", NL," "\
+                          "",0,", ", NL," "\
+                          "'', ", NL," "\
+                          "'', ", NL," "\
+                          "'') ")
+
+    log("QUERY INSERT -------------------------------------", NL)
+    log(tQueryInsert,NL)
+    print(tQueryInsert,NL,NL) >> tFileOutTemp
+    log("--------------------------------------------------", NL, NL)
+
+    if not bfSqlSet(tDbBaseInsert, "INSERTdb2", tQueryInsert) then
+        log(tfSqlErrorStr(), NL)
+        exit(27)
+    endif
+
+    if not bfSqlExec(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(28)
+    endif
+
+    if not bfSqlCommit(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(29)
+    endif
+
+    if not bfSqlFree(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(30)
+    endif
+endfunction
+
+function bfMajtrace(tStatus,tError,tNumDoc,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%d %H:%M:%S")
+	TRACE.PERFIL := tAmbiente
+	TRACE.SENTIDO := "N/D"
+	TRACE.MENSAGEM := "KPI RECEBIMENTO"
+	TRACE.NUMDOC := "NÃO DEFINIDO"
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+    if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================

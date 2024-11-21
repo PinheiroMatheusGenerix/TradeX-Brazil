@@ -1,0 +1,81 @@
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 18-10-2010  XX  Creation
+! 18-10-2010  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+base "syslog.cfg" SYSLOG, autoflush off
+
+base "../fmbrasil_copackloreal/fmbrasil_copackloreal.cfg" fmbrasil_copackloreal, autoflush off
+base "../fmbrasil_dlvnumcoty/fmbrasil_dlvnumcoty.cfg" fmbrasil_dlvnumcoty, autoflush off
+base "../fmbrasil_crnf_hasbro/fmbrasil_crnf_hasbro.cfg" fmbrasil_crnf_hasbro, autoflush off
+!===========================================================
+
+! Initialization section
+
+
+! End statements section
+begin
+
+
+
+fmbrasil_copackloreal := find(build(sHOME,"/fmbrasil_copackloreal"),PROCESSED="1",MODIFIED < build("now-30d"))
+while  valid(fmbrasil_copackloreal) do
+	remove(fmbrasil_copackloreal)
+	flush(fmbrasil_copackloreal)
+	fmbrasil_copackloreal := find()
+endwhile
+
+
+fmbrasil_dlvnumcoty := find(build(sHOME,"/fmbrasil_dlvnumcoty"),MODIFIED < build("now-30d"))
+while  valid(fmbrasil_dlvnumcoty) do
+	remove(fmbrasil_dlvnumcoty)
+	flush(fmbrasil_dlvnumcoty)
+	fmbrasil_dlvnumcoty := find()
+endwhile
+
+
+
+
+fmbrasil_crnf_hasbro := find(build(sHOME,"/fmbrasil_crnf_hasbro"),MODIFIED < build("now-15d"),DESDOBRO = "E")
+while  valid(fmbrasil_crnf_hasbro) do
+	remove(fmbrasil_crnf_hasbro)
+	flush(fmbrasil_crnf_hasbro)
+	fmbrasil_crnf_hasbro := find()
+endwhile
+
+
+SYSLOG := find(build(sHOME,"/syslog"),MODIFIED < build("now-3d"),CONNECTION = "Reprocess_UPDATE")
+while  valid(SYSLOG) do
+	remove(SYSLOG)
+	flush(SYSLOG)
+	SYSLOG := find()
+endwhile
+
+exit(0)
+
+
+
+
+
+
+endbegin
+
+!===========================================================
+
+

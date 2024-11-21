@@ -1,0 +1,2300 @@
+%@(#)  M40_M50_Full_Commerce_XML.rte     modif:21-11-2017
+!==============================================================================
+% File          : M40_M50_Full_Commerce_XML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/NFE/procNFe_v4.00.xsd" validating
+message "XML/FMBrasil/nfeProc.dtd" receiving, passthru
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "M40_M50_Full_Commerce_XML"
+#include "include/generix_func.inc"
+#include "include/GEEXM40.inc"
+#include "include/GEEXM50.inc"
+#include "include/GEEXM10.inc"
+#include "include/GEEXM20.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	nContadorItem := 0
+	nContadorLinhasEscritas := 0
+	bGeraM50 := FALSE
+	bGeraM40 := FALSE
+endbegin
+
+!===========================================================
+
+segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+	tNumeroSerie := eEserie   ! M 
+endsegment
+
+segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+	tNumeroDocumento := eEnNF   ! M
+endsegment
+
+segment SdhEmi gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+	tVALRUBDtEmi := eEdhEmi
+	tDhEmi := eEdhEmi
+
+	tDTIREC := tfConvertDate(eEdhEmi, "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD") 
+	tHEIREC := tfConvertDate(eEdhEmi, "YYYY-MM-DDTHH:MM:SS" , "HHMM") 
+endsegment
+
+segment SdhSaiEnt gGnfeProc,gGNFe,gGinfNFe,gGide     ! C 1/1 
+	tDTILIV := tfConvertDate(eEdhSaiEnt, "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD") 
+	tHEILIV := tfConvertDate(eEdhSaiEnt, "YYYY-MM-DDTHH:MM:SS" , "HHMM") 
+endsegment
+
+segment StpNF gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+	tTipoDocumento := eEtpNF
+	tTpNF := eEtpNF
+endsegment
+
+segment SidDest gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment ScMunFG gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment StpImp gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment StpEmis gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+	tIdeTPEmis := eEtpEmis
+endsegment
+
+segment ScDV gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment StpAmb gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SfinNFe gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SindFinal gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SindPres gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SprocEmi gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SverProc gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SdhCont gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+segment SxJust gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref : C 1/500 
+segment SrefNFe gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF : C 1/1 
+segment ScUF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
+
+endsegment
+
+segment SAAMM gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
+
+endsegment
+
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
+
+endsegment
+
+segment Smod gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
+
+endsegment
+
+segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
+
+endsegment
+
+segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP : C 1/1 
+segment ScUF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
+
+endsegment
+
+segment SAAMM gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
+
+endsegment
+
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! C 1/1 
+
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! C 1/1 
+
+endsegment
+
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
+
+endsegment
+
+segment Smod gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
+
+endsegment
+
+segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
+
+endsegment
+
+segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
+
+endsegment
+
+segment SrefCTe gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF : C 1/1 
+segment Smod gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF     ! M 1/1 
+
+endsegment
+
+segment SnECF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF     ! M 1/1 
+
+endsegment
+
+segment SnCOO gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGemit : M 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
+	tEmitCNPJ := eECNPJ   ! C
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
+
+endsegment
+
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
+	tNOMFOU := eExNome
+	tMSGLIV2 := eExNome
+endsegment
+
+segment SxFant gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit : M 1/1 
+segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+	tAD1FOU := eExLgr
+endsegment
+
+segment Snro gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+	tAD1FOU := build(tAD1FOU," ",eEnro)
+endsegment
+
+segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+	tAD2FOU := eExCpl
+endsegment
+
+segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+	tAD2FOU := build(tAD2FOU," ",eExBairro)
+endsegment
+
+segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+
+endsegment
+
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+	tVILFOU := eExMun
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+	tVILFOU := build(tVILFOU, "/", eEUF)
+endsegment
+
+segment SCEP gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+	tCPIFOU := eECEP
+endsegment
+
+segment ScPais gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+
+endsegment
+
+segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+	tPAYFOU := eExPais
+endsegment
+
+segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+	tTELFOU := eEfone
+endsegment
+
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
+    tFAXFOU := build("IE:", eEIE)
+	tIEemit := eEIE
+endsegment
+
+segment SIEST gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
+
+endsegment
+
+segment SIM gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
+
+endsegment
+
+segment SCNAE gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
+
+endsegment
+
+segment SCRT gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGavulsa : C 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
+
+endsegment
+
+segment SxOrgao gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
+
+endsegment
+
+segment Smatr gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
+
+endsegment
+
+segment SxAgente gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
+
+endsegment
+
+segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
+
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
+
+endsegment
+
+segment SnDAR gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
+
+endsegment
+
+segment SdEmi gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
+
+endsegment
+
+segment SvDAR gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
+
+endsegment
+
+segment SrepEmi gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
+
+endsegment
+
+segment SdPag gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdest : C 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1
+	tDestCNPJ := eECNPJ   ! C  
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+	tDestCPF := eECPF
+endsegment
+
+segment SidEstrangeiro gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+
+endsegment
+
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+	tNOMCLI := eExNome
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest : C 1/1 
+segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
+	tAD1CLI := eExLgr
+endsegment
+
+segment Snro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
+	tAD2CLI := eEnro
+endsegment
+
+segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
+	tAD2CLI := build(tAD2CLI, "-", eExCpl)
+endsegment
+
+segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
+	tVILCLI := eExBairro
+endsegment
+
+segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
+
+endsegment
+
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
+	tAD3CLI := eExMun
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
+	tAD3CLI := build(tAD3CLI, "/", eEUF)
+endsegment
+
+segment SCEP gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
+	tCPICLI := eECEP
+endsegment
+
+segment ScPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
+
+endsegment
+
+segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
+	tPAYCLI := eExPais
+endsegment
+
+segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
+	tTELCLI := eEfone
+endsegment
+
+segment SindIEDest gGnfeProc,gGNFe,gGinfNFe,gGdest     ! M 1/1 
+
+endsegment
+
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+	tIEdest := eEIE
+endsegment
+
+segment SISUF gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+
+endsegment
+
+segment SIM gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+
+endsegment
+
+segment Semail gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGretirada : C 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! C 1/1 
+
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! C 1/1 
+
+endsegment
+
+segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
+
+endsegment
+
+segment Snro gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
+
+endsegment
+
+segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! C 1/1 
+
+endsegment
+
+segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
+
+endsegment
+
+segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
+
+endsegment
+
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
+
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGentrega : C 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! C 1/1 
+
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! C 1/1 
+
+endsegment
+
+segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
+
+endsegment
+
+segment Snro gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
+
+endsegment
+
+segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! C 1/1 
+
+endsegment
+
+segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
+
+endsegment
+
+segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
+
+endsegment
+
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
+
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGautXML : C 1/10 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGautXML     ! C 1/1 
+
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGautXML     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet : M 1/990 
+segment Sdet gGnfeProc,gGNFe,gGinfNFe,gGdet     ! M 1/990 
+	nContadorItem++
+	taNumeroItem[nContadorItem] := eAnItem   ! M 
+	taNLIREC[nContadorItem] := taNumeroItem[nContadorItem]  
+	baProdutoDuplicado[nContadorItem] := FALSE
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod : M 1/1 
+segment ScProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+	taCprod[nContadorItem] := build(number(eEcProd))   ! M 
+	! taCODPRO[nContadorItem] := build(number(taCprod[nContadorItem]))   ! M 
+endsegment
+
+segment ScEAN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+    tCEAN := eEcEAN
+    if tCEAN <> "SEM GTIN" then
+        taEDIPRO[nContadorItem] := eEcEAN
+    endif
+endsegment
+
+segment SxProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+	taProd[nContadorItem] := eExProd   ! M  
+endsegment
+
+segment SNCM gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+  
+endsegment
+
+segment SNVE gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/8 
+
+endsegment
+
+segment SCEST gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment SindEscala gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SCNPJFab gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment ScBenef gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SEXTIPI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SCFOP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment SuCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1
+	taUNICDE[nContadorItem] := eEuCom
+endsegment
+
+segment SqCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+	taQcom[nContadorItem] := eEqCom   ! M  
+	taUVCREA[nContadorItem] := taQcom[nContadorItem]
+	taUVCCDE[nContadorItem] := taQcom[nContadorItem]
+endsegment
+
+segment SvUnCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+	taUnCom[nContadorItem] := eEvUnCom   ! M  
+endsegment
+
+segment SvProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment ScEANTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment SuTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment SqTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment SvUnTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+segment SvFrete gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SvSeg gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SvDesc gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SindTot gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI : C 1/100 
+segment SnDI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment SdDI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment SxLocDesemb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment SUFDesemb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment SdDesemb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment StpViaTransp gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment SvAFRMM gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! C 1/1 
+
+endsegment
+
+segment StpIntermedio gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! C 1/1 
+
+endsegment
+
+segment SUFTerceiro gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! C 1/1 
+
+endsegment
+
+segment ScExportador gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi : M 1/100 
+segment SnAdicao gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! M 1/1 
+
+endsegment
+
+segment SnSeqAdic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! M 1/1 
+
+endsegment
+
+segment ScFabricante gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! M 1/1 
+
+endsegment
+
+segment SvDescDI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! C 1/1 
+
+endsegment
+
+segment SnDraw gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport : C 1/500 
+segment SnDraw gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd : C 1/1 
+segment SnRE gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd     ! M 1/1 
+
+endsegment
+
+segment SchNFe gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd     ! M 1/1 
+
+endsegment
+
+segment SqExport gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd     ! M 1/1 
+
+endsegment
+
+segment SxPed gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SnItemPed gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+segment SnFCI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro : C 1/500 
+segment SnLote gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
+
+endsegment
+
+segment SqLote gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
+
+endsegment
+
+segment SdFab gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
+
+endsegment
+
+segment SdVal gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
+
+endsegment
+
+segment ScAgreg gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd : C 1/1 
+segment StpOp gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment Schassi gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment ScCor gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SxCor gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment Spot gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment Scilin gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SpesoL gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SpesoB gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SnSerie gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment StpComb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SnMotor gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SCMT gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment Sdist gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SanoMod gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SanoFab gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment StpPint gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment StpVeic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SespVeic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment SVIN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment ScondVeic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment ScMod gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment ScCorDENATRAN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment Slota gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+segment StpRest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGmed : C 1/1 
+segment ScProdANVISA gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGmed     ! M 1/1 
+
+endsegment
+
+segment SvPMC gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGmed     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma : C 1/500 
+segment StpArma gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
+
+endsegment
+
+segment SnSerie gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
+
+endsegment
+
+segment SnCano gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
+
+endsegment
+
+segment Sdescr gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb : C 1/1 
+segment ScProdANP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! M 1/1 
+
+endsegment
+
+segment SdescANP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! M 1/1 
+
+endsegment
+
+segment SpGLP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
+
+endsegment
+
+segment SpGNn gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
+
+endsegment
+
+segment SpGNi gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
+
+endsegment
+
+segment SvPart gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
+
+endsegment
+
+segment SCODIF gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
+
+endsegment
+
+segment SqTemp gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
+
+endsegment
+
+segment SUFCons gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE : C 1/1 
+segment SqBCProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE     ! M 1/1 
+
+endsegment
+
+segment SvAliqProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE     ! M 1/1 
+
+endsegment
+
+segment SvCIDE gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante : C 1/1 
+segment SnBico gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
+
+endsegment
+
+segment SnBomba gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! C 1/1 
+
+endsegment
+
+segment SnTanque gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
+
+endsegment
+
+segment SvEncIni gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
+
+endsegment
+
+segment SvEncFin gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
+
+endsegment
+
+segment SnRECOPI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto : M 1/1 
+segment SvTotTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGPISST : C 1/1 
+segment SvPIS gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGPISST     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGCOFINSST : C 1/1 
+segment SvCOFINS gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGCOFINSST     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest : C 1/1 
+segment SvBCUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SpFCPUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SpICMSUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SpICMSInter gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SpICMSInterPart gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SvFCPUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SvICMSUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+segment SvICMSUFRemet gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol : C 1/1 
+segment SpDevol gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol,gGIPI : M 1/1 
+segment SvIPIDevol gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol,gGIPI     ! M 1/1 
+
+endsegment
+
+segment SinfAdProd gGnfeProc,gGNFe,gGinfNFe,gGdet     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal : M 1/1 
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot : M 1/1 
+segment SvBC gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvICMS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvICMSDeson gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvFCPUFDest gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
+
+endsegment
+
+segment SvICMSUFDest gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
+
+endsegment
+
+segment SvICMSUFRemet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
+
+endsegment
+
+segment SvFCP gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvBCST gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvST gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvFCPST gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvFCPSTRet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvProd gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+	tProd := eEvProd   ! M  
+endsegment
+
+segment SvFrete gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+	tFrete := eEvFrete   ! M  
+endsegment
+
+segment SvSeg gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvDesc gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvII gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvIPI gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvIPIDevol gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvPIS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvCOFINS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+
+endsegment
+
+segment SvNF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
+	tTotalvNF := eEvNF
+endsegment
+
+segment SvTotTrib gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot : C 1/1 
+segment SvServ gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvBC gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvISS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvPIS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvCOFINS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SdCompet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! M 1/1 
+
+endsegment
+
+segment SvDeducao gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvDescIncond gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvDescCond gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment SvISSRet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+segment ScRegTrib gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib : C 1/1 
+segment SvRetPIS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+segment SvRetCOFINS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+segment SvRetCSLL gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+segment SvBCIRRF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+segment SvIRRF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+segment SvBCRetPrev gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+segment SvRetPrev gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp : M 1/1 
+segment SmodFrete gGnfeProc,gGNFe,gGinfNFe,gGtransp     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta : C 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+	tTransportaCNPJ := eECNPJ   ! C  
+	tCODTRA := tTransportaCNPJ
+endsegment
+
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+
+endsegment
+
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+
+endsegment
+
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+
+endsegment
+
+segment SxEnder gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+
+endsegment
+
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp : C 1/1 
+segment SvServ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
+
+endsegment
+
+segment SvBCRet gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
+
+endsegment
+
+segment SpICMSRet gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
+
+endsegment
+
+segment SvICMSRet gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
+
+endsegment
+
+segment SCFOP gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
+
+endsegment
+
+segment ScMunFG gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp : C 1/1 
+segment Splaca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp     ! M 1/1 
+
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp     ! M 1/1 
+
+endsegment
+
+segment SRNTC gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque : C 1/5 
+segment Splaca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque     ! M 1/1 
+
+endsegment
+
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque     ! M 1/1 
+
+endsegment
+
+segment SRNTC gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque     ! C 1/1 
+
+endsegment
+
+segment Svagao gGnfeProc,gGNFe,gGinfNFe,gGtransp     ! C 1/1 
+
+endsegment
+
+segment Sbalsa gGnfeProc,gGNFe,gGinfNFe,gGtransp     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol : C 1/5000 
+segment SqVol gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+	tDIPLIV := eEqVol
+	tQVol := eEqVol
+	taDIPLIV5121[nContadorItem] := eEqVol
+	tDIPLIV5121 := eEqVol
+endsegment
+
+segment Sesp gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+	
+endsegment
+
+segment Smarca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+
+endsegment
+
+segment SnVol gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+
+endsegment
+
+segment SpesoL gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+
+endsegment
+
+segment SpesoB gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+	tPesoB := eEpesoB
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol,gGlacres : C 1/5000 
+segment SnLacre gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol,gGlacres     ! M 1/1 
+
+endsegment
+
+segment Scobr gGnfeProc,gGNFe,gGinfNFe     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGpag : M 1/1 
+! Group gGnfeProc,gGNFe,gGinfNFe,gGpag,gGdetPag : M 1/100 
+segment StPag gGnfeProc,gGNFe,gGinfNFe,gGpag,gGdetPag     ! M 1/1 
+
+endsegment
+
+segment SvPag gGnfeProc,gGNFe,gGinfNFe,gGpag,gGdetPag     ! M 1/1 
+
+endsegment
+
+segment SinfCpl gGnfeProc,gGNFe,gGinfNFe,gGinfAdic     ! C 1/1 
+
+endsegment
+
+segment SobsCont gGnfeProc,gGNFe,gGinfNFe,gGinfAdic     ! C 1/1 
+
+endsegment
+
+segment SxTexto gGnfeProc,gGNFe,gGinfNFe,gGinfAdic,gGobsCont     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGexporta : C 1/1 
+segment SUFSaidaPais gGnfeProc,gGNFe,gGinfNFe,gGexporta     ! M 1/1 
+
+endsegment
+
+segment SxLocExporta gGnfeProc,gGNFe,gGinfNFe,gGexporta     ! M 1/1 
+
+endsegment
+
+segment Scompra gGnfeProc,gGNFe,gGinfNFe     ! C 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGcana : C 1/1 
+segment Ssafra gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+segment Sref gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGcana,gGforDia : M 1/31 
+segment SforDia gGnfeProc,gGNFe,gGinfNFe,gGcana,gGforDia     ! M 1/31 
+
+endsegment
+
+segment Sqtde gGnfeProc,gGNFe,gGinfNFe,gGcana,gGforDia     ! M 1/1 
+
+endsegment
+
+segment SqTotMes gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+segment SqTotAnt gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+segment SqTotGer gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+segment SvFor gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+segment SvTotDed gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+segment SvLiqFor gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFeSupl : C 1/1 
+segment SqrCode gGnfeProc,gGNFe,gGinfNFeSupl     ! M 1/1 
+
+endsegment
+
+segment SurlChave gGnfeProc,gGNFe,gGinfNFeSupl     ! M 1/1 
+
+endsegment
+
+segment Sds:Signature gGnfeProc,gGNFe,gGds:Signature     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGprotNFe : M 1/1 
+segment SprotNFe gGnfeProc,gGprotNFe     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGprotNFe,gGinfProt : M 1/1 
+segment SinfProt gGnfeProc,gGprotNFe,gGinfProt     ! C 1/1 
+
+endsegment
+
+segment StpAmb gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
+
+endsegment
+
+segment SverAplic gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
+
+endsegment
+
+segment SchNFe gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
+	tChNFe := build("Ch NF:", eEchNFe)
+	tChNFe_LIB := eEchNFe
+endsegment
+
+segment SdhRecbto gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
+
+endsegment
+
+segment SnProt gGnfeProc,gGprotNFe,gGinfProt     ! C 1/1 
+	tNProt := eEnProt
+endsegment
+
+segment SdigVal gGnfeProc,gGprotNFe,gGinfProt     ! C 1/1 
+
+endsegment
+
+segment ScStat gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
+
+endsegment
+
+segment SxMotivo gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGprotNFe,gGds:Signature : C 1/1 
+! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo : M 1/1 
+segment Sds:CanonicalizationMethod gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo     ! M 1/1 
+
+endsegment
+
+segment Sds:SignatureMethod gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference : M 1/1 
+segment Sds:Reference gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference,gGds:Transforms : M 1/1 
+segment Sds:Transform gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference,gGds:Transforms     ! M 1/2 
+
+endsegment
+
+segment Sds:DigestMethod gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference     ! M 1/1 
+
+endsegment
+
+segment Sds:DigestValue gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference     ! M 1/1 
+
+endsegment
+
+segment Sds:SignatureValue gGnfeProc,gGprotNFe,gGds:Signature     ! M 1/1 
+
+endsegment
+
+! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:KeyInfo : M 1/1 
+! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:KeyInfo,gGds:X509Data : M 1/1 
+segment Sds:X509Certificate gGnfeProc,gGprotNFe,gGds:Signature,gGds:KeyInfo,gGds:X509Data     ! M 1/1 
+
+endsegment
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if tEmitCNPJ = "22648371000389" and tDestCNPJ <> "22648371000389" then
+		bGeraM50 := TRUE
+		tCODACT := "FAN"
+	else
+		if tEmitCNPJ <> "22648371000389" and tDestCNPJ = "22648371000389" then
+			bGeraM40 := TRUE
+			tCODACT := "FAN"
+		endif
+	endif
+
+	if length(tDestCNPJ) = 0 then
+		tCODCLI := tDestCPF
+	else
+		tCODCLI := tDestCNPJ
+	endif  
+
+	log("------------------------------------------------------------", NL)
+	log("CNPJ Emissor = ", tEmitCNPJ, NL)
+	log("CNPJ Destinatário = ", tDestCNPJ, NL)
+	log("CODACT = ", tCODACT, NL)
+	log("CODCLI = ", tCODCLI, NL)
+	log("------------------------------------------------------------", NL)
+
+	if bGeraM40 = TRUE then
+        nTempNumeroLinha := 1
+        while nTempNumeroLinha <= nContadorItem do
+            nTempNumeroLinha2 := nTempNumeroLinha+1
+            while nTempNumeroLinha2 <= nContadorItem do
+                if taCprod[nTempNumeroLinha2] = taCprod[nTempNumeroLinha] and taUNICDE[nTempNumeroLinha2] = taUNICDE[nTempNumeroLinha] then
+                    baProdutoDuplicado[nTempNumeroLinha2] := TRUE
+                    taUVCREA[nTempNumeroLinha] := build(number(taUVCREA[nTempNumeroLinha]) + number(taUVCREA[nTempNumeroLinha2]))
+                endif
+                nTempNumeroLinha2++
+            endwhile
+            nTempNumeroLinha++
+        endwhile
+
+		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+		tNameOut := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+
+		tREFREC := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) )
+		tCUMLIG := build(nContadorItem)
+
+		if nContadorLinhasEscritas = 0 then
+			R_GEEX0000_CODEXC("00")
+			R_GEEX0000_SEPEXC(".")
+			R_GEEX0000_SCOEXC("00")
+			R_GEEX0000_TRTEXC("")
+			R_GEEX0000_EMTEXC("FM") 
+			R_GEEX0000_RCTEXC("")
+			R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+			R_GEEX0000_NUMEXC("0000000")
+			R_GEEX0000_ACQEXC("0")
+			R_GEEX0000_VEREXC("5.00") 
+			R_GEEX0000_NOMSYS("")  
+			R_GEEX0000_NOMDTQ("M40")
+			R_GEEX0000_BIBDTQ("")
+			R_GEEX0000_LIBEXC(build(nMessageID:R010))
+			R_GEEX0000_BIBDST("")
+			R_GEEX0000_PGMDST("")
+			R_GEEX0000_PARDST("")
+			R_GEEX0000_CODACT("")
+			R_GEEX0000_IGLSIT("")
+			R_GEEX0000_EDISIT("")
+			R_GEEX0000_IMAEXC("")  
+			R_GEEX0000_DISEXC("")
+
+			flush(0,0,NL) >> tFileOutTemp
+			nContadorLinhasEscritas++
+		endif
+
+		! tQueryFOU
+			tQueryFOU := build("SELECT  CODFOU", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GEFOU", NL," "\
+								"WHERE EDIFOU = '",tEmitCNPJ,"'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQueryFOU,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQueryFOU) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryFOU," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryFOU," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			bQueryResult := FALSE
+			if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+				bQueryResult := TRUE
+				tEDIFOU := tEmitCNPJ
+				tCODFOU := peel(taDb2Array["CODFOU"]," ")
+				remove(taDb2Array)
+			endif
+
+			if bQueryResult = FALSE then
+				tCODFOU := substr(tNOMFOU, 1, index(tNOMFOU, " ") - 1)
+				tEDIFOU := tEmitCNPJ
+				R_GEEX1000_CODEXC("10")
+				R_GEEX1000_SEPEXC(".") 
+				R_GEEX1000_SCOEXC("00")
+				R_GEEX1000_TRTEXC("1") 
+				R_GEEX1000_CODACT(tCODACT)
+				R_GEEX1000_CODFOU(tCODFOU)
+				R_GEEX1000_NOMFOU(tNOMFOU)
+				R_GEEX1000_AD1FOU(tAD1FOU)
+				R_GEEX1000_AD2FOU(tAD2FOU)
+				R_GEEX1000_VILFOU(tVILFOU)
+				R_GEEX1000_PAYFOU(toupper(tPAYFOU))
+				R_GEEX1000_TELFOU(tTELFOU)
+				R_GEEX1000_FAXFOU(tFAXFOU)
+				R_GEEX1000_EDIFOU(tEDIFOU)
+				R_GEEX1000_CODTRA(tCODTRA)
+				R_GEEX1000_CPIFOU(build(substr(tCPIFOU,1,5), "-", substr(tCPIFOU,6,3)))
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				remove(taDb2Array)
+			endif
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryFOU," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! Fim tQueryFOU
+
+		R_GEEX4000_CODEXC("40")
+		R_GEEX4000_SEPEXC(".")
+		R_GEEX4000_SCOEXC("00")
+		R_GEEX4000_REFREC(tREFREC)
+		R_GEEX4000_EDIFOU(tEDIFOU)
+		R_GEEX4000_CODFOU(tCODFOU)
+		R_GEEX4000_CODACT(tCODACT)
+		R_GEEX4000_DTIREC(tDTIREC)
+		R_GEEX4000_HEIREC(tHEIREC)
+		R_GEEX4000_CODTRA(tCODTRA)
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContadorLinhasEscritas++
+
+		R_GEEX4001_CODEXC("40")
+		R_GEEX4001_SEPEXC(".")
+		R_GEEX4001_SCOEXC("01")
+		R_GEEX4001_REFREC(tREFREC)
+		R_GEEX4001_NOMFOU(tNOMFOU)
+		R_GEEX4001_AD1FOU(tAD1FOU)
+		R_GEEX4001_AD2FOU(tAD2FOU)
+		R_GEEX4001_VILFOU(tVILFOU)
+		R_GEEX4001_PAYFOU(toupper(tPAYFOU))
+		R_GEEX4001_TELFOU(tTELFOU)
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContadorLinhasEscritas++
+
+		R_GEEX4002_CODEXC("40")
+		R_GEEX4002_SEPEXC(".")
+		R_GEEX4002_SCOEXC("02")
+		R_GEEX4002_REFREC(tREFREC)
+		R_GEEX4002_CPIFOU(build(substr(tCPIFOU,1,5), "-", substr(tCPIFOU,6,3)))
+
+		flush(0,0,NL) >> tFileOutTemp  
+		nContadorLinhasEscritas++
+
+		nContadorLinhasEncomenda := 0
+		nContadorTmpTOTAL := 1
+
+		while nContadorTmpTOTAL <= nContadorItem do
+			if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
+				! QueryPROD
+					tQueryPROD := build("SELECT  CODPRO", NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GEEAN", NL," "\
+										"WHERE EDIPRO = '",taCprod[nContadorTmpTOTAL],"'")
+
+					log("------------------------------------------------------------", NL)
+					log(tQueryPROD,NL)
+					log("------------------------------------------------------------", NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQueryPROD) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryPROD," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryPROD," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+						taCODPRO[nContadorTmpTOTAL] := peel(taDb2Array["CODPRO"]," ")
+						remove(taDb2Array)
+					endif
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryPROD," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! Fim QueryProd
+			
+				R_GEEX4020_CODEXC("40")
+				R_GEEX4020_SEPEXC(".")
+				R_GEEX4020_SCOEXC("20")
+				R_GEEX4020_CODACT(tCODACT)
+				R_GEEX4020_REFREC(tREFREC)
+				R_GEEX4020_CODPRO(taCODPRO[nContadorTmpTOTAL])
+				R_GEEX4020_NLIREC(taNLIREC[nContadorTmpTOTAL])
+                R_GEEX4020_UNICDE(taUNICDE[nContadorTmpTOTAL])
+				R_GEEX4020_INDUNI("1")
+				R_GEEX4020_UVCREA(taUVCREA[nContadorTmpTOTAL])
+                R_GEEX4020_AIGPRI("1")
+                R_GEEX4020_PRIREC(strip(substr(taUnCom[nContadorTmpTOTAL], 1, index(taUnCom[nContadorTmpTOTAL], ".") + 3), "."))
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+			
+				R_GEEX4021_CODEXC("40")
+				R_GEEX4021_SEPEXC(".")
+				R_GEEX4021_SCOEXC("21")
+				R_GEEX4021_TRTEXC("2")
+				R_GEEX4021_REFREC(tREFREC)
+				R_GEEX4021_NLIREC(taNLIREC[nContadorTmpTOTAL])
+                R_GEEX4021_EDIPRO(taEDIPRO[nContadorTmpTOTAL])
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++				   
+				nContadorLinhasEncomenda++
+			endif
+			nContadorTmpTOTAL++
+		endwhile
+				
+		R_GEEX4099_CODEXC("40")
+		R_GEEX4099_SEPEXC(".")
+		R_GEEX4099_SCOEXC("99")
+		R_GEEX4099_REFREC(tREFREC)
+		R_GEEX4099_CUMLIG(build(number(tCUMLIG):R04.0))
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContadorLinhasEscritas++
+
+		R_GEEX9900_CODEXC("99")
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC("00")
+		R_GEEX9900_TRTEXC("")
+		R_GEEX9900_EMTEXC("FM")
+		R_GEEX9900_RCTEXC("")
+		R_GEEX9900_DATEXC(time("now", "%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now", "H%M%S"))
+		R_GEEX9900_NUMEXC("")
+		R_GEEX9900_CPTEXC(build(number(build(nContadorLinhasEscritas)):R08.0))
+
+		flush(0,0,NL) >> tFileOutTemp
+		close(tFileOutTemp)
+
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+					
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+	else
+		if bGeraM50 = TRUE then
+			tFileOut50 := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+			tFileOutTemp50 := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+			tNameOut50 := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+
+			tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie))
+
+			R_GEEX0000_CODEXC("00")
+			R_GEEX0000_SEPEXC(".")
+			R_GEEX0000_SCOEXC("00")
+			R_GEEX0000_TRTEXC("")
+			R_GEEX0000_EMTEXC("FM") 
+			R_GEEX0000_RCTEXC("")
+			R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+			R_GEEX0000_NUMEXC("0000000")
+			R_GEEX0000_ACQEXC("0")
+			R_GEEX0000_VEREXC("5.00") 
+			R_GEEX0000_NOMSYS("")  
+			R_GEEX0000_NOMDTQ("M40")
+			R_GEEX0000_BIBDTQ("")
+			R_GEEX0000_LIBEXC(build(nMessageID:R010))
+			R_GEEX0000_BIBDST("")
+			R_GEEX0000_PGMDST("")
+			R_GEEX0000_PARDST("")
+			R_GEEX0000_CODACT("")
+			R_GEEX0000_IGLSIT("")
+			R_GEEX0000_EDISIT(build(number(tCentro_De_Custo)))
+			R_GEEX0000_IMAEXC("")  
+			
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+			
+			R_GEEX2000_CODEXC("20")
+			R_GEEX2000_SEPEXC(".")
+			R_GEEX2000_SCOEXC("00")
+			R_GEEX2000_TRTEXC("")
+			R_GEEX2000_CODACT(tCODACT)
+			R_GEEX2000_CODCLI(tCODCLI) 
+			R_GEEX2000_CATCLI("STD")
+			R_GEEX2000_NOMCLI(tNOMCLI)
+			R_GEEX2000_AD1CLI(tAD1CLI)
+			R_GEEX2000_AD2CLI(tAD2CLI)
+			R_GEEX2000_VILCLI(tVILCLI)
+			R_GEEX2000_FAXCLI(build("IE:", tIEdest))
+
+			flush(0,0,NL) >> tFileOutTemp50 
+			nContadorLinhasEscritas++
+
+			tQueryPROD := build("SELECT  FAMPRO", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
+								"WHERE CODPRO = '",taCprod[1],"'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQueryPROD,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQueryPROD) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryPROD," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryPROD," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+				tFAMPRO := peel(taDb2Array["FAMPRO"]," ")
+				remove(taDb2Array)
+			endif
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQueryPROD," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			R_GEEX5000_CODEXC("50")
+			R_GEEX5000_SEPEXC(".")
+			R_GEEX5000_SCOEXC("00")
+			R_GEEX5000_CODACT(tCODACT)
+			R_GEEX5000_CODCLI(tCODCLI)  
+			R_GEEX5000_REFLIV(tREFLIV)
+			R_GEEX5000_DTILIV(tDTILIV)
+			R_GEEX5000_HEILIV(tHEILIV)
+			R_GEEX5000_MSGLIV(build(tCODTRA:R30,tMSGLIV2:R30))
+			R_GEEX5000_CODTRA(tCODTRA)
+			R_GEEX5000_CODMOP(substr(tFAMPRO, 1, 3))
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5001_CODEXC("50")
+			R_GEEX5001_SEPEXC(".")
+			R_GEEX5001_SCOEXC("01")
+			R_GEEX5001_CODACT(tCODACT)
+			R_GEEX5001_CODCLI(tCODCLI)  
+			R_GEEX5001_REFLIV(tREFLIV)
+			R_GEEX5001_DIPLIV(tChNFe_LIB)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("DT01")
+			R_GEEX5005_VALRUB(tfConvertDate(tDhEmi, "YYYY-MM-DDTHH:MM:SS" , "DD/MM/YYYY"))
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("XTP1")
+			R_GEEX5005_VALRUB(tTpNF)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("XIE1")
+			R_GEEX5005_VALRUB(tIEemit)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("VL01")
+			R_GEEX5005_VALRUB(tTotalvNF)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("VO01")
+			R_GEEX5005_VALRUB(tQVol)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("PS01")
+			R_GEEX5005_VALRUB(substr(tPesoB, 1, index(tPesoB, ".") + 4))
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("XCH1")
+			R_GEEX5005_VALRUB(tChNFe)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("XPT1")
+			R_GEEX5005_VALRUB(tNProt)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("SE01")
+			R_GEEX5005_VALRUB(tNumeroSerie)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("NF01")
+			R_GEEX5005_VALRUB(tNumeroDocumento)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("LINQ")
+			R_GEEX5005_VALRUB(build(nContadorItem))
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+			
+			R_GEEX5005_CODEXC("50")
+			R_GEEX5005_SEPEXC(".")
+			R_GEEX5005_SCOEXC("05")
+			R_GEEX5005_CODACT(tCODACT)
+			R_GEEX5005_CODCLI(tCODCLI)
+			R_GEEX5005_REFLIV(tREFLIV)
+			R_GEEX5005_CODRUB("*GM1")
+			if length(build(tQVol)) = 1 then
+				R_GEEX5005_VALRUB(build("FORMAR 0",tQVol," VOLUME(S)"))
+			else
+				R_GEEX5005_VALRUB(build("FORMAR ",tQVol," VOLUME(S)"))
+			endif
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5010_CODEXC("50")
+			R_GEEX5010_SEPEXC(".")
+			R_GEEX5010_SCOEXC("10")
+			R_GEEX5010_CODACT(tCODACT)
+			R_GEEX5010_NOMCLI(tNOMCLI)
+			R_GEEX5010_AD1CLI(tAD1CLI)
+			R_GEEX5010_AD2CLI(tAD2CLI)
+			R_GEEX5010_VILCLI(tVILCLI)
+			R_GEEX5010_CPICLI(tCPICLI)
+			R_GEEX5010_TELCLI(tTELCLI)
+			R_GEEX5010_PAYCLI(toupper(tPAYCLI))
+			R_GEEX5010_CODCLI(tCODCLI) 
+			R_GEEX5010_CATCLI("STD")
+			R_GEEX5010_REFLIV(tREFLIV)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5011_CODEXC("50")
+			R_GEEX5011_SEPEXC(".")
+			R_GEEX5011_SCOEXC("11")
+			R_GEEX5011_CODACT(tCODACT)
+			R_GEEX5011_CODCLI(tCODCLI)
+			R_GEEX5011_REFLIV(tREFLIV)
+			R_GEEX5011_AD1CLI(tAD1CLI)
+			R_GEEX5011_AD2CLI(tAD2CLI)
+			R_GEEX5011_AD3CLI(tAD3CLI)
+
+			flush(0,0,NL) >> tFileOutTemp50   
+			nContadorLinhasEscritas++
+
+			nContadorLinhasEncomenda := 0
+			nContadorTmpTOTAL := 1
+
+			while nContadorTmpTOTAL <= nContadorItem do
+				R_GEEX5020_CODEXC("50")
+				R_GEEX5020_SEPEXC(".")
+				R_GEEX5020_SCOEXC("20")
+				R_GEEX5020_CODACT(tCODACT)
+				R_GEEX5020_CODCLI(tCODCLI)
+				R_GEEX5020_CODPRO(taCprod[nContadorTmpTOTAL])
+				R_GEEX5020_UNICDE("UNI")
+				R_GEEX5020_UVCCDE(taUVCCDE[nContadorTmpTOTAL])
+				R_GEEX5020_REFLIV(tREFLIV)
+				R_GEEX5020_NLILIV(build(nContadorTmpTOTAL))
+				R_GEEX5020_AIGPRI("1")
+				R_GEEX5020_PRILIV(strip(substr(taUnCom[nContadorTmpTOTAL], 1, index(taUnCom[nContadorTmpTOTAL], ".") + 3), "."))
+
+				flush(0,0,NL) >> tFileOutTemp50
+				nContadorLinhasEscritas++
+
+				R_GEEX5021_CODEXC("50")
+				R_GEEX5021_SEPEXC(".")
+				R_GEEX5021_SCOEXC("21")
+				R_GEEX5021_CODACT(tCODACT)
+				R_GEEX5021_CODCLI(tCODCLI)
+				R_GEEX5021_REFLIV(tREFLIV)
+				R_GEEX5021_NLILIV(build(nContadorTmpTOTAL))
+				R_GEEX5021_DIPLIV(tDIPLIV5121)
+
+				flush(0,0,NL) >> tFileOutTemp50
+				nContadorLinhasEscritas++
+
+				R_GEEX5025_CODEXC("50")
+				R_GEEX5025_SEPEXC(".")
+				R_GEEX5025_SCOEXC("25")
+				R_GEEX5025_CODACT(tCODACT)
+				R_GEEX5025_CODCLI(tCODCLI)
+				R_GEEX5025_REFLIV(tREFLIV)
+				R_GEEX5025_NLILIV(build(nContadorTmpTOTAL))
+				R_GEEX5025_CODRUB("PREC")
+				R_GEEX5025_VALRUB(substr(taUnCom[nContadorTmpTOTAL], 1, index(taUnCom[nContadorTmpTOTAL], ".") + 4))
+
+				flush(0,0,NL) >> tFileOutTemp50
+				nContadorLinhasEscritas++
+
+				nContadorLinhasEncomenda++
+				nContadorTmpTOTAL++
+			endwhile
+
+			R_GEEX5080_CODEXC("50")
+			R_GEEX5080_SEPEXC(".")
+			R_GEEX5080_SCOEXC("80")
+			R_GEEX5080_CODACT(tCODACT)
+			R_GEEX5080_CODCLI(tCODCLI)
+			R_GEEX5080_REFLIV(tREFLIV)
+
+			tChNFE_LIBTXL := substr(tChNFe_LIB, 1, 44)
+			while length(tChNFE_LIBTXL) < 44 do
+				tChNFE_LIBTXL := build(" ", tChNFE_LIBTXL)
+			endwhile
+			log("tChNFE_LIBTXL = |", tChNFE_LIBTXL, "|", NL)
+
+			tNProt_LIBTXL := substr(tNProt, 1, 44)
+			while length(tNProt_LIBTXL) < 15 do
+				tNProt_LIBTXL := build(" ", tNProt_LIBTXL)
+			endwhile 
+			log("tNProt_LIBTXL = |", tNProt_LIBTXL, "|", NL)
+
+			tTpNF_LIBTXL := substr(tTpNF, 1, 44)
+			while length(tTpNF_LIBTXL) < 15 do
+				tTpNF_LIBTXL := build(" ", tTpNF_LIBTXL)
+			endwhile 
+			log("tTpNF_LIBTXL = |", tTpNF_LIBTXL, "|", NL)
+
+			tDhEmi_LIBTXL := substr(tDhEmi, 1, 19)
+			while length(tDhEmi_LIBTXL) < 19 do
+				tDhEmi_LIBTXL := build(" ", tDhEmi_LIBTXL)
+			endwhile 
+			log("tDhEmi_LIBTXL = |", tDhEmi_LIBTXL, "|", NL)
+
+			tTotalvNF_LIBTXL := substr(tTotalvNF, 1, 15)
+			while length(tTotalvNF_LIBTXL) < 15 do
+				tTotalvNF_LIBTXL := build(" ", tTotalvNF_LIBTXL)
+			endwhile 
+			log("tTotalvNF_LIBTXL = |", tTotalvNF_LIBTXL, "|", NL)
+
+			tDIPLIV5121_LIBTXL := substr(tDIPLIV5121, 1, 15)
+			while length(tDIPLIV5121_LIBTXL) < 15 do
+				tDIPLIV5121_LIBTXL := build(" ", tDIPLIV5121_LIBTXL)
+			endwhile 
+			log("tDIPLIV5121_LIBTXL = |", tDIPLIV5121_LIBTXL, "|", NL)
+
+			tIdeTPEmis_LIBTXL := substr(tIdeTPEmis, 1, 1)
+			while length(tIdeTPEmis_LIBTXL) < 1 do
+				tIdeTPEmis_LIBTXL := build(" ", tIdeTPEmis_LIBTXL)
+			endwhile 
+			log("tIdeTPEmis_LIBTXL = |", tIdeTPEmis_LIBTXL, "|", NL)
+
+			tNumeroDocumento_LIBTXL := substr(tNumeroDocumento, 1, 8)
+			while length(tNumeroDocumento_LIBTXL) < 8 do
+				tNumeroDocumento_LIBTXL := build(" ", tNumeroDocumento_LIBTXL)
+			endwhile 	
+			log("tNumeroDocumento_LIBTXL = |", tNumeroDocumento_LIBTXL, "|", NL)
+
+			tNumeroSerie_LIBTXL := substr(tNumeroSerie, 1, 2)
+			while length(tNumeroSerie_LIBTXL) < 2 do
+				tNumeroSerie_LIBTXL := build(" ", tNumeroSerie_LIBTXL)
+			endwhile 
+			log("tNumeroSerie_LIBTXL = |", tNumeroSerie_LIBTXL, "|", NL)
+
+			tLIBTXL := build(substr(tChNFE_LIBTXL, 1, 44), substr(tNProt_LIBTXL, 1, 15), substr(tTpNF_LIBTXL, 1, 1), substr(tDhEmi_LIBTXL, 1, 19), substr(substr(tTotalvNF_LIBTXL, 1, index(tTotalvNF_LIBTXL, ".") + 2), 1, 15), substr(tDIPLIV5121_LIBTXL, 1, 15), substr(tIdeTPEmis_LIBTXL, 1, 1), substr(tNumeroDocumento_LIBTXL, 1, 8), substr(tNumeroSerie_LIBTXL, 1, 2))
+			log("tLIBTXL = |", tLIBTXL, "|", NL)
+			R_GEEX5080_LIBTXL(tLIBTXL)
+			R_GEEX5080_SEQTXL("0001")
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX5099_CODEXC("50")
+			R_GEEX5099_SEPEXC(".")
+			R_GEEX5099_SCOEXC("99")
+			R_GEEX5099_CUMLIG(build(nContadorLinhasEncomenda))
+			R_GEEX5099_CODACT(tCODACT)
+			R_GEEX5099_CODCLI(tCODCLI)
+			R_GEEX5099_REFLIV(tREFLIV)
+
+			flush(0,0,NL) >> tFileOutTemp50
+			nContadorLinhasEscritas++
+
+			R_GEEX9900_CODEXC("99")
+			R_GEEX9900_SEPEXC(".")
+			R_GEEX9900_SCOEXC("00")
+			R_GEEX9900_TRTEXC("")
+			R_GEEX9900_EMTEXC("FM")
+			R_GEEX9900_RCTEXC("")
+			R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+			R_GEEX9900_NUMEXC("")
+			tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+			R_GEEX9900_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+			flush(0,0,NL)  >> tFileOutTemp50
+			close(tFileOutTemp50)
+
+			copy(tFileOutTemp50,tFileOut50)
+			close(tFileOutTemp50)
+			remove(tFileOutTemp50)
+			close(tFileOut50)
+
+			bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+		endif
+    endif
+
+	bfSqlClose(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "FULL COMMERCE"
+	TRACE.MENSAGEM := build("XML - NFE - M40 - ",tCODACT)
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tREFREC
+	TRACE.DATDOC := substr(tVALRUBDtEmi,1,10)
+	TRACE.MESSAGEID := build(nMessageID)   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endfunction
+
+!===========================================================
+
+function bfMajtrace50(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "FULL COMMERCE"
+	TRACE.MENSAGEM := build("XML - NFE - M50 - ", tCODACT)
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tREFLIV
+	TRACE.DATDOC := substr(tVALRUBDtEmi,1,10)
+	TRACE.MESSAGEID := build(nMessageID)   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut50
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut50)
+	copy(tFileOut50,TRACE.Out)
+	close(tFileOut50)
+	close(TRACE.Out)
+endfunction
+
+!===========================================================

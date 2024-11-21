@@ -1,0 +1,318 @@
+%@(#) $Id:  ShelfLife.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: ShelfLife.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : ShelfLife
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! ShelfLife
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "ShelfLife"
+
+#include "include/generix_func.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+	taAmbiente[1] := "CARREFOURBRESIL_FGE50CAMAG" !CDAM
+	taAmbiente[2] := "CARREFOURBRESIL_FGE50CAMAF" !PTAM
+	taAmbiente[3] := "CARREFOURBRESIL_FGE50CAETG" !CDRS
+	taAmbiente[4] := "CARREFOURBRESIL_FGE50CACSG" !CDPE
+	taAmbiente[5] := "CARREFOURBRESIL_FGE50CADCF" !PTDC
+	taAmbiente[6] := "CARREFOURBRESIL_FGE50CADCG" !CDDC
+	taAmbiente[7] := "CARREFOURBRESIL_FGE50CAQOG" !CDA
+	taAmbiente[8] := "CARREFOURBRESIL_FGE50CAQOX" !CDX
+	taAmbiente[9] := "CARREFOURBRESIL_FGE50CACGG" !CDMG
+	taAmbiente[10] := "CARREFOURBRESIL_FGE50CACGF" !PTMG
+	taAmbiente[11] := "CARREFOURBRESIL_FGE50CAIEF" !PTSP
+	taAmbiente[12] := "CARREFOURBRESIL_FGE50CANSF" !CDRE
+	taAmbiente[13] := "CARREFOURBRESIL_FGE50CAPOG" !CDMR
+	taAmbiente[14] := "CARREFOURBRESIL_FGE50CAPIG" !CDPH
+	taAmbiente[15] := "CARREFOURBRESIL_FGE50CASSG" !CDBA
+	taAmbiente[16] := "CARREFOURBRESIL_FGE50CACJG" !PLCJ
+	taAmbiente[17] := "CARREFOURBRESIL_FGE50CASSF" !PTBF
+
+	! AWS
+	tDbBaseInsert := "CRFWMSI"
+    tDbBase		:= "datapowerDB"
+	tDbUsername	:= taPARAM["AWS_USER"]
+	tDbPassword	:= "Vd9PVBbnLArnBhUKIthf"
+	tDbUrl		:= taPARAM["AWS_URL"]
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), taAmbiente[tIndex])
+		exit(1)
+	endif
+
+	if not bfSqlJdbc(tDbBaseInsert, tDbUsername, tDbPassword, tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBaseInsert)
+        bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), taAmbiente[tIndex])
+     	exit(1)
+    endif
+endbegin
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	while tIndex in taAmbiente do
+		! CRIANDO OS DOCUMENTOS DE LOG
+			tFileOut := build(sHOME,"/DocTemp/","SHELF_LIFE_",taAmbiente[tIndex],"_",build(nMessageID:R015),".txt")
+			tFileOutTemp := build(sHOME,"/DocTemp/Temp/","SHELF_LIFE_",taAmbiente[tIndex],"_",build(nMessageID:R015),".txt")
+			tNameOut := build("SHELF_LIFE_",taAmbiente[tIndex],"_",build(nMessageID:R015),".txt")
+		!FIM CRIANDO OS DOCUMENTOS DE LOG
+	
+		tQuery := build("SELECT CURRENT_DATE AS DATREF,", NL," "\
+						"		COUNT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE <= 0 THEN 1 END) AS LOG001,", NL," "\
+						"		COUNT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE >= 0 AND TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE - PR.SECDLV <= 15 THEN 1 END) AS LOG002,", NL," "\
+						"		COUNT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE >= 16 AND TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE - PR.SECDLV <= 29 THEN 1 END) AS LOG003,", NL," "\
+						"		COUNT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE >= 30 AND TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE - PR.SECDLV <= 50 THEN 1 END) AS LOG004,", NL," "\
+						"		COUNT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE >= 51 AND TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE - PR.SECDLV <= 150 THEN 1 END) AS LOG005,", NL," "\
+						"		0 AS LOG006,", NL," "\
+						"		0 AS LOG007,", NL," "\
+						"		0 AS LOG008,", NL," "\
+						"		0 AS LOG009,", NL," "\
+						"		0 AS LOG010,", NL," "\
+						"		COUNT(DISTINCT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE <= 150 THEN PL.CODPRO END)) AS CUMPRO,", NL," "\
+						"		COUNT(CASE WHEN TO_DATE(PL.DATFVI||'','YYYYMMDD') - CURRENT_DATE <= 150 THEN 1 END) AS CUMPAL,", NL," "\
+						"		SUM(PL.UVCSTO) AS UVCSTO,", NL," "\
+						"		SUM(PL.UVCDES) AS UVCDES,", NL," "\
+						"		SUM(TRUNC(PL.UVCSTO / PL.PCBPRO)) AS QTDSTO,", NL," "\
+						"		SUM(TRUNC(PL.UVCDES / PL.PCBPRO)) AS QTDDES", NL," "\
+						"FROM ",taAmbiente[tIndex],".GEPAL PL", NL," "\
+						"LEFT JOIN ",taAmbiente[tIndex],".GEPRO PR", NL," "\
+						"ON PR.CODPRO = PL.CODPRO", NL," "\
+						"WHERE PL.DATFVI <> '0'")
+
+		log("QUERY SELECT -------------------------------------", NL)
+		log(tQuery,NL)
+		log("--------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), taAmbiente[tIndex])
+			remove(tFileOut)
+			exit(1)
+		endif
+
+		bErro := FALSE
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			bErro := TRUE
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), taAmbiente[tIndex])
+			remove(tFileOut)
+		endif
+
+		if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+			bfQueryInsert(strip(taDb2Array["datref"], "-"), \
+						  taDb2Array["log001"], \
+						  taDb2Array["log002"], \
+						  taDb2Array["log003"], \
+						  taDb2Array["log004"], \
+						  taDb2Array["log005"], \
+						  taDb2Array["log006"], \
+						  taDb2Array["log007"], \
+						  taDb2Array["log008"], \
+						  taDb2Array["log009"], \
+						  taDb2Array["log010"], \
+						  taDb2Array["cumpro"], \
+						  taDb2Array["cumpal"], \
+						  taDb2Array["uvcsto"], \
+						  taDb2Array["uvcdes"], \
+						  taDb2Array["qtdsto"], \
+						  taDb2Array["qtddes"], \
+						  taAmbiente[tIndex])
+			remove(taDb2Array)
+		endif
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), taAmbiente[tIndex])
+			remove(tFileOut)
+			exit(1)
+		endif
+
+		! PASSA AS INFORMAÇÕES DA VARIÁVEL TEMPORÁRIA PARA A FINAL
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		if bErro = FALSE and bErro2 = FALSE then
+			bfMajtrace("Recebida", "0", "SHELF LIFE", time("now","%Y-%m-%d"), tFileOut, "", taAmbiente[tIndex])
+		endif
+
+		remove(tFileOut)
+	endwhile
+
+	bfSqlClose(tDbBase)
+	bfSqlClose(tDbBaseInsert)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErrro,tPerfil)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	switch tPerfil
+		case "CARREFOURBRESIL_FGE50CAMAG":
+			TRACE.PERFIL := "CDAM"
+		case "CARREFOURBRESIL_FGE50CAMAF":
+			TRACE.PERFIL := "PTAM"
+		case "CARREFOURBRESIL_FGE50CAETG":
+			TRACE.PERFIL := "CDRS"
+		case "CARREFOURBRESIL_FGE50CACSG":
+			TRACE.PERFIL := "CDPE"
+		case "CARREFOURBRESIL_FGE50CADCF":
+			TRACE.PERFIL := "PTDC"
+		case "CARREFOURBRESIL_FGE50CADCG":
+			TRACE.PERFIL := "CDDC"
+		case "CARREFOURBRESIL_FGE50CAQOG":
+			TRACE.PERFIL := "CDA"
+		case "CARREFOURBRESIL_FGE50CAQOX":
+			TRACE.PERFIL := "CDX"
+		case "CARREFOURBRESIL_FGE50CACGG":
+			TRACE.PERFIL := "CDMG"
+		case "CARREFOURBRESIL_FGE50CACGF":
+			TRACE.PERFIL := "PTMG"
+		case "CARREFOURBRESIL_FGE50CAIEF":
+			TRACE.PERFIL := "PTSP"
+		case "CARREFOURBRESIL_FGE50CANSF":
+			TRACE.PERFIL := "CDRE"
+		case "CARREFOURBRESIL_FGE50CAPOG":
+			TRACE.PERFIL := "CDMR"
+		case "CARREFOURBRESIL_FGE50CAPIG":
+			TRACE.PERFIL := "CDPH"
+		case "CARREFOURBRESIL_FGE50CASSG":
+			TRACE.PERFIL := "CDBA"
+		case "CARREFOURBRESIL_FGE50CACJG":
+			TRACE.PERFIL := "PLCJ"
+		case "CARREFOURBRESIL_FGE50CASSF":
+			TRACE.PERFIL := "PTBF"
+	endswitch
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "SHELF LIFE"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if "GERADO POR HORA" <> build(SYSLOG.INDEX) then
+		TRACE.REDE := "GERADO POR HORA"
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := "GERADO POR HORA"
+
+	SYSLOG.REFERENCE := build(nMessageID:R06)
+	
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Executado com Sucesso",NL,NL) >> TRACE.Detail
+		print(tQueryUpdade,NL,NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfQueryInsert(tDATREF, tLOG001, tLOG002, tLOG003, tLOG004, tLOG005, tLOG006, tLOG007, tLOG008, tLOG009, tLOG010, tCUMPRO, tCUMPAL, tUVCSTO, tUVCDES, tQTDSTO, tQTDDES, tAmbiente)   
+    tQueryInsert := build("INSERT INTO ",tAmbiente,"_ANALYTICS.SVSHELFDIARY ", NL," "\
+                        "VALUES('",tDATREF,"', ", NL," "\
+						"'",tLOG001,"',",NL," "\
+						"'",tLOG002,"',",NL," "\
+						"'",tLOG003,"',",NL," "\
+						"'",tLOG004,"',",NL," "\
+						"'",tLOG005,"',",NL," "\
+						"'",tLOG006,"',",NL," "\
+						"'",tLOG007,"',",NL," "\
+						"'",tLOG008,"',",NL," "\
+						"'",tLOG009,"',",NL," "\
+						"'",tLOG010,"',",NL," "\
+						"'",tCUMPRO,"',",NL," "\
+						"'",tCUMPAL,"',",NL," "\
+						"'",tUVCSTO,"',",NL," "\
+						"'",tUVCDES,"',",NL," "\
+						"'",tQTDSTO,"',",NL," "\
+						"'",tQTDDES,"') ")
+
+    log("QUERY INSERT -------------------------------------", NL)
+	log(tQueryInsert,NL)
+    print(tQueryInsert,NL,NL) >> tFileOutTemp
+    log("--------------------------------------------------", NL, NL)
+
+    if not bfSqlSet(tDbBaseInsert, "INSERTdb2", tQueryInsert) then
+        log(tfSqlErrorStr(), NL)
+        exit(27)
+    endif
+
+	bErro2 := FALSE
+    if not bfSqlExec(tDbBaseInsert, "INSERTdb2") then
+		bErro2 := TRUE
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), taAmbiente[tIndex])
+        log(tfSqlErrorStr(), NL)
+    endif
+
+    if not bfSqlCommit(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(29)
+    endif
+
+    if not bfSqlFree(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(30)
+    endif
+endfunction
+
+!===========================================================

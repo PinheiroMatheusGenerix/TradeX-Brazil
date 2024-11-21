@@ -1,0 +1,99 @@
+%@(#)  source_filename.rte     modif:01-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_crnf_hasbro/fmbrasil_crnf_hasbro.cfg" fmbrasil_crnf_hasbro
+base "../fmbrasil_crnf_hasbro/fmbrasil_crnf_hasbro.cfg" fmbrasil_crnf_hasbrovalidacao
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "UPDATE_HASBRO_IN"
+#include "include/generix_func.inc"
+#include "include/HASBROCRNF1425.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	!PROCESS_ERRONEOUS := TRUE
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+endbegin
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+	nNumeroCiclo := 0
+	tSALESORDERNUMBERAnt := "zzzznejncunmxzan"
+	
+	fmbrasil_crnf_hasbro := find(build(sHOME,"/fmbrasil_crnf_hasbro"),DESDOBRO <> "S")aSALESORDERNUMBER
+	while valid(fmbrasil_crnf_hasbro) do
+		nNumeroCiclo++
+		tSALESORDERNUMBER := fmbrasil_crnf_hasbro.SALESORDERNUMBER
+		if nNumeroCiclo = 1 or tSALESORDERNUMBER <> tSALESORDERNUMBERAnt then
+			log("tSALESORDERNUMBER ",tSALESORDERNUMBER,NL)
+			TRACE := find(build(sHOME,"/trace"),MENSAGEM="NF",ESTADO = "Recebida",DATDOC = fmbrasil_crnf_hasbro.SALESORDERNUMBER,CREATED < time(fmbrasil_crnf_hasbro.CREATED, "%d.%m.%Y %H:%M"))aINDEX
+			while valid(TRACE) then
+				bJaExisteNF := FALSE
+				log("TRACE.NUMDOC ",TRACE.NUMDOC,NL)
+				fmbrasil_crnf_hasbrovalidacao := find(build(sHOME,"/fmbrasil_crnf_hasbro"),SALESORDERNUMBER=tSALESORDERNUMBER,DESDOBRO <> "S")
+				while valid(fmbrasil_crnf_hasbrovalidacao) do
+					if fmbrasil_crnf_hasbrovalidacao.DOCUMENTNUMBERNF = TRACE.NUMDOC or fmbrasil_crnf_hasbrovalidacao.DOCUMENTNUMBERNF2 = TRACE.NUMDOC or fmbrasil_crnf_hasbrovalidacao.DOCUMENTNUMBERNF3 = TRACE.NUMDOC then
+						log("NAO reprocessando TRACE.NUMDOC ",TRACE.NUMDOC,NL)
+						bJaExisteNF := TRUE
+					endif
+					fmbrasil_crnf_hasbrovalidacao := find()
+				endwhile
+				if bJaExisteNF = FALSE then !vai reprocessar
+					log("reprocessando TRACE.NUMDOC ",TRACE.NUMDOC,NL)
+					nContAuxReprocssNFHasbro := cContAuxReprocssNFHasbro
+					copy(TRACE.In,build(sHOME,"/inbox/",tToInfologPrefixFilename,"HAScrnf",nContAuxReprocssNFHasbro,".dat"))
+					close(build(sHOME,"/inbox/",tToInfologPrefixFilename,"HAScrnf",nContAuxReprocssNFHasbro,".dat"))
+					close(TRACE.In)
+					TRACE.ESTADO := "Reprocessado"
+					flush(TRACE)
+					exit(0) !segue na proxima vez que o programa for executado
+				endif
+				TRACE := find()
+			endwhile
+		
+		endif
+		tSALESORDERNUMBERAnt := tSALESORDERNUMBER
+		fmbrasil_crnf_hasbro := find()
+	endwhile
+
+	exit(0)
+
+endend
+
+
+

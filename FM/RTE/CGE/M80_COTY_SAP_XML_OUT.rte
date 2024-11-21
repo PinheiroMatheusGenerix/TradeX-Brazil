@@ -1,0 +1,548 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/GOODS_MOVE-BR_FMLOG-SAP-IWAY_INP - v01.xsd" validating
+
+message "XML/FMBrasil/GOODS_MOVE-WMS-SAP-IWAY_INP.dtd" building
+
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_depositoscoty/fmbrasil_depositoscoty.cfg" fmbrasil_depositoscoty
+
+
+#define TX_PROG_INFO "M80_COTY_SAP_OUT"
+#include "include/generix_func.inc"
+#include "include/M80.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    !nMessageID := cMessageID
+    pXML.INCONVOUT := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+		
+		
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+endbegin
+
+
+
+line(1:"00.00")
+ !   tCentroCusto := S_0000_EDISIT
+    tData := S_0000FILEHEADER_DATEXC
+    tHora := S_0000FILEHEADER_HEUEXC   
+
+nLinha := 0
+nLinha2 := 0
+nLinha2 := 0
+    !log("S_0000_EDISIT - ",S_0000_EDISIT,NL)
+endline
+
+
+line(1:"80.00")
+	!if S_GEEX8000_MOTMVT = "*QP"   then !nao gera movimento
+	!	tFileOut := ""
+	!	exit(0)
+	!endif
+   nLinha++
+   taCODPRO[nLinha] := S_GEEX8000_CODPRO
+   taMOTMVT[nLinha] := S_GEEX8000_MOTMVT
+   taUVCMVT[nLinha] := S_GEEX8000_UVCMVT
+   taCODLOT[nLinha] := S_GEEX8000_CODLOT
+   taREFMVT[nLinha] := substr(S_GEEX8000_REFMVT,1,25)
+   taDATMVT[nLinha] := S_GEEX8000_DATMVT
+   taHEUMVT[nLinha] := S_GEEX8000_HEUMVT
+   taEDIMVT[nLinha] := S_GEEX8000_EDIMVT
+   taCODPAL[nLinha] := S_GEEX8000_CODPAL
+   taUNIPRO[nLinha] := S_GEEX8000_UNIPRO
+endline
+
+
+line("99.00")
+
+nMessageID := cMessageIDINACOTY
+if nMessageID = 999999 then
+        cMessageIDINACOTY := 0
+endif
+
+	
+	tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+    tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+	tNameOut := build("FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+
+	
+	
+	tfEscreveeGoodsxMLm()
+	
+nTempLinhas := 1
+while nTempLinhas  <= nLinha do
+   tfEscreveeGoodsxMLmDetail()
+   nTempLinhas++
+endwhile
+
+bfSqlClose(tDbBase)
+
+
+   if valid(MESSAGE) then
+print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+     print(MESSAGE) > tFileOutTemp
+     
+     close(tFileOutTemp)
+     
+     
+
+
+
+
+
+close(tFileOutTemp)
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+		
+	
+bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")	
+close(tFileOut)
+
+
+   else
+       print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+		print(MESSAGE) > tFileOutTemp
+		close(tFileOutTemp)      
+       tErroTraducao := build("Schema not matched",NL)
+       bfMajtrace("Erro de Traducao","1",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Orders",build("Schema not matched ",NL))
+          
+      close(tFileOutTemp)
+   
+     !exit(1)
+   endif
+
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+
+
+	exit(0)
+endend
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "MOVIMENTACAO DE ESTOQUE"
+   TRACE.NUMDOC := taCODPRO[1] !build("ESTOQUE",tData,tHora)
+   TRACE.DATDOC := tfConvertDate(tData,"YYYYMMDD" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		   if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+
+close(tFileOut)
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+
+
+
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+!===========================================================
+function tfEscreveeGoodsxMLm()
+
+
+	segment SGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP     ! M 1/1 
+
+
+	endsegment
+
+	! Group gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG : M 1/1 
+	segment STrnNam gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+	   eETrnNam  := "GOODS_MOVEMENT" ! C  
+
+	endsegment
+
+	segment STrnVer gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+	   eETrnVer := "1.0"  ! C  
+
+	endsegment
+
+
+
+endfunction
+
+function tfEscreveeGoodsxMLmDetail()
+
+! Group gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG : M 1/unbound 
+segment SDocumentDate gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEDocumentDate  := build(tfConvertDate(build(   taDATMVT[nTempLinhas] , taHEUMVT[nTempLinhas],"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00") !build(time("now" ,"%Y-%m-%dT%H:%M:%S.000+00:00")) ! C 2018-09-26T13:45:00.000+00:00 
+
+endsegment
+
+segment STransactionRef gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eETransactionRef := taREFMVT[nTempLinhas]   ! C  
+
+endsegment
+
+segment STransactionDate gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eETransactionDate   := build(tfConvertDate(build(   taDATMVT[nTempLinhas] , taHEUMVT[nTempLinhas],"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")   ! C  
+
+endsegment
+
+segment STransactionCode gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eETransactionCode := "MB1B"  ! C  
+
+endsegment
+
+segment SPlant_Id gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEPlant_Id   := "8004"  ! C  
+
+endsegment
+
+segment SStorageLoc gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+
+
+
+
+
+remove(taDEPOSITOFM)
+
+
+	
+tQuery := build("SELECT MOTMVT, "\
+"CASE  "\
+"WHEN MOTMVT='*RS' THEN '3000' "\
+"WHEN MOTMVT='DV' THEN '3001' "\
+"WHEN MOTMVT='AC' THEN '3002' "\
+"WHEN MOTMVT='AF' THEN '3002' "\
+"WHEN MOTMVT='AV' THEN '3002' "\
+"WHEN MOTMVT='AT' THEN '3002' "\
+"WHEN MOTMVT='WM' THEN '3101' "\
+"WHEN MOTMVT='EX' THEN '5100' "\
+"WHEN MOTMVT='DV' THEN '6001' "\
+"WHEN MOTMVT='SCR' THEN 'SCR' "\
+"ELSE MOTMVT "\
+"END DEPOSITO "\
+"FROM FGE50FM",tToInfologPrefixFilename,".GEJNL "\
+"WHERE CODPAL='",taCODPAL[nTempLinhas],"' "\
+"AND SENMVT='+' "\
+"AND HEUMVT='",taHEUMVT[nTempLinhas],"'")
+
+
+
+
+
+tQuery := build("SELECT MOTMVT as StorageLoc "\
+"FROM FGE50FM",tToInfologPrefixFilename,".GEJNL "\
+"WHERE CODPAL='",taCODPAL[nTempLinhas],"' "\
+"AND SENMVT='+' "\
+"AND HEUMVT='",taHEUMVT[nTempLinhas],"'")
+
+	log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+			taDEPOSITOFM[nTempLinhas] := ""
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				
+				taDEPOSITOFM[nTempLinhas]  := peel(taDb2Array["STORAGELOC"]," ")
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+			endif
+			
+			if taDEPOSITOFM[nTempLinhas] = "CD" or taDEPOSITOFM[nTempLinhas] = "CA" then
+				eEStorageLoc   := "3101"  ! C  
+			
+			else
+					if length(taDEPOSITOFM[nTempLinhas]) > 0 then
+							   fmbrasil_depositoscoty := find(build(sHOME,"/fmbrasil_depositoscoty"),DEPOSITOFM=taDEPOSITOFM[nTempLinhas])
+							   if valid(fmbrasil_depositoscoty) then
+									eEStorageLoc   := fmbrasil_depositoscoty.DEPOSITOCOTY  ! C 
+									
+								else
+									bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build(taDEPOSITOFM[nTempLinhas]," nao esta nos DEPOSITOS FM da tabela fmbrasil_depositoscoty!"))
+									
+								  exit(1)
+								 endif
+									
+					else
+						eEStorageLoc   := "3000"  ! C  
+					endif
+
+				 
+			endif
+
+endsegment
+
+segment SStockType gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEStockType   := " "  ! C  
+
+endsegment
+
+!segment SReasonCode gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+!   eEReasonCode  := "ZZZ"   ! C  
+
+!endsegment
+
+segment SMaterialNumber gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEMaterialNumber  := taCODPRO[nTempLinhas]   ! C  
+
+endsegment
+
+segment SMovementType gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEMovementType := "311" !taEDIMVT[nTempLinhas]  ! C  
+
+endsegment
+
+!segment SSpecialStock gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+!   eESpecialStock   
+
+!endsegment
+
+!segment SVendorNumber gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+!   eEVendorNumber := " "  ! C  
+
+!endsegment
+
+segment SUnitQty gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEUnitQty := build(number(taUVCMVT[nTempLinhas]))  ! C  
+
+endsegment
+
+segment SUOM gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEUOM  := taUNIPRO[nTempLinhas] ! C  
+
+endsegment
+
+segment SXfer_Plant_Id gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+
+
+
+
+   eEXfer_Plant_Id    := "8004"  ! C  
+
+endsegment
+
+
+segment SXfer_Storage_Loc gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1
+
+
+remove(taDEPOSITOFM)
+
+tQuery := build("SELECT MOTMVT as Xfer_Storage_Loc "\
+"FROM FGE50FM",tToInfologPrefixFilename,".GEJNL "\
+"WHERE CODPAL='",taCODPAL[nTempLinhas],"' "\
+"AND SENMVT='-' "\
+"AND HEUMVT='",taHEUMVT[nTempLinhas],"'")
+
+	log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				
+				taDEPOSITOFM[nTempLinhas]  := peel(taDb2Array["XFER_STORAGE_LOC"]," ")
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+			endif
+			
+			if length(taDEPOSITOFM[nTempLinhas]) > 0 then
+							   fmbrasil_depositoscoty := find(build(sHOME,"/fmbrasil_depositoscoty"),DEPOSITOFM=taDEPOSITOFM[nTempLinhas])
+							   if valid(fmbrasil_depositoscoty) then
+									eEXfer_Storage_Loc   := fmbrasil_depositoscoty.DEPOSITOCOTY  
+									
+								else
+										bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build(taDEPOSITOFM[nTempLinhas]," nao esta nos DEPOSITOS FM da tabela fmbrasil_depositoscoty!"))
+									
+								  exit(1)
+								  endif
+									
+					else
+						eEXfer_Storage_Loc   := "3000"
+					endif
+
+ 
+   
+
+endsegment
+
+
+
+
+!segment SUserName gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+!   eEUserName  
+
+!endsegment
+
+segment SBatch gGGOODS_MOVE-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGGOODS_MOVEMENT_SEG     ! C 1/1 
+   eEBatch := taCODLOT[nTempLinhas]     
+
+endsegment
+
+endfunction
+

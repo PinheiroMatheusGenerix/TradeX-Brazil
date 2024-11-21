@@ -1,0 +1,98 @@
+%@(#)  RoutingMailLoreal.rte     modif:21-11-2017
+!==============================================================================
+% File          : RoutingMailLoreal.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+! Message definition
+base "syslog.cfg" SYSLOG
+
+!123456
+!SA9BRO
+
+!==============================================================================
+! Initialization section
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	! Nome do ambiente
+		load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+		load (0, build(sHOME,"/syslog/files/rp/",pINDEX), taPARAM_RP)
+
+	! Variaveis
+		taFileName[1] := build(sHOME,"/syslog/files/x/",SYSLOG.INDEX)
+		taFileName[2] := build(sHOME,"/syslog/files/x2/",SYSLOG.INDEX)
+		taFileName[3] := build(sHOME,"/syslog/files/x3/",SYSLOG.INDEX)
+		taFileName[4] := build(sHOME,"/syslog/files/x4/",SYSLOG.INDEX)
+		taFileName[5] := build(sHOME,"/syslog/files/x5/",SYSLOG.INDEX)
+		taFileName[6] := build(sHOME,"/syslog/files/x6/",SYSLOG.INDEX)
+		taFileName[7] := build(sHOME,"/syslog/files/x7/",SYSLOG.INDEX)
+		taFileName[8] := build(sHOME,"/syslog/files/x8/",SYSLOG.INDEX)
+		taFileName[9] := build(sHOME,"/syslog/files/x9/",SYSLOG.INDEX)
+		taFileName[10] := build(sHOME,"/syslog/files/x10/",SYSLOG.INDEX)
+
+		tAmbiente := ""
+
+	! Verifica arquivo
+		nTempAux := 1
+		while nTempAux <= 10 do
+			fFile := taFileName[nTempAux]
+			bEncontrou := FALSE
+			if fFile.EXIST then
+				close(fFile.FULLNAME)
+				tLinhaLida := read(fFile.FULLNAME)
+				while tLinhaLida <> EOF do
+					if index(tLinhaLida,"<nfeProc") > 0 then
+						close(fFile.FULLNAME)
+
+						! Nome original do arquivo
+							tValor := taPARAM_RP[build("MESSAGE.PART",nTempAux,".content-disposition.filename")]
+							while tLinha in taPARAM do
+								if taPARAM[tLinha] = substr(tValor,1,3) then
+									tAmbiente := substr(tValor,1,3)
+								endif
+							endwhile
+
+							if tAmbiente = "" then
+								tArquivoFinal := build(sHOME,"/tmp/nfeProc_RP_",SYSLOG.INDEX,".xml")
+							else
+								tArquivoFinal := build(sHOME,"/tmp/",substr(tValor,1,13),"_nfeProc_RP_",SYSLOG.INDEX,".xml")
+							endif
+							
+						tArquivo := fFile.FULLNAME
+						bEncontrou := TRUE
+						break
+					endif
+					tLinhaLida := read(fFile.FULLNAME)
+				endwhile
+				close(fFile.FULLNAME)
+			endif
+			
+			if bEncontrou = TRUE then
+				! Tratamento o arquivo
+					close(tArquivo)
+					copy(tArquivo, tArquivoFinal)
+					close(tArquivo)
+					close(tArquivoFinal)
+					log("Arquivo Final: ", tArquivoFinal, NL)
+					
+				! Enviando para o Routing
+					if tAmbiente = "" then
+						tCmd := build("edisend NFE_ROUTING_XML ", tArquivoFinal)
+						log("executando o comando - ", tCmd, NL)
+						system(tCmd)
+					endif
+				break
+			endif
+			
+			nTempAux++
+		endwhile
+
+	exit(0)
+endbegin
+
+!==============================================================================

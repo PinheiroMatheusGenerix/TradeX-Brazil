@@ -1,0 +1,754 @@
+%@(#)  source_filename.rte     modif:01-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M62_MAKRO_CSV_IN"
+#include "include/generix_func.inc"
+#include "include/ROUTE.inc"
+#include "include/M62.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+    
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAKRO"]
+
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"62",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"62",build(nMessageID:R015),".DAT")
+ ! tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"62",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"62",build(nMessageID:R015),".DAT")
+    
+
+	
+	
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+
+
+	
+	
+	tFicheiroAVerificar := build(sHOME,"/FromMakro/Verifica",SYSLOG.INDEX,".txt")
+	tFicheiroAVerificarV2 := build(sHOME,"/FromMakro/Verifica",SYSLOG.INDEX,".txt.v2")
+	tFicheiroAVerificarHash := build(sHOME,"/FromMakro/Verifica",SYSLOG.INDEX,".txt.hash")
+	close(SYSLOG.a)
+	copy(SYSLOG.a,tFicheiroAVerificar)
+	close(SYSLOG.a)
+	close(tFicheiroAVerificar)
+	close(tFicheiroAVerificarV2)
+	nContadorWhile := 0
+	bTerminaLerFicheiroHash := FALSE
+	tLinhaLida := read(tFicheiroAVerificar)
+    while tLinhaLida<>EOF do
+		nContadorWhile++
+		if bTerminaLerFicheiroHash = FALSE then
+			if substr(tLinhaLida,1,1) = "*" and nContadorWhile > 1 then
+				print(substr(tLinhaLida,1,10)) >> tFicheiroAVerificarV2
+				tHashLida := substr(tLinhaLida,18,(length(tLinhaLida)-18))
+				bTerminaLerFicheiroHash := TRUE
+			else
+				print(tLinhaLida,NL) >> tFicheiroAVerificarV2
+			endif
+		endif
+		tLinhaLida := read(tFicheiroAVerificar)
+	endwhile
+	close(tFicheiroAVerificar)
+	close(tFicheiroAVerificarV2)
+	
+	tCmdHASH := build("CRC32_v2 ",tFicheiroAVerificarV2," >> ",tFicheiroAVerificarHash) 
+	close(tFicheiroAVerificarV2)
+	log("executing command ",tCmdHASH,NL)
+	nRet := system(tCmdHASH)
+
+	log("nRet ", nRet,NL)
+	close(tFicheiroAVerificarHash)
+	close(tFicheiroAVerificarV2)
+	
+
+	tFileHash := tolower(read(tFicheiroAVerificarHash))	
+	close(tFicheiroAVerificarHash)
+	
+	
+	
+	remove(tFicheiroAVerificarHash)
+	remove(tFicheiroAVerificarV2)
+	
+	
+	
+	if tFileHash = tHashLida then
+		log("chave verificada com sucesso ",NL)
+		log("Hash Lida no arquivo ",tHashLida,NL)
+		log("Hash calcula ",tFileHash,NL)
+		tNomeArquivoDevolverFTPMakro := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"OKPA",pEDISEND.ORIGINAL.NAME)
+		copy(tFicheiroAVerificar,tNomeArquivoDevolverFTPMakro)
+		close(tFicheiroAVerificar)
+		close(tNomeArquivoDevolverFTPMakro)
+		remove(tFicheiroAVerificar)
+	else
+		log("chave verificada com erro ",NL)
+		log("Hash Lida no arquivo ",tHashLida,NL)
+		log("Hash calculada ",tFileHash,NL)
+		
+		!tNomeArquivoDevolverFTPMakro := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"KOPA",pEDISEND.ORIGINAL.NAME)
+		tNomeArquivoDevolverFTPMakro := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"OKPA",pEDISEND.ORIGINAL.NAME)
+		copy(tFicheiroAVerificar,tNomeArquivoDevolverFTPMakro)
+		close(tFicheiroAVerificar)
+		close(tNomeArquivoDevolverFTPMakro)
+		remove(tFicheiroAVerificar)
+		
+		tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/Erro",nMessageID:R010,".txt")
+		print("Erro ao ler o CRC32 do arquivo ",pEDISEND.ORIGINAL.NAME,"!",NL,NL,"Hash lida no arquivo ",tHashLida,NL,"Diferente da hash calculada ",tFileHash,NL,NL,NL,NL) >> tArquivoEmailErro
+		close(tArquivoEmailErro)
+			tSubjectEmail := build("[WMW]_Erro_de_CRC32_no_arquivo_",pEDISEND.ORIGINAL.NAME)
+		tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EmailErroCRC32Ma ",tArquivoEmailErro)
+			log("executing command ",tCmdEmailErro,NL)
+			nRet := system(tCmdEmailErro)
+
+				log("nRet ", nRet,NL)
+				close(tArquivoEmailErro)
+		remove(tArquivoEmailErro)
+		
+		
+		 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na verificacao da HASH. Hash lida: ",tHashLida," Hash calculada: ",tFileHash))
+		 exit(1)
+	endif
+	
+
+	
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nContadorHeader := 0
+	nContadorItems := 0
+	nMainIndex := 0
+	nNumeroLinha := 0
+endbegin
+
+!===========================================================
+
+
+
+line(not "")
+   S_ROTASdoPEDIDO
+   
+   
+   
+   
+
+   nNumeroLinha++
+   if nNumeroLinha = 1 then
+      !nao faz nada
+   else
+
+	  
+	  
+	  
+	  taR_PED_cdEmpresa[nNumeroLinha] := S_ROTASdoPEDIDO_cdEmpresa
+	  taR_PED_nuPedido[nNumeroLinha] := S_ROTASdoPEDIDO_nuPedido
+	  taR_PED_TVROMNFS_CNLOJCLI[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_CNLOJCLI
+	  taR_PED_TVROMNFS_CNEMP[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_CNEMP
+	  taR_PED_TVROMNFS_ANPLCVEC[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_ANPLCVEC
+	  taR_PED_TVROMNFS_CAUFEVEC[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_CAUFEVEC
+	  taR_PED_idGrupoCarga[nNumeroLinha] := S_ROTASdoPEDIDO_idGrupoCarga
+	  taR_PED_numRomaneio[nNumeroLinha] := S_ROTASdoPEDIDO_numRomaneio
+	  taR_PED_seqCarga[nNumeroLinha] := S_ROTASdoPEDIDO_seqCarga
+	  taR_PED_inicioPrevisao[nNumeroLinha] := S_ROTASdoPEDIDO_inicioPrevisao
+	  taR_PED_fimPrevisao[nNumeroLinha] := S_ROTASdoPEDIDO_fimPrevisao
+	  
+	  
+	 		!Rodar a query: 
+		!SELECT NUMLIV, NUMSUP, KAILIV 
+		!FROM FGE50FM0AO.GESUPE
+		!WHERE REFLIV='nuPedido'
+		!NOTA: 0AO = TESTE / SAO = PROD 
+	  
+
+	  
+	  
+    endif
+   
+
+endline
+
+
+   
+   
+
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+
+
+
+bTemResultadosUmSoVez := FALSE
+
+
+bErroGeral := FALSE
+
+
+  if nContadorLinhasEscritas = 0 then
+
+!0AOwmw_route.str00010.20171026113027.txt
+!PosProc0AOwmw_route*.txt
+if length(pEDISEND.ORIGINAL.NAME) >= 37 then
+	if substr(pEDISEND.ORIGINAL.NAME,1,16) = "0AOwmw_route.str" then
+		tLIBEXC := build(substr(pEDISEND.ORIGINAL.NAME,8,5),".",substr(pEDISEND.ORIGINAL.NAME,23,14))
+	else
+		tLIBEXC := build(substr(pEDISEND.ORIGINAL.NAME,15,5),".",substr(pEDISEND.ORIGINAL.NAME,30,14))
+	endif
+  else
+	tLIBEXC := build(nMessageID:R010)
+  endif
+     R_00HEADER_CODEXC("00")
+     R_00HEADER_SEPEXC(".")
+     R_00HEADER_SCOEXC("00")
+     R_00HEADER_TRTEXC("")
+     R_00HEADER_EMTEXC("FM") 
+     R_00HEADER_RCTEXC("")
+     R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_00HEADER_NUMEXC("0000000")
+     R_00HEADER_ACQEXC("0")
+     R_00HEADER_VEREXC("5.00") 
+     R_00HEADER_NOMSYS("")  
+     R_00HEADER_NOMDTQ("M62")
+     R_00HEADER_BIBDTQ("")
+     R_00HEADER_LIBEXC(tLIBEXC) !(build(nMessageID:R010))
+     R_00HEADER_BIBDST("")
+     R_00HEADER_PGMDST("")
+     R_00HEADER_PARDST("")
+     R_00HEADER_CODACT("")
+     R_00HEADER_IGLSIT("")
+     R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_00HEADER_IMAEXC("")  
+     R_00HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+     
+   endif
+ tSucesso :=  ""
+ tSucesso2 := ""
+ tEmailErro := ""
+bSempreAMesmaRota := TRUE
+ nTempNumeroLinha  := 2
+ tRotaAnt := ""
+while nTempNumeroLinha <= (nNumeroLinha-1) do
+				nPosicaoInicial := 1
+		nPosicaoInicial := index(taR_PED_idGrupoCarga[nTempNumeroLinha],"ROTA_") + 5
+		nComprimento := length(taR_PED_idGrupoCarga[nTempNumeroLinha])
+		tREFMIT := substr(taR_PED_idGrupoCarga[nTempNumeroLinha],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+		nPosicaoFinal := 1
+		nPosicaoFinal := (index(tREFMIT,"-")-1)
+		log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+		log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+		tRota := substr(tREFMIT,1,nPosicaoFinal)
+		if nTempNumeroLinha = 2 then
+			tRotaAnt := tRota
+		endif
+		
+		if tRotaAnt = tRota then
+			!a rota é a mesma
+		else
+			bSempreAMesmaRota := FALSE
+		endif
+		
+		tRotaAnt := tRota
+
+	nTempNumeroLinha++
+
+endwhile
+
+ 
+ nTempNumeroLinha  := 2
+while nTempNumeroLinha <= (nNumeroLinha-1) do
+
+
+		log("nTempNumeroLinha ",nTempNumeroLinha,NL)
+		tQuery := build("SELECT NUMLIV, NUMSUP, KAILIV,NUMTOU AS EXPEDICAO,CLILIV FROM FGE50FM",tToInfologPrefixFilename,".GESUPE WHERE REFLIV='",taR_PED_nuPedido[nTempNumeroLinha],"' AND TYPSUP<>3")
+		
+
+
+			log("aqui_0_0",NL)
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+log("aqui_0_1",NL)
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+log("aqui_0_2",NL)
+		bQueryTemResul := FALSE
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					bTemResultadosUmSoVez := TRUE
+				
+				taNUMLIV[nTempNumeroLinha] := peel(taDb2Array["NUMLIV"]," ")
+				taNUMSUP[nTempNumeroLinha] := peel(taDb2Array["NUMSUP"]," ")
+				taKAILIV[nTempNumeroLinha] := peel(taDb2Array["KAILIV"]," ")
+				tEXPEDICAO := peel(taDb2Array["EXPEDICAO"]," ")
+				taCLILIV[nTempNumeroLinha] := peel(taDb2Array["CLILIV"]," ")
+				
+				if bQueryTemResul = FALSE then
+										
+											
+											
+											
+											
+						R_M6200_CODEXC("62")
+						R_M6200_SEPEXC(".")
+						R_M6200_SCOEXC("00")
+						R_M6200_TRTEXC("2")
+						!R_M6200_CODCLI(taR_PED_TVROMNFS_CNLOJCLI[nTempNumeroLinha])
+						R_M6200_CODTRA(taR_PED_TVROMNFS_CNEMP[nTempNumeroLinha])
+						R_M6200_MSGEXP(taR_PED_TVROMNFS_ANPLCVEC[nTempNumeroLinha])
+						
+						!ENVIADO: L10_ROTA_001-D1-10_2017-10-27
+						!REFMIT: 001-D1-10_2017-10-27
+						nPosicaoInicial := 1
+						nPosicaoInicial := index(taR_PED_idGrupoCarga[nTempNumeroLinha],"ROTA_") + 5
+						nComprimento := length(taR_PED_idGrupoCarga[nTempNumeroLinha])
+						tREFMIT := substr(taR_PED_idGrupoCarga[nTempNumeroLinha],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+						R_M6200_REFMIT(taR_PED_idGrupoCarga[nTempNumeroLinha]) !tREFMIT)
+						
+						log("taR_PED_idGrupoCarga[nTempNumeroLinha] ",taR_PED_idGrupoCarga[nTempNumeroLinha],NL)
+						log("tREFMIT ",tREFMIT,NL)
+						
+						!ENVIADO: L10_ROTA_001-D1-10_2017-10-27
+						!TOULIV: 001
+						nPosicaoFinal := 1
+						nPosicaoFinal := (index(tREFMIT,"-")-1)
+						log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+						log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+						tTOULIVCalc := substr(tREFMIT,1,nPosicaoFinal)
+						log("TOULIV formatado ",tTOULIVCalc,NL)
+						R_M6200_TOULIV(build(number(tTOULIVCalc):R04))
+						
+						
+						!taR_PED_inicioPrevisao[nTempNumeroLinha]
+						!ENVIADO: 2017-10-27 05:45:00-02
+						!DATLIV: 20171027
+						
+						R_M6200_DATLIV(tfConvertDate(substr(taR_PED_fimPrevisao[nTempNumeroLinha],1,10), "YYYY-MM-DD" , "YYYYMMDD") )
+						
+						
+						
+						
+
+						R_M6200_KAILIV(taKAILIV[nTempNumeroLinha])
+						!R_M6200_NUMLIV(taNUMLIV[nTempNumeroLinha])
+						!R_M6200_NUMSUP(taNUMSUP[nTempNumeroLinha])
+						
+						log("substr(taR_PED_fimPrevisao[nTempNumeroLinha],1,10) ",substr(taR_PED_fimPrevisao[nTempNumeroLinha],1,10),NL)
+						!ENVIADO: 2017-10-27 05:45:00-02
+						!DATCHT: 20171027
+						R_M6200_DATCHT(tfConvertDate(substr(taR_PED_fimPrevisao[nTempNumeroLinha],1,10), "YYYY-MM-DD" , "YYYYMMDD") )
+						
+						
+						!ENVIADO: 2017-10-27 05:45:00-02
+						!HEUCHT: 054500
+						log("taR_PED_fimPrevisao[nTempNumeroLinha] ",taR_PED_fimPrevisao[nTempNumeroLinha],NL)
+						R_M6200_HEUCHT(tfConvertDate(taR_PED_fimPrevisao[nTempNumeroLinha], "YYYY-MM-DDTHH:MM:SS" , "HHMMSS"))
+						
+						!R_M6200_CODCAM(A)
+						
+											
+						  nContadorLinhasEscritas++
+						  flush(0,0,NL)  >> tFileOutTemp
+				
+						tSucesso := build(tSucesso,taR_PED_nuPedido[nTempNumeroLinha], " : ONDA LANCADA",NL,NL)
+						tSucesso2 := build(tSucesso2,taR_PED_nuPedido[nTempNumeroLinha],NL)
+				endif
+				
+				
+	
+
+	  
+	  
+				  if length(taNUMLIV[nTempNumeroLinha]) > 0 then
+				   R_M6220_CODEXC("62")
+					R_M6220_SEPEXC(".")
+					R_M6220_SCOEXC("20")
+					R_M6220_TRTEXC("2")
+					R_M6220_REFMIT(taR_PED_idGrupoCarga[nTempNumeroLinha]) !tREFMIT)
+					R_M6220_NUMLIV(taNUMLIV[nTempNumeroLinha])
+					R_M6220_CLILIV(taCLILIV[nTempNumeroLinha])
+					R_M6220_NUMSUP(taNUMSUP[nTempNumeroLinha])
+					R_M6220_KAILIV(taKAILIV[nTempNumeroLinha])
+					if length(taR_PED_seqCarga[nTempNumeroLinha]) > 0 then
+						R_M6220_ORDLIV(build(number(taR_PED_seqCarga[nTempNumeroLinha]):R04))
+					endif
+					nContadorLinhasEscritas++
+				  flush(0,0,NL)  >> tFileOutTemp
+				   log("aqui0",NL)
+				
+				  log("aqui0_1",NL)
+				  endif
+			 
+				
+							
+							
+				
+				
+				
+				bQueryTemResul := TRUE
+				
+				
+				
+				remove(taDb2Array)
+
+			endwhile
+			log("aqui_0_3",NL)
+		/*	
+if bQueryTemResul = FALSE then
+			bErroGeral := TRUE
+			tEmailErro := build(tEmailErro,taR_PED_nuPedido[nTempNumeroLinha], " : ONDA NAO LANCADA",NL,NL)
+endif			
+			*/
+log("aqui_0_4",NL)
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+			endif
+
+
+	nTempNumeroLinha++
+
+
+endwhile
+
+
+
+!if bQueryTemResul = FALSE and bSempreAMesmaRota = TRUE then
+
+
+/*
+			if bErroGeral = TRUE  then
+				TRACE := find(build(sHOME,"/trace"),NUMDOC = taR_PED_idGrupoCarga[nNumeroLinha-1],ESTADO="Em Quarentena",MENSAGEM = "ROTEIRIZACAO",MODIFIED >build("now-7d"))
+				if valid(TRACE) then
+					!ja mandou mail anteriormente
+				else
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/Erro",nMessageID:R010,".txt")
+							nPosicaoInicial := 1
+							nPosicaoInicial := index(taR_PED_idGrupoCarga[nTempNumeroLinha],"ROTA_") + 5
+							nComprimento := length(taR_PED_idGrupoCarga[nTempNumeroLinha])
+							tREFMIT := substr(taR_PED_idGrupoCarga[nTempNumeroLinha],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+							nPosicaoFinal := 1
+							nPosicaoFinal := (index(tREFMIT,"-")-1)
+							log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+							log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+							tRota := substr(tREFMIT,1,nPosicaoFinal)	
+					!print("Nao foi possivel criar rota ",tRota,NL,NL,NL,NL) >> tArquivoEmailErro
+					!001511368515357 : ONDA NÃO LANÇADA
+					if length(tSucesso) > 0 then
+						print(tSucesso,NL,NL,tEmailErro,NL,NL,NL,NL) >> tArquivoEmailErro
+						else
+						print(tEmailErro,NL,NL,NL,NL) >> tArquivoEmailErro
+						endif
+					close(tArquivoEmailErro)
+					tSubjectEmail := build("[WMW]_Criacao_de_Rota_no_arquivo_",pEDISEND.ORIGINAL.NAME)
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EmailErroCRC32Ma ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+				endif
+				remove(tArquivoEmailErro)
+			    bfMajtrace("Em Quarentena","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("A query ",tQuery," nao devolveu resultados!"))
+			 
+			    exit(1)
+			   endif
+			   
+			   */
+			   
+			   
+			   
+			   if bTemResultadosUmSoVez = FALSE then
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("A query ",tQuery," nao devolveu resultados!"))
+			       close(tFileOutTemp)
+				remove(tFileOutTemp)
+				exit(1)
+			   endif
+
+log("aqui1",NL)
+
+    R_99FILEFOOTER_CODEXC("99")
+    R_99FILEFOOTER_SEPEXC(".")
+    R_99FILEFOOTER_SCOEXC("00")
+    R_99FILEFOOTER_TRTEXC("")
+    R_99FILEFOOTER_EMTEXC("FM")
+    R_99FILEFOOTER_RCTEXC("")
+    R_99FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+    R_99FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+    R_99FILEFOOTER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_99FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_99FILEFOOTER_NOMSYS("")
+    !R_99FILEFOOTER_NOMDTQ("")
+    !R_99FILEFOOTER_BIBDTQ("")
+    !R_99FILEFOOTER_IDEMSG("")
+    !R_99FILEFOOTER_DISEXC("")
+log("aqui2",NL)
+    flush(0,0,NL)  >> tFileOutTemp
+    close(tFileOutTemp)
+
+	
+			nPosicaoInicial := 1
+		nPosicaoInicial := index(taR_PED_idGrupoCarga[nNumeroLinha-1],"ROTA_") + 5
+		nComprimento := length(taR_PED_idGrupoCarga[nNumeroLinha-1])
+tREFMIT := substr(taR_PED_idGrupoCarga[nNumeroLinha-1],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+		nPosicaoFinal := 1
+		nPosicaoFinal := (index(tREFMIT,"-")-1)
+		log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+		log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+		tRota := substr(tREFMIT,1,nPosicaoFinal)
+	bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+	
+	
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+
+
+bfSqlClose(tDbBase)
+
+
+/*
+
+
+
+Rota L92_ROTA_101-D1-92_2018-02-15 (REFMIT) criada com sucesso para os pedidos:
+
+001513000000030 (REFLIV)
+001513000000031 (REFLIV)
+001513000000034 (REFLIV)
+001513000000042 (REFLIV)
+001513000000044 (REFLIV)
+001513000000046 (REFLIV)
+
+Referência no L2:
+
+DATA: 20180215 (DATLIV)
+ROTA: 0101 (TOULIV)
+EXPEDICAO: XXXXX (NUMTOU)
+
+*/
+
+
+
+
+
+/*
+remove(tArquivoEmailErro)
+tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/Erro",nMessageID:R010,".txt")
+nPosicaoInicial := 1
+nPosicaoInicial := index(taR_PED_idGrupoCarga[nNumeroLinha-1],"ROTA_") + 5
+nComprimento := length(taR_PED_idGrupoCarga[nNumeroLinha-1])
+tREFMIT := substr(taR_PED_idGrupoCarga[nNumeroLinha-1],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+nPosicaoFinal := 1
+nPosicaoFinal := (index(tREFMIT,"-")-1)
+log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+tRota := substr(tREFMIT,1,nPosicaoFinal)	
+!print("Nao foi possivel criar rota ",tRota,NL,NL,NL,NL) >> tArquivoEmailErro
+!001511368515357 : ONDA NÃO LANÇADA
+if length(tSucesso2) > 0 then
+	print(NL,"Rota ",taR_PED_idGrupoCarga[nNumeroLinha-1]," criada com sucesso para os pedidos:",NL,NL,tSucesso2,NL,NL,"Referencia no L2:"\
+	"",NL,NL,"DATA: ",tfConvertDate(substr(taR_PED_inicioPrevisao[nNumeroLinha-1],1,10), "YYYY-MM-DD" , "YYYYMMDD"),NL,"ROTA: ",build(number(tTOULIVCalc):R04),NL,"EXPEDICAO: ",tEXPEDICAO,NL) >> tArquivoEmailErro
+	
+	endif
+close(tArquivoEmailErro)
+tSubjectEmail := build("[WMW]_Rota_Criada_",taR_PED_idGrupoCarga[nNumeroLinha-1]) ![[WMW}_Rota_Criada_L92_ROTA_101-D1-92_2018-02-15  
+tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EmailSucessoM62 ",tArquivoEmailErro)
+log("executing command ",tCmdEmailErro,NL)
+nRet := system(tCmdEmailErro)
+				
+remove(tArquivoEmailErro)
+
+*/
+
+
+
+
+exit(0)
+
+endend
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+/*
+TRACE := find(build(sHOME,"/trace"),NUMDOC = taR_PED_idGrupoCarga[nNumeroLinha-1],MENSAGEM = "ROTEIRIZACAO",ESTADO="Em Quarentena",MODIFIED >build("now-7d"))
+if valid(TRACE) then
+close(tNomeArquivoDevolverFTPMakro)
+remove(tNomeArquivoDevolverFTPMakro)
+	!usa este registo para atualizar o details
+	print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+	print("Em Quarentena",NL) >> TRACE.Detail
+	print(tMensagemErrro,NL) >> TRACE.Detail
+	if length(tSucesso) > 0 then
+		print(tSucesso,NL,NL,tEmailErro,NL,NL) >> TRACE.Detail
+	else
+		print(tEmailErro,NL,NL) >> TRACE.Detail
+	endif
+	TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   if tError="0" then
+	TRACE.LIBEXC := tLIBEXC
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+   endif
+	
+   flush(TRACE)
+   
+   
+else
+
+*/
+   TRACE:=new(build(sHOME,"/trace"))
+     TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "MAKRO"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "ROTEIRIZACAO"
+   TRACE.NUMDOC := taR_PED_idGrupoCarga[nNumeroLinha-1] 
+   TRACE.DATDOC := substr(taR_PED_fimPrevisao[nNumeroLinha-1],1,10)
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.LIBEXC := tLIBEXC
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	  
+    else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		else
+			if tStatus = "Em Quarentena" then
+
+				print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+				print("Em Quarentena",NL) >> TRACE.Detail
+				print(tMensagemErrro,NL) >> TRACE.Detail
+									if length(tSucesso) > 0 then
+						print(tSucesso,NL,NL,tEmailErro,NL,NL) >> TRACE.Detail
+						else
+						print(tEmailErro,NL,NL) >> TRACE.Detail
+						endif
+			endif
+        endif
+  endif
+	close(TRACE.Detail)
+
+
+
+	if nMainIndex = 0 then
+	close(SYSLOG.a)
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	 
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		log("tCmd ",tCmd,NL)
+		system(tCmd)
+	endif
+
+
+	if tError="0" then
+	close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+	endif
+
+
+	flush(TRACE)
+   
+!endif
+ 
+endfunction
+

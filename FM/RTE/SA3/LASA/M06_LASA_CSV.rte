@@ -1,0 +1,356 @@
+%@(#)  M06_LASA_CSV.rte     modif:23-11-2017
+!==============================================================================
+% File          : M06_LASA_CSV.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 23-11-2017  XX  Creation
+! 23-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M06_LASA_CSV"
+#include "include/M06_CSV_LASA.inc"
+#include "include/GEEXM06.inc"
+#include "include/generix_func.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nPos := 1
+	nRec := 1
+	nMessageID := cMessageID
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameGAMAITALY"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    "", \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    "MOV QUALIDADE PALETES", \
+                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+  
+	nCountLine := 0
+	nWhileLine := 1
+endbegin
+
+!===========================================================
+
+line(not "")
+    S_REGISTRO
+	log("S_REGISTRO_CODIGO_PALETE = ", S_REGISTRO_CODIGO_PALETE, NL)
+
+	nCountLine++
+   
+	if nCountLine > 1 then
+		taREFREC[nCountLine] := S_REGISTRO_REFERENCIA_RECEPCAO
+		taMSGLIG[nCountLine] := S_REGISTRO_EMBARQUE
+		taDATERC[nCountLine] := S_REGISTRO_DATA_RECEPCAO
+		taENDERECO[nCountLine] := S_REGISTRO_ENDERECO
+		taCODACT[nCountLine] := S_REGISTRO_ATIVIDADE
+		taCODPRO[nCountLine] := S_REGISTRO_COD_PRODUTO
+		taDS1PRO[nCountLine] := S_REGISTRO_DESCRICAO
+		taCODPAL[nCountLine] := S_REGISTRO_CODIGO_PALETE
+		taCODLOT[nCountLine] := S_REGISTRO_LOTE
+		taUVCSTO[nCountLine] := S_REGISTRO_QUANTIDADE
+		taOldMOTIMM[nCountLine] := S_REGISTRO_MOTIVO_IMOBILIZACAO
+		taDATFVI[nCountLine] := S_REGISTRO_DATA_VALIDADE
+		taNewMOTIMM[nCountLine] := S_REGISTRO_QUALIDADE
+		taREFLIV[nCountLine] := S_REGISTRO_PEDIDO_TOPCAU
+		taVALRUB[nCountLine] := S_REGISTRO_SKU_LASA_DE_PARA
+		taUVCCDE[nCountLine] := S_REGISTRO_QTDE_TOTAL_PEDIDO
+	endif
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	while nWhileLine < nCountLine do
+		nWhileLine++
+		nContadorLinhasEscritas := 0
+
+		bGeraM06 := TRUE
+
+		tQuery := build("SELECT  ZONSTS", NL," "\
+                "       ,ALLSTS", NL," "\
+                "       ,DPLSTS", NL," "\
+                "       ,NIVSTS", NL," "\
+                "       ,MOTIMM", NL," "\
+                "       ,NUMPAL", NL," "\
+                "       ,SNUPAL", NL," "\
+                "       ,UVCSTO", NL," "\
+                "       ,UVCDES", NL," "\
+                "FROM FGE50FM",tToInfologPrefixFilename,".GEPAL", NL," "\
+                "WHERE CODPAL = '",taCODPAL[nWhileLine],"'", NL," "\
+                "AND CODACT = '",taCODACT[nWhileLine],"'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						taCODPAL[nWhileLine], \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						"MOV QUALIDADE PALETES", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						taCODPAL[nWhileLine], \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						"MOV QUALIDADE PALETES", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		bQueryResult := FALSE
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			bQueryResult := TRUE
+			tZONSTS := peel(taDb2Array["ZONSTS"]," ")
+			tALLSTS := peel(taDb2Array["ALLSTS"]," ")
+			tDPLSTS := peel(taDb2Array["DPLSTS"]," ")
+			tNIVSTS := peel(taDb2Array["NIVSTS"]," ")
+			tMOTIMM := peel(taDb2Array["MOTIMM"]," ")
+			tNUMPAL := peel(taDb2Array["NUMPAL"]," ")
+			tSNUPAL := peel(taDb2Array["SNUPAL"]," ")
+			tUVCSTO := peel(taDb2Array["UVCSTO"]," ")
+			tUVCDES := peel(taDb2Array["UVCDES"]," ")
+			remove(taDb2Array)
+		endwhile
+
+		if bQueryResult = FALSE then
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						taCODPAL[nWhileLine], \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						"MOV QUALIDADE PALETES", \
+						build("A query não retornou resultado!"))
+		endif
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						taCODPAL[nWhileLine], \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						"MOV QUALIDADE PALETES", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if number(tUVCDES) > 0 or \
+		build(tZONSTS, "-", tALLSTS, "-", tDPLSTS, "-", tNIVSTS) <> taENDERECO[nWhileLine] and \
+		build(tZONSTS, "-", number(tALLSTS):R03, "-", number(tDPLSTS):R04, "-", number(tNIVSTS):R02) <> taENDERECO[nWhileLine] or \
+		tUVCSTO <> taUVCSTO[nWhileLine] or \
+		tMOTIMM <> taOldMOTIMM[nWhileLine] then
+			bGeraM06 := FALSE
+		endif
+
+		if bGeraM06 = TRUE then
+			tFileOut := build(sHOME, "/ToInfolog/", tToInfologPrefixFilename, "06", build(nMessageID:R015), nWhileLine, ".DAT")
+			tFileOutTemp := build(sHOME, "/ToInfolog/Temp/", tToInfologPrefixFilename, "06", build(nMessageID:R015), nWhileLine, ".DAT")
+			tNameOut := build(tToInfologPrefixFilename, "06", build(nMessageID:R015), nWhileLine, ".DAT")
+
+			R_GEEX0000_CODEXC("00")
+			R_GEEX0000_SEPEXC(".")
+			R_GEEX0000_SCOEXC("00")
+			R_GEEX0000_TRTEXC("")
+			R_GEEX0000_EMTEXC("FM") 
+			R_GEEX0000_RCTEXC("")
+			R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+			R_GEEX0000_NUMEXC("0000000")
+			R_GEEX0000_ACQEXC("0")
+			R_GEEX0000_VEREXC("5.00") 
+			R_GEEX0000_NOMSYS("")  
+			R_GEEX0000_NOMDTQ("M06")
+			R_GEEX0000_BIBDTQ("")
+			R_GEEX0000_LIBEXC(build(nMessageID:R010))
+			R_GEEX0000_BIBDST("")
+			R_GEEX0000_PGMDST("")
+			R_GEEX0000_PARDST("")
+			R_GEEX0000_CODACT("")
+			R_GEEX0000_IGLSIT("")
+			R_GEEX0000_EDISIT("")
+			R_GEEX0000_IMAEXC("")  
+			R_GEEX0000_DISEXC("")
+
+			flush(0,0,NL) >> tFileOutTemp
+
+			R_GEEX0600_CODEXC("06")
+			R_GEEX0600_SEPEXC(".")
+			R_GEEX0600_SCOEXC("00")
+			R_GEEX0600_TRTEXC("1")
+			R_GEEX0600_CODTRT("1")
+			R_GEEX0600_CODPAL(taCODPAL[nWhileLine])
+			R_GEEX0600_MOTIMM(taNewMOTIMM[nWhileLine])
+			R_GEEX0600_CODLOT(taCODLOT[nWhileLine])
+			R_GEEX0600_CODACT(taCODACT[nWhileLine])
+			R_GEEX0600_CODPRO(taCODPRO[nWhileLine])
+			R_GEEX0600_DATFVI(tfConvertDate(taDATFVI[nWhileLine], "DD/MM/YYYY" , "YYYYMMDD"))
+		
+			flush(0,0,NL) >> tFileOutTemp
+			nContadorLinhasEscritas++
+
+			R_GEEX9900_CODEXC("99")
+			R_GEEX9900_SEPEXC(".")
+			R_GEEX9900_SCOEXC("00")
+			R_GEEX9900_TRTEXC("")
+			R_GEEX9900_EMTEXC("FM")
+			R_GEEX9900_RCTEXC("")
+			R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX9900_HEUEXC(time("now" ,"H%M%S"))
+			R_GEEX9900_NUMEXC("")
+			R_GEEX9900_CPTEXC(build(nContadorLinhasEscritas:R08.0))
+
+			flush(0,0,NL)  >> tFileOutTemp
+
+			close(tFileOutTemp)
+			copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+			close(tFileOut)
+
+			bfMajtrace("Recebida", \
+						"0", \
+						taCODPAL[nWhileLine], \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						"MOV QUALIDADE PALETES", \
+						"")
+		else
+			if bQueryResult = TRUE then
+				bfMajtrace("Erro de Traducao", \
+							"1", \
+							taCODPAL[nWhileLine], \
+							time("now","%Y-%m-%d"), \
+							tFileOut, \
+							"MOV QUALIDADE PALETES", \
+							"")
+
+				if number(tUVCDES) > 0 then
+					log("number(tUVCDES) > 0 = ", number(tUVCDES), NL)
+					print("Palete alocado. O UVCDES é maior que 0!", NL, NL) >> TRACE.Detail
+				endif
+
+				if build(tZONSTS, "-", tALLSTS, "-", tDPLSTS, "-", tNIVSTS) <> taENDERECO[nWhileLine] and \
+					build(tZONSTS, "-", number(tALLSTS):R03, "-", number(tDPLSTS):R04, "-", number(tNIVSTS):R02) <> taENDERECO[nWhileLine] then
+					log("build(tZONSTS - tALLSTS - tDPLSTS - tNIVSTS) <> taENDERECO[",nWhileLine,"] = ", build(tZONSTS, "-", tALLSTS, "-", tDPLSTS, "-", tNIVSTS), " / ", taENDERECO[nWhileLine], NL)
+					print("O endereço do CSV(",taENDERECO[nWhileLine],") é diferente do endereço do atual(",build(tZONSTS, "-", tALLSTS, "-", tDPLSTS, "-", tNIVSTS),")!", NL) >> TRACE.Detail
+					print("Zeros não são considerados na comparação!", NL, NL) >> TRACE.Detail
+				endif
+				
+				if tUVCSTO <> taUVCSTO[nWhileLine] then
+					log("tUVCSTO <> taUVCSTO[",nWhileLine,"] = ", tUVCSTO , " / ", taUVCSTO[nWhileLine], NL)
+					print("O UVCSTO do CSV(",taUVCSTO[nWhileLine],") é diferente do UVCSTO do atual(",tUVCSTO,")!", NL, NL) >> TRACE.Detail
+				endif
+
+				if tMOTIMM <> taOldMOTIMM[nWhileLine] then
+					log("tMOTIMM <> taOldMOTIMM[",nWhileLine,"] = ", tMOTIMM , " / ", taOldMOTIMM[nWhileLine], NL)
+					print("O MOTIMM do CSV(",taOldMOTIMM[nWhileLine],") é diferente do MOTIMM do atual(",tMOTIMM,")!", NL, NL) >> TRACE.Detail
+				endif
+			endif
+		endif
+	endwhile 
+	bfSqlClose(tDbBase)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "LASA"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := tMensagem
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL, NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	if tError = "0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction

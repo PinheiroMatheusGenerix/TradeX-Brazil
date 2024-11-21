@@ -1,0 +1,695 @@
+%@(#)  source_filename.rte     modif:01-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_clientespedloreal/fmbrasil_clientespedloreal.cfg" fmbrasil_clientespedloreal
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M50_LOREAL_CSV_IN"
+#include "include/generix_func.inc"
+#include "include/DELVRY_LORAL.inc"
+#include "include/M50.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+    
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameLOREAL"]
+		
+		
+	
+	
+
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+ ! tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+    
+
+
+
+	
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nContadorHeader := 0
+	nContadorItems := 0
+	nMainIndex := 0
+	nNumeroLinha := 0
+	
+	
+	tCODCLIWE := ""
+	tCODCLIAG := ""
+	
+endbegin
+
+!===========================================================
+
+
+
+line(1:"E2EDL20")
+	tREFLIV :=S_E2EDL20003_VBELN
+	tCRILIV:=S_E2EDL20003_ROUTE
+	tTOULIV:=substr(S_E2EDL20003_ROUTE,(length(S_E2EDL20003_ROUTE)-3),4)
+	tDIPLIV:=S_E2EDL20003_LIFEX
+	tVKORG:=S_E2EDL20003_VKORG
+	
+	!tDTILIV:=S_E2EDL20003_PODAT
+	!tHEILIV:=S_E2EDL20003_POTIM
+	
+endline
+
+line(1:"E2EDL21")
+   tCODTLI := substr(S_E2EDL21_LFART,(length(S_E2EDL21_LFART)-2),3) 
+endline
+
+ 
+
+line(1:"E2ADRM1")
+   tQualADRM1 := ""
+   tQualADRM1 := S_E2ADRM1001_PARTNER_Q
+   if tQualADRM1 = "WE" then
+      tCODCLIWE := S_E2ADRM1001_PARTNER_ID
+      tNOMCLIWE := S_E2ADRM1001_NAME1
+      tAD1CLIWE := S_E2ADRM1001_STREET1
+      tCPICLIWE := S_E2ADRM1001_POSTL_COD1
+      tVILCLIWE := build(S_E2ADRM1001_CITY1,"-",S_E2ADRM1001_REGION)
+      tAD2CLIWE := S_E2ADRM1001_CITY2
+	  tPAYCLIWE := S_E2ADRM1001_COUNTRY1
+	  
+	 ! CONCATENAR CITY1 "-" REGION
+
+   endif 
+   
+      if tQualADRM1 = "AG" then
+      tCODCLIAG := S_E2ADRM1001_PARTNER_ID
+      tNOMCLIAG := S_E2ADRM1001_NAME1
+      tAD1CLIAG := S_E2ADRM1001_STREET1
+      tCPICLIAG := S_E2ADRM1001_POSTL_COD1
+      tVILCLIAG := build(S_E2ADRM1001_CITY1,"-",S_E2ADRM1001_REGION)
+      tAD2CLIAG := S_E2ADRM1001_CITY2
+	  tPAYCLIAG := S_E2ADRM1001_COUNTRY1
+	 ! CONCATENAR CITY1 "-" REGION
+
+   endif 
+   
+   
+         if tQualADRM1 = "OSP" then
+      tVSTEL := S_E2ADRM1001_PARTNER_ID
+      
+
+
+   endif 
+
+
+endline
+
+
+line(1:"E2EDT13")
+
+   
+   if S_E2EDT13001_QUALF = "006" then
+      tDTILIV := S_E2EDT13001_NTANF
+	  tHEULIV := S_E2EDT13001_NTANF
+   endif
+   
+   if S_E2EDT13001_QUALF = "007" then
+      tDATEXP := S_E2EDT13001_NTANF
+	  tHEILIV := S_E2EDT13001_NTANF
+   endif
+   
+endline
+
+line(1:"E2EDL24")
+
+	nNumeroLinha++
+	!taNumeroLinha[nNumeroLinha] := build(nNumeroLinha)
+	taNumeroLinha[nNumeroLinha]:=S_E2EDL24007_POSNR
+	taCODPRO[nNumeroLinha]:=S_E2EDL24007_MATNR
+	taUVCCDE[nNumeroLinha]:=S_E2EDL24007_LFIMG
+			taCentro[nNumeroLinha]:=S_E2EDL24007_WERKS
+	taDeposito[nNumeroLinha]:=S_E2EDL24007_LGORT
+	/*
+	taMaterialentrado[nNumeroLinha]:=S_E2EDL24007_MATWA
+	taDescricaoItemCliente[nNumeroLinha]:=S_E2EDL24007_ARKTX
+	taDescricaoItemEntrado[nNumeroLinha]:=S_E2EDL24007_ORKTX
+	taMotivoSubstituicao[nNumeroLinha]:=S_E2EDL24007_SUGRD
+	taEntradaInicialImpressa[nNumeroLinha]:=S_E2EDL24007_SUDRU
+	taGrupodemercadorias[nNumeroLinha]:=S_E2EDL24007_MATKL
+	taCentro[nNumeroLinha]:=S_E2EDL24007_WERKS
+	taDeposito[nNumeroLinha]:=S_E2EDL24007_LGORT
+	taNumerodolote[nNumeroLinha]:=S_E2EDL24007_CHARG
+	taMaterialdocliente[nNumeroLinha]:=S_E2EDL24007_KDMAT
+	
+	taUnidadeVenda[nNumeroLinha]:=S_E2EDL24007_VRKME
+	taQuantidadeFornecidaStock[nNumeroLinha]:=S_E2EDL24007_LGMNG
+	taUnidadeDeMedidaBasica[nNumeroLinha]:=S_E2EDL24007_MEINS
+	taPesoliquido[nNumeroLinha]:=S_E2EDL24007_NTGEW
+	taPesobruto[nNumeroLinha]:=S_E2EDL24007_BRGEW
+	taUnidadeDePeso[nNumeroLinha]:=S_E2EDL24007_GEWEI
+	taVolume[nNumeroLinha]:=S_E2EDL24007_VOLUM
+	taUnidadedeVolume[nNumeroLinha]:=S_E2EDL24007_VOLEH
+	taPosicaoDeposito[nNumeroLinha]:=S_E2EDL24007_LGPBE
+	taItemSuperiorHierarquia[nNumeroLinha]:=S_E2EDL24007_HIPOS
+	taUtilizacaodoitemhierarquico[nNumeroLinha]:=S_E2EDL24007_HIEVW
+	taGrupodecarregamento[nNumeroLinha]:=S_E2EDL24007_LADGR
+	taGrupodetransporte[nNumeroLinha]:=S_E2EDL24007_TRAGR
+	taEscritoriodevendas[nNumeroLinha]:=S_E2EDL24007_VKBUR
+	taEquipedevendas[nNumeroLinha]:=S_E2EDL24007_VKGRP
+	taCanaldedistribuicao[nNumeroLinha]:=S_E2EDL24007_VTWEG
+	taSetordeatividade[nNumeroLinha]:=S_E2EDL24007_SPART
+	taGruporemessa[nNumeroLinha]:=S_E2EDL24007_GRKOR
+	taNeuropeudoartigo[nNumeroLinha]:=S_E2EDL24007_EAN11
+	taCodigodaserie[nNumeroLinha]:=S_E2EDL24007_SERNR
+	taStatusdemodificacaonocliente[nNumeroLinha]:=S_E2EDL24007_AESKD
+	taPontoderecebimento[nNumeroLinha]:=S_E2EDL24007_EMPST
+	taGrupodefretematerial[nNumeroLinha]:=S_E2EDL24007_MFRGR
+	taLocaldeconsumodocliente[nNumeroLinha]:=S_E2EDL24007_VBRST
+	taNumeroJIT[nNumeroLinha]:=S_E2EDL24007_LABNK
+	taDatadasolicitacaoderemessa[nNumeroLinha]:=S_E2EDL24007_ABRDT
+	taNpecadefabricante[nNumeroLinha]:=S_E2EDL24007_MFRPN
+	taNdeumfabricante[nNumeroLinha]:=S_E2EDL24007_MFRNR
+	taCodigodeutilizacao[nNumeroLinha]:=S_E2EDL24007_ABRVW
+	taMaterialdocliente[nNumeroLinha]:=S_E2EDL24007_KDMAT35
+	taNKANBAN_sequencial[nNumeroLinha]:=S_E2EDL24007_KANNR
+	taNitemexterno[nNumeroLinha]:=S_E2EDL24007_POSEX
+	taQtdacumuladafornecida[nNumeroLinha]:=S_E2EDL24007_LIEFFZ
+	taReservacliente11[nNumeroLinha]:=S_E2EDL24007_USR01
+	taReservacliente12[nNumeroLinha]:=S_E2EDL24007_USR02
+	taReservacliente13[nNumeroLinha]:=S_E2EDL24007_USR03
+	taReservacliente14[nNumeroLinha]:=S_E2EDL24007_USR04
+	taReservacliente15[nNumeroLinha]:=S_E2EDL24007_USR05
+	taNdomaterial[nNumeroLinha]:=S_E2EDL24007_MATNR_EXTERNAL
+	taNdeversaoparacampoMATNR[nNumeroLinha]:=S_E2EDL24007_MATNR_VERSION
+	taGUIDexternoparacampoMATNR[nNumeroLinha]:=S_E2EDL24007_MATNR_GUID
+	taMaterialentrado[nNumeroLinha]:=S_E2EDL24007_MATWA_EXTERNAL
+	taNdeversaoparacampoMATWA[nNumeroLinha]:=S_E2EDL24007_MATWA_VERSION
+	taGUIDexternoparacampoMATWA[nNumeroLinha]:=S_E2EDL24007_MATWA_GUID
+	taDadosadicionais[nNumeroLinha]:=S_E2EDL24007_ZUDAT
+	taDatadovencimento[nNumeroLinha]:=S_E2EDL24007_VFDAT
+	taNRMA[nNumeroLinha]:=S_E2EDL24007_RMA_NUMBER
+	taCodigodeencerramentoRMA[nNumeroLinha]:=S_E2EDL24007_RMA_COMPLETE
+	taFimdaValidRecDevolucoes[nNumeroLinha]:=S_E2EDL24007_EXPIRY_DATE_EXT
+	taNDocReferencia[nNumeroLinha]:=S_E2EDL24007_VGBEL
+	taNitemdoitemcomercialmodelo[nNumeroLinha]:=S_E2EDL24007_VGPOS
+	taCodigoAtividadeSubsequente[nNumeroLinha]:=S_E2EDL24007_FOLLOW_UP_CODE
+	taQuantidadeOriginalItem[nNumeroLinha]:=S_E2EDL24007_ORMNG
+	taCodigodeconclusao[nNumeroLinha]:=S_E2EDL24007_COMPL
+	taItemNaoconcluido[nNumeroLinha]:=S_E2EDL24007_HOLD
+	taOcorreutipodeerromaximo[nNumeroLinha]:=S_E2EDL24007_MAX_ERR_TYPE
+	taNlotedofornecedor[nNumeroLinha]:=S_E2EDL24007_LICHN
+	taCriadoporrecebedor[nNumeroLinha]:=S_E2EDL24007_RECIPIENT_CREATE
+	taInicioValidRecDevolucoes[nNumeroLinha]:=S_E2EDL24007_EXPIRY_DATE_EXT_B
+
+
+	taNumeroItem[nNumeroLinha] := S_E2EDL24007_POSNR
+	taCodigoArtigoFornecedor[nNumeroLinha] := S_E2EDL24007_MATNR
+	taDescricaoArtigo[nNumeroLinha] := S_E2EDL24007_ARKTX
+	taLote[nNumeroLinha] := S_E2EDL24007_CHARG
+	taQuantidadeFonecida[nNumeroLinha] := S_E2EDL24007_LFIMG
+	taUOM[nNumeroLinha] := S_E2EDL24007_VRKME
+	taCodigoArtigoStandard[nNumeroLinha] := S_E2EDL24007_EAN11
+	taPVP[nNumeroLinha] := S_E2EDL24007_NTGEW
+	taTaxaIVA[nNumeroLinha] := S_E2EDL24007_BRGEW
+
+	
+	*/
+endline
+
+
+line(1:"E2EDL15")
+	/*
+	taE2EDL15_ATINN[tQualifier] := S_E2EDL15_ATINN
+	taE2EDL15_ATNAM[tQualifier] := S_E2EDL15_ATNAM
+	taE2EDL15_ATBEZ[tQualifier] := S_E2EDL15_ATBEZ
+	taE2EDL15_ATWRT[tQualifier] := S_E2EDL15_ATWRT
+	taE2EDL15_ATWTB[tQualifier] := S_E2EDL15_ATWTB
+	taE2EDL15_EWAHR[tQualifier] := S_E2EDL15_EWAHR
+*/
+
+
+   tQualDL15 := ""
+   tQualDL15 := S_E2EDL15_ATNAM
+   if tQualDL15 = "LOBM_VFDAT" then
+      taDataValidade[nNumeroLinha] := S_E2EDL15_ATWRT
+   endif
+   
+endline
+
+
+line(1:"E2EDL43")
+   tQualfDL43 := ""
+   tQualfDL43 :=  S_E2EDL43000_QUALF
+   
+   if tQualfDL43 = "C" then 
+      taNumeroLinhaEncomendaOriginal[nNumeroLinha] := S_E2EDL43000_POSNR
+   endif
+endline
+
+
+line(1:"E2EDL41")
+   tQualfDL41 := ""
+   tQualfDL41 := S_E2EDL41000_QUALI
+   if tQualfDL41 = "001" then 
+      taNumeroEncomedaCliente[nNumeroLinha] := S_E2EDL41000_BSTNR
+      taNumeroLinhaEncomendaCliente[nNumeroLinha] := S_E2EDL41000_POSEX
+   endif
+endline
+
+line(1:"E2EDS01")
+!   tQualfDS01 :=
+   
+   
+endline
+
+
+   
+   
+
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+!tCODCLI := "33306929000798"
+
+
+      if length(tCODCLIAG) > 0 then
+		tCODCLI:= tCODCLIAG
+		tNOMCLI := tNOMCLIAG
+		tAD1CLI := tAD1CLIAG
+		tCPICLI := tCPICLIAG
+		tVILCLI := tVILCLIAG
+		tAD2CLI := tAD2CLIAG
+		tPAYCLI := tPAYCLIAG
+	else
+		tCODCLI:= tCODCLIWE
+		tNOMCLI := tNOMCLIWE
+		tAD1CLI := tAD1CLIWE
+		tCPICLI := tCPICLIWE
+		tVILCLI := tVILCLIWE
+		tAD2CLI := tAD2CLIWE
+		tPAYCLI := tPAYCLIWE
+	 endif	
+
+	 
+	 
+   if length(tCODCLI) > 0 then
+	   fmbrasil_clientespedloreal := find(build(sHOME,"/fmbrasil_clientespedloreal"),CODCLI=tCODCLI)
+	   if valid(fmbrasil_clientespedloreal) then
+			! segue processo normalmente
+			tCLILIV := fmbrasil_clientespedloreal.CNPJFILIAL
+		else
+	   
+		  !bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Cliente: ",tCODCLI," nao existe na tabela fmbrasil_clientespedloreal!"))
+			
+		  !exit(1)
+		  tCLILIV := ""
+	   endif
+	else
+		!bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Cliente (CODCLI) nao preenchido no FOP!"))
+			
+		 ! exit(1)
+		 tCLILIV := ""
+   endif
+
+
+nContadorHeaderTmp := 1
+
+
+  if nContadorLinhasEscritas = 0 then
+
+
+     R_0000HEADER_CODEXC("00")
+     R_0000HEADER_SEPEXC(".")
+     R_0000HEADER_SCOEXC("00")
+     R_0000HEADER_TRTEXC("")
+     R_0000HEADER_EMTEXC("FM") 
+     R_0000HEADER_RCTEXC("")
+     R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_0000HEADER_NUMEXC("0000000")
+     R_0000HEADER_ACQEXC("0")
+     R_0000HEADER_VEREXC("5.00") 
+     R_0000HEADER_NOMSYS("")  
+     R_0000HEADER_NOMDTQ("M50")
+     R_0000HEADER_BIBDTQ("")
+     R_0000HEADER_LIBEXC(build(nMessageID:R010))
+     R_0000HEADER_BIBDST("")
+     R_0000HEADER_PGMDST("")
+     R_0000HEADER_PARDST("")
+     R_0000HEADER_CODACT("")
+     R_0000HEADER_IGLSIT("")
+     R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_0000HEADER_IMAEXC("")  
+     !R_0000HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+     nContadorLinhasEscritas++
+   endif
+
+
+   
+   
+   
+   tCODACTConst := taCentro[1]
+   
+   
+   
+   
+   R_5000ORDERHEADER_CODEXC("50")
+   R_5000ORDERHEADER_SEPEXC(".")
+   R_5000ORDERHEADER_SCOEXC("00")
+   R_5000ORDERHEADER_CODACT(tCODACTConst)
+   R_5000ORDERHEADER_CODCLI(tCODCLI)  
+   R_5000ORDERHEADER_CLILIV(tCLILIV) !  tNumeroPedido)
+
+   R_5000ORDERHEADER_REFLIV(tREFLIV)
+   R_5000ORDERHEADER_DTILIV(tDTILIV)
+   R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
+   
+ 
+ 
+		R_5000ORDERHEADER_CODTLI(tCODTLI )
+	R_5000ORDERHEADER_TOULIV(tTOULIV)
+	
+	
+
+
+	R_5000ORDERHEADER_MSGLIV1(build(tDIPLIV))
+	
+   
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+   R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
+   R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
+   R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
+   R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACTConst)
+   R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
+   !R_5000ORDERHEADER_CLILIV(tCentroDeCusto) !  tNumeroPedido)
+
+   R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
+R_5001ORDERHEADER_COMPLEMENT_CRILIV(tCRILIV)
+R_5001ORDERHEADER_COMPLEMENT_DIPLIV(build(taCentro[1],"+",taDeposito[1])) !,"+",taCentro[1],"+",taDeposito[1]))
+R_5001ORDERHEADER_COMPLEMENT_HEUEXP(tHEULIV)
+R_5001ORDERHEADER_COMPLEMENT_DATEXP(tDATEXP)
+
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+
+
+   R_GEEX5005_CODEXC("50")   ! C N Code du mouvement d'échange-Code exchange movement
+   R_GEEX5005_SEPEXC(".")   ! C AN Séparateur entre code et sous-code-Separator between code and subcode
+   R_GEEX5005_SCOEXC("05")   ! C N Sous-code du mouvement d'échange-Subcode exchange movement
+  !R_GEEX5005_TRTEXC("")   ! C AN Code traitement du mouvement-motion processing codes
+  !R_GEEX5005_NUMLIV("")   ! C N Numéro de la commande à livrer-Order Number to deliver
+  !R_GEEX5005_SNULIV("")   ! C N Sous-numéro de la commande à livrer-Sub-order number for delivery
+  R_GEEX5005_CODACT(tCODACTConst)   ! C AN Code activité logistique-Code logistics buss
+  R_GEEX5005_CODCLI(tCODCLI)   ! C AN Code du client (Commandé par)-Custt
+  R_GEEX5005_REFLIV(tREFLIV)   ! C AN Référence de la livraison-Number oo f delivery
+
+
+   R_GEEX5005_CODRUB("VORG")   ! C AN Code de la rubrique-Code of item
+   R_GEEX5005_VALRUB(tVKORG)   ! C AN Valeur de la rubrique-Value in field
+  !R_GEEX5005_DISEXC("")   ! C AN Zone disponible pour de futures utilisations-Area available for future use
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+   R_GEEX5005_CODEXC("50")   ! C N Code du mouvement d'échange-Code exchange movement
+   R_GEEX5005_SEPEXC(".")   ! C AN Séparateur entre code et sous-code-Separator between code and subcode
+   R_GEEX5005_SCOEXC("05")   ! C N Sous-code du mouvement d'échange-Subcode exchange movement
+  !R_GEEX5005_TRTEXC("")   ! C AN Code traitement du mouvement-motion processing codes
+  !R_GEEX5005_NUMLIV("")   ! C N Numéro de la commande à livrer-Order Number to deliver
+  !R_GEEX5005_SNULIV("")   ! C N Sous-numéro de la commande à livrer-Sub-order number for delivery
+  R_GEEX5005_CODACT(tCODACTConst)   ! C AN Code activité logistique-Code logistics buss
+  R_GEEX5005_CODCLI(tCODCLI)   ! C AN Code du client (Commandé par)-Custt
+  R_GEEX5005_REFLIV(tREFLIV)   ! C AN Référence de la livraison-Number oo f delivery
+
+
+   R_GEEX5005_CODRUB("VTEL")   ! C AN Code de la rubrique-Code of item
+   R_GEEX5005_VALRUB(tVSTEL)   ! C AN Valeur de la rubrique-Value in field
+  !R_GEEX5005_DISEXC("")   ! C AN Zone disponible pour de futures utilisations-Area available for future use
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+/*
+		tCODCLI:= tCODCLIAG
+		tNOMCLI := tNOMCLIAG
+		tAD1CLI := tAD1CLIAG
+		tCPICLI := tCPICLIAG
+		tVILCLI := tVILCLIAG
+		tAD2CLI := tAD2CLIAG
+*/
+
+						R_5010_CODEXC("50")
+						   R_5010_SEPEXC(".")
+						   R_5010_SCOEXC("10")
+						 R_5010_CODACT(tCODACTConst)
+				
+						R_5010_NOMCLI(tNOMCLI ) 
+						
+						 R_5010_CODCLI(tCODCLI) 
+						
+						 R_5010_REFLIV(tREFLIV)
+						   R_5010_NOMCLI(tNOMCLI)
+						   R_5010_AD1CLI(tAD1CLI)
+						   R_5010_VILCLI(tVILCLI)
+						   R_5010_CPICLI(tCPICLI)
+						   R_5010_AD2CLI(tAD2CLI)
+						   R_5010_PAYCLI(tPAYCLI)
+						   !R_5010_HEILIV(substr(tHoraEntregaPrevista,1,4) )
+						   !R_5010_CODTLI("PRO" )
+						   !R_5010_KAILIV("999" )
+						   
+		flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+		nContadorLinhasEscritas++
+		
+		
+		
+		
+
+
+      nContadorLinhasEncomenda := 0
+      
+      
+         nContador := 8
+         print("ve ",peel(taREGISTO[nContador+1],"\""),NL)
+
+nContadorTmpTOTAL := 1
+
+
+!   while length(peel(taREGISTO[nContador+1],"\"")) > 0 then
+ while nContadorTmpTOTAL <= nNumeroLinha do  
+      
+		   R_5020ORDERLINE_CODEXC("50")
+		   R_5020ORDERLINE_SEPEXC(".")
+		   R_5020ORDERLINE_SCOEXC("20")
+		   R_5020ORDERLINE_CODACT(tCODACTConst)
+		   R_5020ORDERLINE_CODCLI(tCODCLI)
+		   R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
+		   
+					
+					 
+         
+
+				R_5020ORDERLINE_UVCCDE(taUVCCDE[nContadorTmpTOTAL])
+		
+		   R_5020ORDERLINE_REFLIV(tREFLIV)
+		   nContadorLinhasEncomenda++
+		   R_5020ORDERLINE_NLILIV(build(number(taNumeroLinha[nContadorTmpTOTAL]):R05.0)) !build(nContadorLinhasEncomenda:R05.0)) !(build(number(taNumeroLinha[nContadorTmpTOTAL]):R05.0))
+		   flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+			nContadorLinhasEscritas++
+		
+   
+ /*
+
+         R_5025ORDERLINE_CODEXC("50")
+			R_5025ORDERLINE_SEPEXC(".")
+			R_5025ORDERLINE_SCOEXC("25")
+			R_5025ORDERLINE_CODACT(tCODACTConst)
+			R_5025ORDERLINE_CODCLI(tCODCLI) !(taCODCLI[nTempNumeroLinha2])
+			R_5025ORDERLINE_REFLIV(tREFLIV)
+			!R_5025ORDERLINE_CODPAL(taCODPAL[nTempNumeroLinha2])
+			R_5025ORDERLINE_NLILIV(build(nContadorLinhasEncomenda:R05.0))
+			R_5025ORDERLINE_CODRUB("LORI") 
+			R_5025ORDERLINE_VALRUB(taNumeroLinha[nContadorTmpTOTAL])
+ flush(0,0,NL) >> tFileOutTemp 
+nContadorLinhasEscritas++
+*/
+   
+   
+		
+		nContadorTmpTOTAL++
+   endwhile
+
+
+    
+    
+    R_5099ORDERFOOTER_CODEXC("50")
+		   R_5099ORDERFOOTER_SEPEXC(".")
+		   R_5099ORDERFOOTER_SCOEXC("99")
+		   R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))!ver conversao
+		R_5099ORDERFOOTER_CODACT(tCODACTConst)
+		R_5099ORDERFOOTER_CODCLI(tCODCLI)
+		   !tTotalLinhas
+		 R_5099ORDERFOOTER_REFLIV(tREFLIV)
+		   
+    flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+   nContadorLinhasEscritas++
+   
+   bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+   
+
+
+   
+   
+   
+   
+    R_9900FILEFOOTER_CODEXC("99")
+    R_9900FILEFOOTER_SEPEXC(".")
+    R_9900FILEFOOTER_SCOEXC("00")
+    R_9900FILEFOOTER_TRTEXC("")
+    R_9900FILEFOOTER_EMTEXC("FM")
+    R_9900FILEFOOTER_RCTEXC("")
+    R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+    R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+    R_9900FILEFOOTER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_9900FILEFOOTER_NOMSYS("")
+    !R_9900FILEFOOTER_NOMDTQ("")
+    !R_9900FILEFOOTER_BIBDTQ("")
+    !R_9900FILEFOOTER_IDEMSG("")
+    !R_9900FILEFOOTER_DISEXC("")
+
+    flush(0,0,NL)  >> tFileOutTemp
+    close(tFileOutTemp)
+
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+		
+		
+
+exit(0)
+
+endend
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "LOREAL"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "PEDIDO"
+   TRACE.NUMDOC := tREFLIV 
+   TRACE.DATDOC := tfConvertDate(tDTILIV, "YYYYMMDD" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+ TRACE.LIBEXC := tLIBEXC
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+if tError="0" then
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+endif
+
+
+flush(TRACE)
+endfunction
+

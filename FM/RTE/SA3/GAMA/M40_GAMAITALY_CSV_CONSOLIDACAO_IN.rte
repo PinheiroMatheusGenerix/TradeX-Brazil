@@ -1,0 +1,368 @@
+%@(#)  source_filename.rte     modif:01-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_consolidacao_m40gamaitaly/fmbrasil_consolidacao_m40gamaitaly.cfg" fmbrasil_consolidacao_m40gamaitaly,autoflush off
+base "../fmbrasil_consolidacao_m40gamaitaly/fmbrasil_consolidacao_m40gamaitaly.cfg" fmbrasil_consolidacao_m40gamaitalylinhas,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M40_GAMAITALY_CSV_CONSOLIDACAO_IN"
+#include "include/generix_func.inc"
+#include "include/M40_CSV_CONS_GAMA_ITALY.inc"
+#include "include/M40.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+	!PROCESS_ERRONEOUS := TRUE
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameGAMAITALY"]
+
+	tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+	tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+	! tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+
+	bJafez00 := FALSE
+	nContadorLinhasEscritas  := 0
+	nContadorHeader := 0
+	nContadorItems := 0
+	nMainIndex := 0
+	nNumeroMonoRegisto := 0
+	bHeader := TRUE
+endbegin
+
+!===========================================================
+
+line(not "")
+	S_Linha
+	if length (S_Linha_CODACT) > 0 then 
+		if bHeader = TRUE then
+			bHeader := FALSE
+			!ignora o header
+		else
+			nNumeroMonoRegisto++
+			
+			taCODACT[nNumeroMonoRegisto] := S_Linha_CODACT
+			taCODTRE[nNumeroMonoRegisto] := S_Linha_CODTRE
+			taDTIREC[nNumeroMonoRegisto] := tfConvertDate(S_Linha_DTIREC, "DD/MM/YYYY" , "YYYYMMDD")
+			taHEIREC[nNumeroMonoRegisto] := tfConvertDate(S_Linha_HEIREC, "HH:MM" , "HHMM")
+			taREFREC[nNumeroMonoRegisto] := S_Linha_REFREC
+			taCODTRA[nNumeroMonoRegisto] := S_Linha_CODTRA
+			taMOTIMM[S_Linha_REFRECxmlsIntegrados] := peel(S_Linha_MOTIMM, " ")
+			taREFRECxmlsIntegrados[nNumeroMonoRegisto] := S_Linha_REFRECxmlsIntegrados
+			log("taREFREC ",taREFREC[nNumeroMonoRegisto],NL)
+			log("taREFRECxmlsIntegrados",taREFRECxmlsIntegrados[nNumeroMonoRegisto],NL)
+			baJaFezEsteREFREC[nNumeroMonoRegisto] := FALSE
+		endif
+	endif
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	nTempNumeroMonoRegisto := 1
+	while nTempNumeroMonoRegisto <= nNumeroMonoRegisto do
+		if baJaFezEsteREFREC[nTempNumeroMonoRegisto] = FALSE then
+			!faz um M40 novo
+			if bJafez00 = FALSE then
+				bJafez00 := TRUE
+				R_00HEADER_CODEXC("00")
+				R_00HEADER_SEPEXC(".")
+				R_00HEADER_SCOEXC("00")
+				R_00HEADER_TRTEXC("")
+				R_00HEADER_EMTEXC("FM") 
+				R_00HEADER_RCTEXC("")
+				R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+				R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+				R_00HEADER_NUMEXC("0000000")
+				R_00HEADER_ACQEXC("0")
+				R_00HEADER_VEREXC("5.00") 
+				R_00HEADER_NOMSYS("")  
+				R_00HEADER_NOMDTQ("M40")
+				R_00HEADER_BIBDTQ("")
+				R_00HEADER_LIBEXC(build(nMessageID:R010))
+				R_00HEADER_BIBDST("")
+				R_00HEADER_PGMDST("")
+				R_00HEADER_PARDST("")
+				R_00HEADER_CODACT("")
+				R_00HEADER_IGLSIT("")
+				R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+				R_00HEADER_IMAEXC("")  
+				R_00HEADER_DISEXC("")
+				
+				flush(0,0,NL) >> tFileOutTemp  
+				nContadorLinhasEscritas++
+			endif   
+			split(taREFRECxmlsIntegrados[nTempNumeroMonoRegisto],taREFRECxmlsIntegradosSplit,".")
+			fmbrasil_consolidacao_m40gamaitaly := find(build(sHOME,"/fmbrasil_consolidacao_m40gamaitaly"),NF=taREFRECxmlsIntegradosSplit[1],SNF=taREFRECxmlsIntegradosSplit[2],CODACT=taCODACT[nTempNumeroMonoRegisto])	
+
+			if valid(fmbrasil_consolidacao_m40gamaitaly) then
+				TRACE:=new(build(sHOME,"/trace"))
+				flush(TRACE)
+				
+				nContadorAuxRubricas := 0
+				remove(taFezRubicaREFRECIntegrados)
+				
+				nContadorRubricas := 0
+				R_40HEADER_CODEXC("40")
+				R_40HEADER_SEPEXC(".")
+				R_40HEADER_SCOEXC("00")
+				R_40HEADER_REFREC(taREFREC[nTempNumeroMonoRegisto] )
+				R_40HEADER_CODTRE(taCODTRE[nTempNumeroMonoRegisto] )
+				R_40HEADER_EDIFOU(fmbrasil_consolidacao_m40gamaitaly.EDIFOU )
+				R_40HEADER_CODFOU(fmbrasil_consolidacao_m40gamaitaly.CODFOU )
+				R_40HEADER_CODACT(taCODACT[nTempNumeroMonoRegisto] )
+				R_40HEADER_DTIREC(taDTIREC[nTempNumeroMonoRegisto])
+				R_40HEADER_HEIREC(taHEIREC[nTempNumeroMonoRegisto])
+				R_40HEADER_CODTRA(taCODTRA[nTempNumeroMonoRegisto])
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				R_40_01ORDHEADER_CODEXC("40")
+				R_40_01ORDHEADER_SEPEXC(".")
+				R_40_01ORDHEADER_SCOEXC("01")
+				R_40_01ORDHEADER_REFREC(taREFREC[nTempNumeroMonoRegisto] )
+				R_40_01ORDHEADER_DIPREC(fmbrasil_consolidacao_m40gamaitaly.DIPREC)
+				R_40_01ORDHEADER_NOMFOU(fmbrasil_consolidacao_m40gamaitaly.NOMFOU)
+				R_40_01ORDHEADER_AD1FOU(fmbrasil_consolidacao_m40gamaitaly.AD1FOU)
+				R_40_01ORDHEADER_AD2FOU(fmbrasil_consolidacao_m40gamaitaly.AD2FOU)
+				R_40_01ORDHEADER_VILFOU(fmbrasil_consolidacao_m40gamaitaly.VILFOU)
+				R_40_01ORDHEADER_PAYFOU(fmbrasil_consolidacao_m40gamaitaly.PAYFOU)
+				R_40_01ORDHEADER_TELFOU(fmbrasil_consolidacao_m40gamaitaly.TELFOU)
+				R_40_01ORDHEADER_TYPFOU(fmbrasil_consolidacao_m40gamaitaly.TYPFOU)
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				R_40_02ORDHEADER_CODEXC("40")
+				R_40_02ORDHEADER_SEPEXC(".")
+				R_40_02ORDHEADER_SCOEXC("02")
+				R_40_02ORDHEADER_REFREC(taREFREC[nTempNumeroMonoRegisto])
+				R_40_02ORDHEADER_CPIFOU(fmbrasil_consolidacao_m40gamaitaly.CPIFOU)
+										
+				flush(0,0,NL) >> tFileOutTemp  
+				nContadorLinhasEscritas++
+
+				nNumeroItemsREFRECConsolidade := 0
+				remove(taCODPROREFRECConsolidade)
+				remove(taNLIRECREFRECConsolidade)
+				remove(taUNICDEREFRECConsolidade)
+				remove(taUVCREAREFRECConsolidade)
+								
+				!leitura array quantidades
+				nTempNumeroMonoRegisto2 := nTempNumeroMonoRegisto
+				while nTempNumeroMonoRegisto2 <= nNumeroMonoRegisto do											
+					if taREFREC[nTempNumeroMonoRegisto2] = taREFREC[nTempNumeroMonoRegisto] and taCODACT[nTempNumeroMonoRegisto2] = taCODACT[nTempNumeroMonoRegisto] then
+						baJaFezEsteREFREC[nTempNumeroMonoRegisto2] := TRUE
+						split(taREFRECxmlsIntegrados[nTempNumeroMonoRegisto2],taREFRECxmlsIntegradosSplitItem,".")
+						fmbrasil_consolidacao_m40gamaitalylinhas := find(build(sHOME,"/fmbrasil_consolidacao_m40gamaitaly"),NF=taREFRECxmlsIntegradosSplitItem[1],SNF=taREFRECxmlsIntegradosSplitItem[2],CODACT=taCODACT[nTempNumeroMonoRegisto2])	
+						while valid(fmbrasil_consolidacao_m40gamaitalylinhas) do
+							nNumeroItemsREFRECConsolidade++
+							baLinhaCODPRORepetido[nNumeroItemsREFRECConsolidade] := FALSE
+							taCODPROREFRECConsolidade[nNumeroItemsREFRECConsolidade] := fmbrasil_consolidacao_m40gamaitalylinhas.CODPRO
+							taNLIRECREFRECConsolidade[nNumeroItemsREFRECConsolidade] := fmbrasil_consolidacao_m40gamaitalylinhas.NLIREC
+							taUNICDEREFRECConsolidade[nNumeroItemsREFRECConsolidade] := fmbrasil_consolidacao_m40gamaitalylinhas.UNICDE
+							taUVCREAREFRECConsolidade[nNumeroItemsREFRECConsolidade] := fmbrasil_consolidacao_m40gamaitalylinhas.UVCREA
+							taMOTIMMConsolidade[nNumeroItemsREFRECConsolidade] := build(fmbrasil_consolidacao_m40gamaitalylinhas.NF,".",fmbrasil_consolidacao_m40gamaitalylinhas.SNF)
+							fmbrasil_consolidacao_m40gamaitalylinhas.REFRECDepoisConsolidacao := taREFREC[nTempNumeroMonoRegisto]
+							fmbrasil_consolidacao_m40gamaitalylinhas.TraceM40DepoisConsolidacao := build(TRACE.INDEX)
+							flush(fmbrasil_consolidacao_m40gamaitalylinhas)
+													
+							!pesquisa se ja escreveu essa rubricas
+							nTempContadorAuxRubricas := 1
+							bJaEscreveuRubrica := FALSE
+							while nTempContadorAuxRubricas <= nContadorAuxRubricas do
+								if taFezRubicaREFRECIntegrados[nTempContadorAuxRubricas] = taREFRECxmlsIntegrados[nTempNumeroMonoRegisto2] then
+									bJaEscreveuRubrica := TRUE
+								endif
+								nTempContadorAuxRubricas++
+							endwhile
+															
+							if bJaEscreveuRubrica = FALSE then
+								!fazer aqui as rubricas
+								R_40_05ORDHEADER_CODEXC("40")
+								R_40_05ORDHEADER_SEPEXC(".")
+								R_40_05ORDHEADER_SCOEXC("05")
+								R_40_05ORDHEADER_REFREC(taREFREC[nTempNumeroMonoRegisto2])
+								nContadorRubricas++
+								R_40_05ORDHEADER_CODRUB(build("N",nContadorRubricas:R03))
+								R_40_05ORDHEADER_VALRUB(taREFRECxmlsIntegrados[nTempNumeroMonoRegisto2])
+
+								flush(0,0,NL) >> tFileOutTemp
+								nContadorLinhasEscritas++
+						
+								nContadorAuxRubricas++
+								taFezRubicaREFRECIntegrados[nContadorAuxRubricas] := taREFRECxmlsIntegrados[nTempNumeroMonoRegisto2]
+							endif	
+							fmbrasil_consolidacao_m40gamaitalylinhas := find()
+						endwhile
+					endif
+					nTempNumeroMonoRegisto2++
+				endwhile   					   
+									
+				!consolidar
+				nTmpNumeroItemsREFRECConsol := 1
+				while nTmpNumeroItemsREFRECConsol<=nNumeroItemsREFRECConsolidade do
+					if baLinhaCODPRORepetido[nTmpNumeroItemsREFRECConsol] = FALSE then
+						nTmpNumeroItemsREFRECConsol2 := nTmpNumeroItemsREFRECConsol+1
+						while nTmpNumeroItemsREFRECConsol2<=nNumeroItemsREFRECConsolidade do
+							if taCODPROREFRECConsolidade[nTmpNumeroItemsREFRECConsol2] = taCODPROREFRECConsolidade[nTmpNumeroItemsREFRECConsol] then
+								taUVCREAREFRECConsolidade[nTmpNumeroItemsREFRECConsol] := build(number(taUVCREAREFRECConsolidade[nTmpNumeroItemsREFRECConsol])+number(taUVCREAREFRECConsolidade[nTmpNumeroItemsREFRECConsol2]))
+								baLinhaCODPRORepetido[nTmpNumeroItemsREFRECConsol2] := TRUE
+							endif
+							nTmpNumeroItemsREFRECConsol2++
+						endwhile
+					endif
+					nTmpNumeroItemsREFRECConsol++
+				endwhile
+									
+				!escrever linhas consolidades
+				nNumLinhaEscritaNesteRefrecCon := 0
+				nTmpNumeroItemsREFRECConsol := 1
+				while nTmpNumeroItemsREFRECConsol<=nNumeroItemsREFRECConsolidade do
+					if baLinhaCODPRORepetido[nTmpNumeroItemsREFRECConsol] = FALSE then
+						R_40_20M40_CODEXC("40")
+						R_40_20M40_SEPEXC(".")
+						R_40_20M40_SCOEXC("20")
+						R_40_20M40_CODACT(taCODACT[nTempNumeroMonoRegisto] )
+						R_40_20M40_REFREC(taREFREC[nTempNumeroMonoRegisto] )
+						R_40_20M40_CODPRO(taCODPROREFRECConsolidade[nTmpNumeroItemsREFRECConsol])
+						nNumLinhaEscritaNesteRefrecCon++
+						R_40_20M40_NLIREC(build(nNumLinhaEscritaNesteRefrecCon:R05)) 
+						R_40_20M40_UNICDE(taUNICDEREFRECConsolidade[nTmpNumeroItemsREFRECConsol])
+						R_40_20M40_UVCREA(taUVCREAREFRECConsolidade[nTmpNumeroItemsREFRECConsol])
+						R_40_20M40_MOTIMM(taMOTIMM[taMOTIMMConsolidade[nTmpNumeroItemsREFRECConsol]])
+
+						flush(0,0,NL) >> tFileOutTemp
+						nContadorLinhasEscritas++
+					endif
+					nTmpNumeroItemsREFRECConsol++
+				endwhile
+					
+				R_40_99TRAILLER_CODEXC("40")
+				R_40_99TRAILLER_SEPEXC(".")
+				R_40_99TRAILLER_SCOEXC("99")
+				R_40_99TRAILLER_REFREC(taREFREC[nTempNumeroMonoRegisto] )
+				R_40_99TRAILLER_CUMLIG(build(number(tCUMLIG) :R04.0))
+				
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+				
+				R_TRAILLER_CODEXC("99")
+				R_TRAILLER_SEPEXC(".")
+				R_TRAILLER_SCOEXC("00")
+				R_TRAILLER_TRTEXC("")
+				R_TRAILLER_EMTEXC("FM")
+				R_TRAILLER_RCTEXC("")
+				R_TRAILLER_DATEXC(time("now" ,"%Y%m%d"))
+				R_TRAILLER_HEUEXC(time("now" ,"H%M%S"))
+				R_TRAILLER_NUMEXC("")
+				tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+				R_TRAILLER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+				flush(0,0,NL)  >> tFileOutTemp
+				close(tFileOutTemp)
+
+				copy(tFileOutTemp,tFileOut)
+				close(tFileOutTemp)
+				remove(tFileOutTemp)
+				close(tFileOut)
+
+				bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+			endif
+		endif
+		nTempNumeroMonoRegisto++
+	endwhile
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "GAMA ITALY"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "XML - NFE - M40 CONS - RDEV"
+	TRACE.NUMDOC := taREFREC[nTempNumeroMonoRegisto]
+	TRACE.DATDOC := tfConvertDate(substr(taDTIREC[nTempNumeroMonoRegisto],1,8), "YYYYMMDD" , "YYYY-MM-DD") 
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.LIBEXC := tLIBEXC
+
+	SYSLOG.REFERENCE := taREFREC[nTempNumeroMonoRegisto]
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+	
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction

@@ -1,0 +1,12 @@
+<!ELEMENT stock_adjustments (adjustment_header,adjustment_body)>
+	<!ELEMENT adjustment_header (reference,warehouse)>
+		<!ELEMENT reference (#PCDATA)>
+		<!ELEMENT warehouse (#PCDATA)>
+	<!ELEMENT adjustment_body (adjustment*)>
+		<!ELEMENT adjustment (barcode_sku,barcode_ean,quantity,date,slot,reason)>
+			<!ELEMENT barcode_sku (#PCDATA)>
+			<!ELEMENT barcode_ean (#PCDATA)>
+			<!ELEMENT quantity (#PCDATA)>
+			<!ELEMENT date (#PCDATA)>
+			<!ELEMENT slot (#PCDATA)>
+			<!ELEMENT reason (#PCDATA)>

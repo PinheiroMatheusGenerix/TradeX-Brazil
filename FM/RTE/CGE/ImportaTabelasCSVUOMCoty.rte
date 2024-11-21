@@ -1,0 +1,47 @@
+base "../fmbrasil_uomcoty/fmbrasil_uomcoty.cfg" BASE
+
+!ImportaTabelasCSVUOMCoty.rte 20 20 50 < UnitMeasure.csv
+
+begin
+
+
+
+endbegin
+
+
+line(1)
+split(pick(1,1,EOL), taRegistoHeader, ";")
+
+endline
+
+line (not 1)
+split(pick(1,1,EOL), taRegistoDetail, ";")
+if length(taRegistoDetail[2]) > 0 then
+	BASE := new(build(sHOME,"/fmbrasil_uomcoty/"))
+	nPos :=1
+
+
+	nPos := nPos + naLen[1]
+	BASE.UMI := peel(taRegistoDetail[1]," ")
+
+	nPos := nPos + naLen[2]
+	BASE.ISO := peel(taRegistoDetail[2]," ")
+
+	nPos := nPos + naLen[3]
+	BASE.DESCRIPTION := peel(taRegistoDetail[3]," ")
+
+
+endif
+remove(taRegistoDetail)
+   
+endline
+
+
+
+
+end
+
+exit(0)
+
+endend
+

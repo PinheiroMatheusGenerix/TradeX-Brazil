@@ -1,0 +1,133 @@
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 18-10-2010  XX  Creation
+! 18-10-2010  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACEPREV
+base "../trace/trace.cfg" TRACENEXT
+
+
+!===========================================================
+
+! Initialization section
+
+
+! End statements section
+begin
+
+!envia os FIM PICKING
+TRACENEXT := find(build(sHOME,"/trace"),MENSAGEM="FIM PICKING",SENTIDO="O",ESTADO="Recebida",PERFIL="COTY")aINDEX
+while valid(TRACENEXT) do
+	!print("procurando ",TRACENEXT.NUMDOC,NL)
+
+	TRACEPREV := find(build(sHOME,"/trace"),MENSAGEM="INICIO PICKING",SENTIDO="O",ESTADO="Entregue",NUMDOC=TRACENEXT.NUMDOC,PERFIL="COTY")dINDEX
+	if valid(TRACEPREV) then
+		!print("achou o anterior entregue ",TRACEPREV.NUMDOC,NL)
+		tFileOut := build(sHOME,"/ToAS2Proxy/",TRACENEXT.FICHEIROSAIDA)
+		close(TRACENEXT.Out)
+		copy(TRACENEXT.Out,tFileOut)
+		close(TRACENEXT.Out)
+		close(tFileOut)
+		TRACENEXT.ESTADO := "Em Envio"
+	endif	
+
+	TRACENEXT := find()
+endwhile	
+
+ 
+ 
+ 
+ 
+ 
+ !envia os INICIO CARREGAMENTO
+TRACENEXT := find(build(sHOME,"/trace"),MENSAGEM="INICIO CARREGAMENTO",SENTIDO="O",ESTADO="Recebida",PERFIL="COTY")aINDEX
+while valid(TRACENEXT) do
+
+
+	TRACEPREV := find(build(sHOME,"/trace"),MENSAGEM="FIM PICKING",SENTIDO="O",ESTADO="Entregue",NUMDOC=TRACENEXT.NUMDOC,PERFIL="COTY")dINDEX
+	if valid(TRACEPREV) then
+		tFileOut := build(sHOME,"/ToAS2Proxy/",TRACENEXT.FICHEIROSAIDA)
+		close(TRACENEXT.Out)
+		copy(TRACENEXT.Out,tFileOut)
+		close(TRACENEXT.Out)
+		close(tFileOut)
+		TRACENEXT.ESTADO := "Em Envio"
+	endif	
+
+	TRACENEXT := find()
+endwhile	
+ 
+ 
+
+ 
+ !envia os FIM CARREGAMENTO
+TRACENEXT := find(build(sHOME,"/trace"),MENSAGEM="FIM CARREGAMENTO",SENTIDO="O",ESTADO="Recebida",PERFIL="COTY")aINDEX
+while valid(TRACENEXT) do
+
+
+	TRACEPREV := find(build(sHOME,"/trace"),MENSAGEM="INICIO CARREGAMENTO",SENTIDO="O",ESTADO="Entregue",NUMDOC=TRACENEXT.NUMDOC,PERFIL="COTY")dINDEX
+	if valid(TRACEPREV) then
+		tFileOut := build(sHOME,"/ToAS2Proxy/",TRACENEXT.FICHEIROSAIDA)
+		close(TRACENEXT.Out)
+		copy(TRACENEXT.Out,tFileOut)
+		close(TRACENEXT.Out)
+		close(tFileOut)
+		TRACENEXT.ESTADO := "Em Envio"
+	endif	
+
+	TRACENEXT := find()
+endwhile	
+
+
+
+
+ 
+ !envia os PEDIDO EXPEDIDO
+TRACENEXT := find(build(sHOME,"/trace"),MENSAGEM="PEDIDO EXPEDIDO",SENTIDO="O",ESTADO="Recebida",PERFIL="COTY")aINDEX
+while valid(TRACENEXT) do
+
+
+	TRACEPREV := find(build(sHOME,"/trace"),MENSAGEM="FIM CARREGAMENTO",SENTIDO="O",ESTADO="Entregue",NUMDOC=TRACENEXT.NUMDOC,PERFIL="COTY")dINDEX
+	if valid(TRACEPREV) then
+		tFileOut := build(sHOME,"/ToAS2Proxy/",TRACENEXT.FICHEIROSAIDA)
+		close(TRACENEXT.Out)
+		copy(TRACENEXT.Out,tFileOut)
+		close(TRACENEXT.Out)
+		close(tFileOut)
+		TRACENEXT.ESTADO := "Em Envio"
+	endif	
+
+	TRACENEXT := find()
+endwhile	
+ 
+
+
+exit(0)
+
+
+
+
+
+
+endbegin
+
+!===========================================================
+
+

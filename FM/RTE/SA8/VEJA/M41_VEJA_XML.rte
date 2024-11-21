@@ -1,0 +1,2059 @@
+%@(#)  M41_VEJA_XML.rte     modif:21-11-2017
+!==============================================================================
+% File          : M41_VEJA_XML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+message "XML/FMBrasil/VEJA/VEJA_M41.dtd" building
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "M41_VEJA_XML"
+#include "include/generix_func.inc"
+#include "include/GEEXM41.inc"
+#include "include/GEEXM01.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1 
+
+	log("------------------------------------------------------------", NL)
+	log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	load(0,build(sHOME, "/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA8"]
+
+	tDbBase		:= "FMWMS"
+	tDbBase2	:= "FMWMS2"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    "", \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if not bfSqlJdbc(tDbBase2, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase2)
+		bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    "", \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+	
+	nCountLine := 0
+	nCountItemIn := 0
+	nCount4020_M01 := 0
+	bGeraM01 := TRUE
+	bGeraM41 := TRUE
+	bTodos_Carton_zero := TRUE
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	tDATEXC_0000 := S_GEEX0000_DATEXC
+	tHEUEXC_0000 := S_GEEX0000_HEUEXC
+endline
+
+line(1:"41.00")
+	tCODTRE := S_GEEX4100_CODTRE
+	tDTRREC := S_GEEX4100_DTRREC
+	tREFREC := S_GEEX4100_REFREC
+	tNUMREC := S_GEEX4100_NUMREC
+	tSNUREC := S_GEEX4100_SNUREC
+
+	if tCODTRE = "DV" then
+		bGeraM01 := FALSE
+	endif
+
+	! QUERY Validação de SNUREC
+		tQuery := build("SELECT NUMREC, SNUREC", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE", NL," "\
+						"WHERE NUMREC = '",S_GEEX4100_NUMREC,"'", NL," "\
+						"AND SNUREC = '1'", NL," "\
+						"AND CODACT = '",S_GEEX4100_CODACT,"'", NL," "\
+						"AND ETAREC <> '50'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceM01("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceM01("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			! UPDATE ETAREC
+				tQueryUpdate := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GERECE", NL," "\
+										"SET ETAREC = '50'", NL," "\
+										"WHERE NUMREC = '",S_GEEX4100_NUMREC,"'", NL," "\
+										"AND SNUREC = '1'", NL," "\
+										"AND CODACT = '",S_GEEX4100_CODACT,"' WITH NONE")
+
+				log("------------------------------------------------------------", NL)
+				log(tQueryUpdate,NL)
+				log("------------------------------------------------------------", NL)
+
+				if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdate) then
+					log(tfSqlErrorStr(), NL)
+					bfMajtraceM01("Erro de Traducao",\
+								"1",\
+								tNUMLIV,\
+								time("now","%Y-%m-%d"),\
+								tFileOut, \
+								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(27)
+				endif
+
+				if not bfSqlExec(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtraceM01("Erro de Traducao",\
+								"1",\
+								tNUMLIV,\
+								time("now","%Y-%m-%d"),\
+								tFileOut, \
+								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(28)
+				endif
+
+				if not bfSqlCommit(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtraceM01("Erro de Traducao",\
+								"1",\
+								tNUMLIV,\
+								time("now","%Y-%m-%d"),\
+								tFileOut, \
+								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(29)
+				endif
+
+				if not bfSqlFree(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtraceM01("Erro de Traducao",\
+								"1",\
+								tNUMLIV,\
+								time("now","%Y-%m-%d"),\
+								tFileOut, \
+								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(30)
+				endif
+			! UPDATE ETAREC
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtraceM01("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	! FIM QUERY Validação de SNUREC
+
+
+	! QUERY bGeraM01, taVALRUB_GERERUB[peel(taDb2Array["CODRUB"], " ")]
+		tQuery := build("SELECT  CODRUB, VALRUB", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERERUB", NL," "\
+						"WHERE NUMREC = '",S_GEEX4100_NUMREC,"'", NL," "\
+						"AND SNUREC = '",S_GEEX4100_SNUREC,"'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceM01("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceM01("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			taVALRUB_GERERUB[peel(taDb2Array["CODRUB"], " ")] := peel(taDb2Array["VALRUB"], " ")
+	
+			remove(taDb2Array)
+		endwhile
+
+		log("VALRUB[M01] = ", taVALRUB_GERERUB["M01"], NL)
+		if taVALRUB_GERERUB["M01"] = "PROCESSADO" then
+			bGeraM01 := FALSE
+		endif
+
+		log("VALRUB[*SLO] = ", taVALRUB_GERERUB["*SLO"], NL)
+		if length(taVALRUB_GERERUB["*SLO"]) = 0 then
+			bGeraM41 := FALSE
+			exit(1)
+		endif
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtraceM01("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	! FIM QUERY bGeraM01, taVALRUB_GERERUB[peel(taDb2Array["CODRUB"], " ")]
+
+	! QUERY bINDARV3
+		tQuery := build("SELECT  INDARV", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE", NL," "\
+						"WHERE NUMREC = '",tNUMREC,"'", NL," "\
+						"AND SNUREC = '",tSNUREC,"'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		bINDARV3 := FALSE
+		if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+			if peel(taDb2Array["INDARV"], " ") = "3" then
+				bINDARV3 := TRUE
+			endif
+
+			remove(taDb2Array)
+		endif
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	! FIM QUERY bINDARV3
+endline
+
+line(1:"41.01")   
+	tEDIACT := S_GEEX4101_EDIACT
+endline
+
+line(1:"41.05")
+	! QUERY tVALRUB_NRR
+		tQuery := build("SELECT TRIM(VALRUB) AS VALRUB", NL," "\
+                "FROM FGE50FM",tToInfologPrefixFilename,".GERERUB", NL," "\
+                "WHERE NUMREC = '",tNUMREC,"'", NL," "\
+                "AND SNUREC = '",tSNUREC,"'", NL," "\
+                "AND CODRUB = 'N_RR'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+			tVALRUB_NRR := taDb2Array["VALRUB"]
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	! FIM QUERY tVALRUB_NRR
+
+	taVALRUB_1[substr(S_GEEX4105_CODRUB, 1, 4)] := peel(substr(S_GEEX4105_VALRUB, 1, 35), " ")
+	taVALRUB_2[substr(S_GEEX4105_CODRUB, 5, 4)] := peel(substr(S_GEEX4105_VALRUB, 26, 35), " ")
+	taVALRUB_3[substr(S_GEEX4105_CODRUB, 9, 4)] := peel(substr(S_GEEX4105_VALRUB, 106, 35), " ")
+	taCODRUB[S_GEEX4105_VALRUB] := S_GEEX4105_CODRUB
+endline
+
+line(1:"41.20")
+	if S_GEEX4120_UNICDE = "CAR" then
+		tCODPRO_Replicado := S_GEEX4120_CODPRO
+		tCODLOT_Replicado := S_GEEX4120_CODLOT
+		tUVCREC_Replicado := build(number(S_GEEX4120_UVCREC))
+		if S_GEEX4120_UVCREC <> "0" then
+			bTodos_Carton_zero := FALSE
+		endif
+	endif
+
+	if bINDARV3 = TRUE then
+		tQuery := build("SELECT  CASE WHEN RP.CODLOT IS NULL THEN RPA.CODLOT  ELSE RP.CODLOT END AS CODLOT", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE RE", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD RD", NL," "\
+						"ON RE.NUMREC = RD.NUMREC", NL," "\
+						"	AND RE.SNUREC = RD.SNUREC", NL," "\
+						"	AND RE.CODACT = RD.CODACT", NL," "\
+						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RDA", NL," "\
+						"ON RD.NUMREC = RDA.NUMORI", NL," "\
+						"    AND RD.SNUREC = RDA.SNUORI", NL," "\
+						"    AND RD.MSGLIG = RDA.CODPRO", NL," "\
+						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECP RP", NL," "\
+						"ON RE.NUMREC = RP.NUMREC", NL," "\
+						"	AND RE.SNUREC = RP.SNUREC", NL," "\
+						"	AND RD.MSGLIG = RP.CODPRO", NL," "\
+						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECP AS RPA", NL," "\
+						"ON RDA.NUMREC = RPA.NUMREC", NL," "\
+						"	AND RDA.SNUREC = RPA.SNUREC", NL," "\
+						"	AND RDA.CODPRO = RPA.CODPRO", NL," "\
+						"WHERE RE.NUMREC = '",tNUMREC,"'", NL," "\
+						"AND RE.SNUREC = '",tSNUREC,"'", NL," "\
+						"AND RD.UNICDE <> 'CAR'", NL," "\
+						"AND RD.INDARV IN ('', '3')", NL," "\
+						"AND RD.MSGLIG = '",tCODPRO_Replicado,"'", NL," "\
+						"ORDER BY RD.MSGLIG")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+			tCODLOT_Replicado := peel(taDb2Array["CODLOT"], " ")
+
+			remove(taDb2Array)
+		endif
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						"", \
+						time("now","%Y-%m-%d"), \
+						tFileOut, \
+						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	endif
+
+	if number(tUVCREC_Replicado) > 0 and S_GEEX4120_CODPRO <> "__EOF__" then
+		taValidaCODPRO[build(tCODPRO_Replicado,"-",S_GEEX4120_CODPRO,"-",tCODLOT_Replicado,"-",tUVCREC_Replicado)] := "1"
+		log("taValidaCODPRO[build(",tCODPRO_Replicado,"-",S_GEEX4120_CODPRO,"-",tCODLOT_Replicado,"-",tUVCREC_Replicado,")]", NL)
+	endif
+
+	nCountLine++
+
+	tCODPRO_IN := S_GEEX4120_CODPRO
+	tNUMOPE_IN := S_GEEX4120_NUMOPE
+	taUVCREC[nCountLine] := S_GEEX4120_UVCREC
+	taUVCREA[nCountLine] := S_GEEX4120_UVCREA
+	taCODLOT[nCountLine] := S_GEEX4120_CODLOT
+	taCODPRO[nCountLine] := S_GEEX4120_CODPRO
+	taNUMOPE[nCountLine] := S_GEEX4120_NUMOPE
+	taUNICDE[nCountLine] := S_GEEX4120_UNICDE
+	taUVCREA_SUM[taUNICDE[nCountLine]] := build(number(taUVCREA_SUM[taUNICDE[nCountLine]]) + number(S_GEEX4120_UVCREA))
+
+	tUVCREC_SUM := build(number(tUVCREC_SUM) + number(S_GEEX4120_UVCREC))
+	if S_GEEX4120_UNICDE = "CAR" then
+		tUVCREC_SUM_CAR := build(number(tUVCREC_SUM_CAR) + number(S_GEEX4120_UVCREC))
+	endif
+
+	if S_GEEX4120_UNICDE = "CAR" then
+		nCountItemIn++
+		nUVCREA_UVCREC := 0
+
+		! SE CARTON NÃO FOI RECEBIDO
+		if number(S_GEEX4120_UVCREC) = 0 then
+			bCartonRecebido := FALSE
+		else
+			! SE CARTON FOI RECEBIDO
+			if number(S_GEEX4120_UVCREC) > 0 then
+				bCartonRecebido := TRUE
+			endif
+		endif
+	else
+		naSumUVCREA[nCountItemIn] := naSumUVCREA[nCountItemIn] + number(S_GEEX4120_UVCREA)
+		naSumUVCREC[nCountItemIn] := naSumUVCREC[nCountItemIn] + number(S_GEEX4120_UVCREC)
+		if bCartonRecebido = FALSE then
+			naSumUVCREAFalse[nCountItemIn] := naSumUVCREAFalse[nCountItemIn] + number(S_GEEX4120_UVCREA)
+			naSumUVCREATrue[nCountItemIn] := 0
+		else
+			naSumUVCREAFalse[nCountItemIn] := 0
+			naSumUVCREATrue[nCountItemIn] := naSumUVCREATrue[nCountItemIn] + number(S_GEEX4120_UVCREA)
+		endif
+	endif
+
+	! PIECES
+		taUVCREA_PIECES[build(S_GEEX4120_CODPRO,"-",S_GEEX4120_NUMOPE)] := build(number(taUVCREA_PIECES[build(S_GEEX4120_CODPRO,"-",S_GEEX4120_NUMOPE)]) + number(S_GEEX4120_UVCREA))
+		taCODPRO_PIECES[build(S_GEEX4120_CODPRO,"-",S_GEEX4120_NUMOPE)] := S_GEEX4120_CODPRO
+		taNUMOPE_PIECES[build(S_GEEX4120_CODPRO,"-",S_GEEX4120_NUMOPE)] := S_GEEX4120_NUMOPE
+		taUNICDE_PIECES[build(S_GEEX4120_CODPRO,"-",S_GEEX4120_NUMOPE)] := S_GEEX4120_UNICDE
+		taUVCREC_PIECES[build(S_GEEX4120_CODPRO,"-",S_GEEX4120_NUMOPE)] := S_GEEX4120_UVCREC
+	! FIM PIECES
+endline
+
+line(1:"41.21")
+	taEDIPRO[nCountLine] := S_GEEX4121_EDIPRO
+
+	! PIECES
+		taEDIPRO_PIECES[tCODPRO_IN] := S_GEEX4121_EDIPRO
+	! FIM PIECES
+endline
+
+line(1:"99.00")
+	tCODEXC_9900 := S_GEEX9900_CODEXC
+	tSEPEXC_9900 := S_GEEX9900_SEPEXC
+	tSCOEXC_9900 := S_GEEX9900_SCOEXC
+	tTRTEXC_9900 := S_GEEX9900_TRTEXC
+	tEMTEXC_9900 := S_GEEX9900_EMTEXC
+	tRCTEXC_9900 := S_GEEX9900_RCTEXC
+	tDATEXC_9900 := S_GEEX9900_DATEXC
+	tHEUEXC_9900 := S_GEEX9900_HEUEXC
+	tNUMEXC_9900 := S_GEEX9900_NUMEXC
+	tCPTEXC_9900 := S_GEEX9900_CPTEXC
+	tNOMSYS_9900 := S_GEEX9900_NOMSYS
+	tNOMDTQ_9900 := S_GEEX9900_NOMDTQ
+	tBIBDTQ_9900 := S_GEEX9900_BIBDTQ
+	tIDEMSG_9900 := S_GEEX9900_IDEMSG
+	tDISEXC_9900 := S_GEEX9900_DISEXC
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	while tIndex in taValidaCODPRO do
+		log("1 - Iniciou/recomeçou looping", NL)
+		split(tIndex, taIndex, "-")
+		log("1 - CARTON = ", taIndex[1], NL)
+		log("1 - CODPRO = ", taIndex[2], NL)
+		log("1 - CODLOT = ", taIndex[3], NL)
+		log("1 - UVCREC = ", taIndex[4], NL)
+		! taIndex[1] = tCODPRO_Replicado
+		! taIndex[2] = S_GEEX4120_CODPRO
+		! taIndex[3] = tCODLOT_Replicado
+		! taIndex[4] = tUVCREC_Replicado
+
+
+		if tCODTRE = "DV" then
+			log("2 - CODTRE = DV", NL)
+			bGeraM01 := FALSE
+		else
+			log("2 - CODTRE <> DV", NL)
+			if taIndex[4] = "0" then
+				log("3 - UVCREC = 0", NL)
+				if bTodos_Carton_zero = TRUE then
+					log("4 - Todos os Cartons são zerados", NL)
+					bGeraM01 := FALSE
+
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								tREFREC, \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Nenhum CARTON foi recebido.", NL))
+				endif
+			else
+				if length(taIndex[3]) = 0 then
+					log("3 - CODLOT = VAZIO", NL)
+					bGeraM01 := FALSE
+					bGeraM41 := FALSE
+
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								tREFREC, \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("O CARTON ", taIndex[1], " nao possui CODLOT", NL))
+
+					tMensagemEmailTemp := build(sHOME,"/EmailsAEnviar/MensagemErroM01-",time("now","%Y%m%d%H%M%S"),"TEMP.txt")
+					tMensagemEmail := build(sHOME,"/EmailsAEnviar/MensagemErroM01-",time("now","%Y%m%d%H%M%S"),".txt")
+
+					print("O CARTON ", taIndex[1], " nao possui CODLOT", NL) >> tMensagemEmailTemp
+
+					close(tMensagemEmailTemp)
+					copy(tMensagemEmailTemp, tMensagemEmail)
+					remove(tMensagemEmailTemp)
+					tCmdEmail := build("edisend EMAIL.SUBJECT=M01_Erro_Confirmacao_do_Recebimento_N°_",tREFREC," Email_VEJA_M01 ", tMensagemEmail)
+					log("Validação de endereço - email enviado!",NL)
+					nRet := system(tCmdEmail)
+					remove(tMensagemEmail)
+					exit(1)
+				else
+					log("3 - Diferente dos anteriores", NL)
+					! QUERY bQueryResult
+						tQuery := build("SELECT  *", NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GESTS", NL," "\
+										"WHERE ZONSTS = '",substr(taIndex[3], 1, 1),"'", NL," "\
+										"AND ALLSTS = '",substr(taIndex[3], 2, 3),"'", NL," "\
+										"AND DPLSTS = '",substr(taIndex[3], 5, 4),"'", NL," "\
+										"AND NIVSTS = '",substr(taIndex[3], 9, 2),"'")
+
+						log("------------------------------------------------------------", NL)
+						log(tQuery,NL)
+						log("------------------------------------------------------------", NL)
+
+						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtrace("Erro de Traducao", \
+										"1", \
+										"", \
+										time("now","%Y-%m-%d"), \
+										tFileOut, \
+										build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+							exit(1)					
+						endif
+
+						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtrace("Erro de Traducao", \
+										"1", \
+										"", \
+										time("now","%Y-%m-%d"), \
+										tFileOut, \
+										build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						bQueryResult := FALSE
+						if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+							bQueryResult := TRUE
+
+							remove(taDb2Array)
+						endif
+
+						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							bfMajtrace("Erro de Traducao", \
+										"1", \
+										"", \
+										time("now","%Y-%m-%d"), \
+										tFileOut, \
+										build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+					! FIM QUERY bQueryResult
+
+					if bQueryResult = TRUE then
+						log("4 - Query trouxe resultado", NL)
+						if taIndex[1] <> taIndex[2] then /*VERIFICA SE NÃO É CARTON*/
+							log("5 - Verifica se não é Carton", NL)
+							! QUERY Validação de campo vazio
+								tQuery := build("SELECT  PCBPRO", NL," "\
+												"       ,COLCOU1", NL," "\
+												"       ,COLCOU2", NL," "\
+												"       ,HAUCOU", NL," "\
+												"       ,HAUCOL", NL," "\
+												"       ,COUPAL1", NL," "\
+												"       ,COUPAL2", NL," "\
+												"       ,PDBCOL", NL," "\
+												"       ,VOLCOL", NL," "\
+												"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
+												"WHERE CODPRO = '",taIndex[2],"'", NL," "\
+												"AND CODACT = 'VEJ'")
+
+								log("------------------------------------------------------------", NL)
+								log(tQuery,NL)
+								log("------------------------------------------------------------", NL)
+
+								if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+									print("FATAL ", tfSqlErrorStr())
+									bfMajtrace("Erro de Traducao", \
+												"1", \
+												"", \
+												time("now","%Y-%m-%d"), \
+												tFileOut, \
+												build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+									exit(1)					
+								endif
+
+								if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+									print("FATAL ", tfSqlErrorStr())
+									bfMajtrace("Erro de Traducao", \
+												"1", \
+												"", \
+												time("now","%Y-%m-%d"), \
+												tFileOut, \
+												build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+									exit(1)
+								endif
+
+								tMensagemEmailTemp := build(sHOME,"/EmailsAEnviar/MensagemErroM01-",time("now","%Y%m%d%H%M%S"),"TEMP.txt")
+								tMensagemEmail := build(sHOME,"/EmailsAEnviar/MensagemErroM01-",time("now","%Y%m%d%H%M%S"),".txt")
+								bQueryErroResult := FALSE
+								if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+									bQueryErroResult := TRUE
+									if length(peel(taDb2Array["PCBPRO"], " ")) = 0 or build(number(peel(taDb2Array["PCBPRO"], " "))) = "0" then
+										log("6 - PCBPRO vazio ou zero", NL)
+										bfGeraEmailErroM01(build("O campo PCBPRO do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+									else
+										if length(peel(taDb2Array["COLCOU1"], " ")) = 0 or build(number(peel(taDb2Array["COLCOU1"], " "))) = "0" then
+											log("6 - COLCOU1 vazio ou zero", NL)
+											bfGeraEmailErroM01(build("O campo COLCOU1 do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+										else
+											if length(peel(taDb2Array["COLCOU2"], " ")) = 0 or build(number(peel(taDb2Array["COLCOU2"], " "))) = "0" then
+												log("6 - COLCOU2 vazio ou zero", NL)
+												bfGeraEmailErroM01(build("O campo COLCOU2 do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+											else
+												if length(peel(taDb2Array["HAUCOU"], " ")) = 0 or build(number(peel(taDb2Array["HAUCOU"], " "))) = "0" then
+													log("6 - HAUCOU vazio ou zero", NL)
+													bfGeraEmailErroM01(build("O campo HAUCOU do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+												else
+													if length(peel(taDb2Array["HAUCOL"], " ")) = 0 or build(number(peel(taDb2Array["HAUCOL"], " "))) = "0" then
+														log("6 - HAUCOL vazio ou zero", NL)
+														bfGeraEmailErroM01(build("O campo HAUCOL do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+													else
+														if length(peel(taDb2Array["COUPAL1"], " ")) = 0 or build(number(peel(taDb2Array["COUPAL1"], " "))) = "0" then
+															log("6 - COUPAL1 vazio ou zero", NL)
+															bfGeraEmailErroM01(build("O campo COUPAL1 do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+														else
+															if length(peel(taDb2Array["COUPAL2"], " ")) = 0 or build(number(peel(taDb2Array["COUPAL2"], " "))) = "0" then
+																log("6 - COUPAL2 vazio ou zero", NL)
+																bfGeraEmailErroM01(build("O campo COUPAL2 do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+															else
+																if length(peel(taDb2Array["PDBCOL"], " ")) = 0 or build(number(peel(taDb2Array["PDBCOL"], " "))) = "0" then
+																	log("6 - PDBCOL vazio ou zero", NL)
+																	bfGeraEmailErroM01(build("O campo PDBCOL do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+																else
+																	if length(peel(taDb2Array["VOLCOL"], " ")) = 0 or build(number(peel(taDb2Array["VOLCOL"], " "))) = "0" then
+																		log("6 - VOLCOL vazio ou zero", NL)
+																		bfGeraEmailErroM01(build("O campo VOLCOL do produto ",taIndex[2]," nao esta cadastrado!", NL), taIndex[3], tREFREC)
+																	endif
+																endif
+															endif
+														endif
+													endif
+												endif
+											endif
+										endif
+									endif
+									remove(taDb2Array)
+								endif
+
+								if bQueryErroResult = FALSE then
+									remove(tMensagemEmailTemp)
+									remove(tMensagemEmail)
+								endif
+
+								if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+									print("FATAL", tfSqlErrorStr())
+									bfMajtrace("Erro de Traducao", \
+												"1", \
+												"", \
+												time("now","%Y-%m-%d"), \
+												tFileOut, \
+												build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+									exit(1)
+								endif
+							! FIM QUERY Validação de campo vazio
+						endif
+					else
+						log("4 - Query não trouxe resultado", NL)
+						bGeraM01 := FALSE
+						bGeraM41 := FALSE
+
+						bfMajtrace("Erro de Traducao", \
+								"1", \
+								tREFREC, \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("O endereco ", \
+										substr(taIndex[3], 1, 1), \
+										"-", \
+										substr(taIndex[3], 2, 3), \
+										"-", \
+										substr(taIndex[3], 5, 4), \
+										"-", \
+										substr(taIndex[3], 9, 2), \
+										" nao existe!", NL))
+
+						tMensagemEmailTemp := build(sHOME,"/EmailsAEnviar/MensagemErroM01-",time("now","%Y%m%d%H%M%S"),"TEMP.txt")
+						tMensagemEmail := build(sHOME,"/EmailsAEnviar/MensagemErroM01-",time("now","%Y%m%d%H%M%S"),".txt")
+
+						print("O endereco ", \
+								substr(taIndex[3], 1, 1), \
+								"-", \
+								substr(taIndex[3], 2, 3), \
+								"-", \
+								substr(taIndex[3], 5, 4), \
+								"-", \
+								substr(taIndex[3], 9, 2), \
+								" nao existe!", NL) >> tMensagemEmailTemp
+
+						close(tMensagemEmailTemp)
+						copy(tMensagemEmailTemp, tMensagemEmail)
+						remove(tMensagemEmailTemp)
+						tCmdEmail := build("edisend EMAIL.SUBJECT=M01_Erro_Confirmação_do_Recebimento_N°_", tREFREC, " Email_VEJA_M01 ", tMensagemEmail)
+						log("Validação de endereço - email enviado!",NL)
+						nRet := system(tCmdEmail)
+						! remove(tMensagemEmail)
+
+						exit(1)
+					endif
+				endif
+			endif
+		endif
+	endwhile
+
+	if bGeraM01 = TRUE then
+		! M01
+			tFileOut_M01 := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"01VEJ",time("now" ,"%Y%m%d%H%M%S"),".DAT")
+			tFileOutTemp_M01 := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"01VEJ",time("now" ,"%Y%m%d%H%M%S"),".DAT")
+			tNameOut_M01 := build(tToInfologPrefixFilename,"01VEJ",time("now" ,"%Y%m%d%H%M%S"),".DAT")
+
+			R_GEEX0000_CODEXC("00")
+			R_GEEX0000_SEPEXC(".")
+			R_GEEX0000_SCOEXC("00")
+			R_GEEX0000_EMTEXC(build("FGE50FM",tToInfologPrefixFilename))
+			R_GEEX0000_DATEXC(tDATEXC_0000)
+			R_GEEX0000_HEUEXC(tHEUEXC_0000)
+			R_GEEX0000_NOMDTQ("M01")
+
+			flush(0,0,NL) >> tFileOutTemp_M01
+
+			! QUERY bfCreateM01
+				tQuery := build("SELECT  RE.CODACT", NL," "\
+								"       ,CASE WHEN RPA.CODLOT IS NULL THEN RP.CODLOT  ELSE RPA.CODLOT END AS CODLOT", NL," "\
+								"       ,RD.CODPRO", NL," "\
+								"       ,RD.VALPRO", NL," "\
+								"       ,RD.UVCREA                                                         AS UVCMVT", NL," "\
+								"       ,TRIM(RD.MSGLIG) || 'X' || RIGHT(TRIM(RD.CODPRO),3)                AS CODPAL", NL," "\
+								"       ,RD.DATFAB", NL," "\
+								"       ,RD.MOTIMM", NL," "\
+								"       ,RE.DTRREC                                                         AS DATREC", NL," "\
+								"       ,PR.PCBPRO", NL," "\
+								"       ,RE.REFREC", NL," "\
+								"       ,RD.CODCLI", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GERECE AS RE", NL," "\
+								"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+								"ON RE.NUMREC = RD.NUMREC", NL," "\
+								"    AND RE.SNUREC = RD.SNUREC", NL," "\
+								"    AND RE.CODACT = RD.CODACT", NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RDA", NL," "\
+								"ON RD.NUMREC = RDA.NUMORI", NL," "\
+								"    AND RD.SNUREC = RDA.SNUORI", NL," "\
+								"    AND RD.MSGLIG = RDA.CODPRO", NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECP AS RP", NL," "\
+								"ON RE.NUMREC = RP.NUMREC", NL," "\
+								"    AND RE.SNUREC = RP.SNUREC", NL," "\
+								"    AND RD.MSGLIG = RP.CODPRO", NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECP AS RPA", NL," "\
+								"ON RDA.NUMREC = RPA.NUMREC", NL," "\
+								"    AND RDA.SNUREC = RPA.SNUREC", NL," "\
+								"    AND RDA.CODPRO = RPA.CODPRO", NL," "\
+								"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RDC", NL," "\
+								"ON RE.NUMREC = RDC.NUMREC", NL," "\
+								"    AND RE.CODACT = RDC.CODACT", NL," "\
+								"    AND RE.SNUREC = RDC.SNUREC", NL," "\
+								"    AND RD.MSGLIG = RDC.CODPRO", NL," "\
+								"    AND RDC.UVCREC > 0", NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PR", NL," "\
+								"ON RD.CODPRO = PR.CODPRO", NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERERUB RRB", NL," "\
+								"ON RE.NUMREC = RRB.NUMREC", NL," "\
+								"    AND RE.SNUREC = RRB.SNUREC", NL," "\
+								"    AND RRB.CODRUB = '*SLO'", NL," "\
+								"WHERE RE.NUMREC = '",tNUMREC,"'", NL," "\
+								"AND RD.UNICDE <> 'CAR'", NL," "\
+								"AND RD.INDARV IN ('', '0', '3')", NL," "\
+								"ORDER BY RD.MSGLIG")
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtraceM01("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)					
+				endif
+
+				if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtraceM01("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryM01Result := FALSE
+				while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+					bQueryM01Result := TRUE
+					
+					bfCreateM01(peel(taDb2Array["CODACT"], " "), \
+									peel(taDb2Array["CODLOT"], " "), \
+									peel(taDb2Array["CODCLI"], " "), \
+									peel(taDb2Array["CODPRO"], " "), \
+									peel(taDb2Array["VALPRO"], " "), \
+									peel(taDb2Array["UVCMVT"], " "), \
+									peel(taDb2Array["CODPAL"], " "), \
+									peel(taDb2Array["DATFAB"], " "), \
+									peel(taDb2Array["MOTIMM"], " "), \
+									peel(taDb2Array["DATREC"], " "), \
+									peel(taDb2Array["PCBPRO"], " "), \
+									peel(taDb2Array["REFREC"], " "))
+
+					flush(0,0,NL) >> tFileOutTemp_M01
+					
+					remove(taDb2Array)
+				endwhile
+
+				if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtraceM01("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			! FIM QUERY bfCreateM01
+
+			R_GEEX9900_CODEXC(tCODEXC_9900)
+			R_GEEX9900_SEPEXC(tSEPEXC_9900)
+			R_GEEX9900_SCOEXC(tSCOEXC_9900)
+			R_GEEX9900_TRTEXC(tTRTEXC_9900)
+			R_GEEX9900_EMTEXC(tEMTEXC_9900)
+			R_GEEX9900_RCTEXC(tRCTEXC_9900)
+			R_GEEX9900_DATEXC(tDATEXC_9900)
+			R_GEEX9900_HEUEXC(tHEUEXC_9900)
+			R_GEEX9900_NUMEXC(tNUMEXC_9900)
+			R_GEEX9900_CPTEXC(tCPTEXC_9900)
+			R_GEEX9900_NOMSYS(tNOMSYS_9900)
+			R_GEEX9900_NOMDTQ(tNOMDTQ_9900)
+			R_GEEX9900_BIBDTQ(tBIBDTQ_9900)
+			R_GEEX9900_IDEMSG(tIDEMSG_9900)
+			R_GEEX9900_DISEXC(tDISEXC_9900)
+
+			flush(0,0,NL) >> tFileOutTemp_M01
+
+			if bQueryM01Result = TRUE then
+				close(tFileOutTemp_M01)
+				copy(tFileOutTemp_M01,tFileOut_M01)
+				close(tFileOutTemp_M01)
+				remove(tFileOutTemp_M01)
+				close(tFileOut_M01)
+
+				bfMajtraceM01("Recebida", \
+							"0", \
+							tREFREC, \
+							time("now","%Y-%m-%d"), \
+							tFileOut_M01, \
+							"")
+
+				! INSERT VALRUB, CODRUB, TYPRUB
+					tQuery := build("INSERT", NL," "\
+									"INTO FGE50FM",tToInfologPrefixFilename,".GERERUB (NUMREC, SNUREC, VALRUB, CODRUB, TYPRUB)", NL," "\
+									"VALUES ('",tNUMREC,"', '",tSNUREC,"', 'PROCESSADO', 'M01', '2') WITH NONE")
+					
+					log("------------------------------------------------------------", NL)
+					log(tQuery,NL)
+					log("------------------------------------------------------------", NL)
+					
+					if not bfSqlSet(tDbBase, "Insertdb2", tQuery) then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao", \
+											"1", \
+											"", \
+											time("now","%Y-%m-%d"), \
+											tFileOut, \
+											build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+						exit(27)
+					endif
+
+					if not bfSqlExec(tDbBase, "Insertdb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao", \
+											"1", \
+											"", \
+											time("now","%Y-%m-%d"), \
+											tFileOut, \
+											build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+						exit(27)
+					endif
+
+					if not bfSqlCommit(tDbBase, "Insertdb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao", \
+											"1", \
+											"", \
+											time("now","%Y-%m-%d"), \
+											tFileOut, \
+											build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+						exit(27)
+					endif
+
+					if not bfSqlFree(tDbBase, "Insertdb2") then
+						bfMajtrace("Erro de Traducao", \
+											"1", \
+											"", \
+											time("now","%Y-%m-%d"), \
+											tFileOut, \
+											build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+						exit(27)
+					endif
+					
+					remove(taDb2Array)
+				! FIM INSERT VALRUB, CODRUB, TYPRUB
+			else
+				log("A Query do M01 não trouxe resultado!", NL)
+				remove(tFileOut_M01)
+				remove(tFileOutTemp_M01)
+			endif
+		! FIM M01
+	endif
+
+	if bGeraM41 = TRUE then
+		log("Gera M41", NL)
+
+		if tCODTRE = "DV" then
+			tFileOut := build(sHOME,"/mdn/auto/FM",tToInfologPrefixFilename,"VEJ_ReceiptConfirmationRMA_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFREC,".xml")
+			tFileOutTemp := build(sHOME,"/mdn/auto/Temp/FM",tToInfologPrefixFilename,"VEJ_ReceiptConfirmationRMA_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFREC,".xml")
+			tNameOut := build("FM",tToInfologPrefixFilename,"VEJ_ReceiptConfirmationRMA_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFREC,".xml")
+		else
+			tFileOut := build(sHOME,"/mdn/auto/FM",tToInfologPrefixFilename,"VEJ_ReceiptConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFREC,".xml")
+			tFileOutTemp := build(sHOME,"/mdn/auto/Temp/FM",tToInfologPrefixFilename,"VEJ_ReceiptConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFREC,".xml")
+			tNameOut := build("FM",tToInfologPrefixFilename,"VEJ_ReceiptConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFREC,".xml")
+		endif
+
+		bfCriarHeader(tEDIACT, tCODTRE, tDTRREC, tREFREC)
+
+		if tCODTRE = "DV" then
+			segment Sboxes gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes
+				eEboxes := " "
+			endsegment
+		endif
+
+		tCODPRO_CARTON_ANTERIOR := ""
+		bNOVO_CARTON := FALSE
+		nCountWrite := 0
+		nCountItemOut := 0
+		while tIndex in taCODPRO do
+			split(tIndex, taIndex, "-")
+
+			if taUNICDE[tIndex] = "CAR" then
+				if number(taUVCREC[tIndex]) >= 1 then
+					tReceived := "Y"
+				else
+					tReceived := "N"
+				endif
+				bCARTON_RECEBIDO := TRUE
+				tCODLOT := taCODLOT[tIndex]
+				tCODPRO_CARTON := taCODPRO[tIndex]
+			else
+				bCARTON_RECEBIDO := FALSE
+			endif
+
+			if taUNICDE[tIndex] = "CAR" then
+				nCountItemOut++
+			else			
+				if tCODTRE = "DV" then
+					bfCriarBodyReturnDelivery(taCODLOT[tIndex], \
+												taCODPRO[tIndex], \
+												taEDIPRO[tIndex], \
+												taUVCREC[tIndex], \
+												taUVCREA[tIndex], \
+												taNUMOPE[tIndex], \
+												tReceived)
+				else
+					if tCODPRO_CARTON_ANTERIOR <> tCODPRO_CARTON then
+						tCODPRO_CARTON_ANTERIOR := tCODPRO_CARTON
+						bNOVO_CARTON := TRUE
+					endif
+
+					bfCriarBodyInboundDeliveryBoxes(tReceived, \
+												taUVCREA[tIndex], \
+												taUVCREC[tIndex], \
+												tCODLOT, \
+												taCODPRO[tIndex], \
+												taEDIPRO[tIndex], \
+												taNUMOPE[tIndex], \
+												naSumUVCREA[nCountItemOut] - naSumUVCREC[nCountItemOut], \
+												naSumUVCREAFalse[nCountItemOut], \
+												naSumUVCREATrue[nCountItemOut], \
+												tCODPRO_CARTON, \
+												bNOVO_CARTON, \
+												bCARTON_RECEBIDO)
+					bNOVO_CARTON := FALSE
+				endif
+			endif
+		endwhile
+
+		if tCODTRE <> "DV" then
+			while tIndex2 in taCODPRO_PIECES do
+				if taUNICDE_PIECES[tIndex2] <> "CAR" then
+					bfCriarBodyInboundDeliveryPieces(taUVCREA_PIECES[tIndex2], \
+														taCODPRO_PIECES[tIndex2], \
+														taEDIPRO_PIECES[tIndex2], \
+														taNUMOPE_PIECES[tIndex2], \
+														taUVCREC_PIECES[tIndex2])
+				endif
+			endwhile
+		endif
+
+		print(MESSAGE) >> tFileOutTemp
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida", \
+					"0", \
+					tREFREC, \
+					time("now","%Y-%m-%d"), \
+					tFileOut, \
+					"")
+
+		! Enviar interface para o cliente
+        tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+        log("executando o comando - ", tCmd, NL)
+        system(tCmd)
+	endif
+
+    bfSqlClose(tDbBase)
+
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+endend
+
+!===========================================================
+
+function bfGeraEmailErroM01(tMensagemEmail_FUNC, tCODLOT_Replicado_FUNC, tREFREC_FUNC)
+	bfMajtrace("Erro de Traducao", \
+			"1", \
+			tREFREC_FUNC, \
+			time("now","%Y-%m-%d"), \
+			tFileOut, \
+			build(tMensagemEmail_FUNC))
+
+	print(tMensagemEmail_FUNC) >> tMensagemEmailTemp
+
+	close(tMensagemEmailTemp)
+	copy(tMensagemEmailTemp, tMensagemEmail)
+	remove(tMensagemEmailTemp)
+	tCmdEmail := build("edisend EMAIL.SUBJECT=M01_Erro_Confirmacao_do_Recebimento_N°_",tREFREC," Email_VEJA_M01 ", tMensagemEmail)
+	log("Validação de campos do produto - email enviado!",NL)
+	nRet := system(tCmdEmail)
+	remove(tMensagemEmail)
+
+	exit(1)
+endfunction
+
+!===========================================================
+
+function bfCriarHeader(tEDIACT_FUNC, tCODTRE_FUNC, tDTRREC_FUNC, tREFREC_FUNC)
+	segment Scompany gGreceiving_confirmation,gGreceiving_confirmation_header
+		eEcompany := "VEJA"
+	endsegment
+
+	segment Swarehouse gGreceiving_confirmation,gGreceiving_confirmation_header
+		eEwarehouse := tEDIACT_FUNC
+	endsegment
+
+	if tCODTRE_FUNC <> "DV" then
+		segment Smaster_invoice_date gGreceiving_confirmation,gGreceiving_confirmation_header
+			eEmaster_invoice_date := " "
+		endsegment
+
+		segment Smaster_invoice_number gGreceiving_confirmation,gGreceiving_confirmation_header
+			eEmaster_invoice_number := " "
+		endsegment
+	endif
+
+	segment Sreceiving_reference gGreceiving_confirmation,gGreceiving_confirmation_header
+		if length(tVALRUB_NRR) > 0 then
+			eEreceiving_reference := tVALRUB_NRR
+		else
+			eEreceiving_reference := " "
+		endif
+	endsegment
+
+	segment Sra_number gGreceiving_confirmation,gGreceiving_confirmation_header
+		if tCODTRE_FUNC = "DV" then
+			eEra_number := taVALRUB_2["N_RA"]
+		else
+			eEra_number := " "
+		endif
+	endsegment
+
+	segment Stotal_pieces gGreceiving_confirmation,gGreceiving_confirmation_header
+		! QUERY tTotal_boxes
+			tQuery := build("SELECT  SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END) AS TOTAL_BOXES", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+							"ON CA.NUMREC = RD.NUMREC AND CA.MSGLIG = RD.CODPRO", NL," "\
+							"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+							"AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+							"AND CA.UNICDE != 'CAR'", NL," "\
+							"GROUP BY  CA.NUMREC")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tTotal_boxes := taDb2Array["TOTAL_BOXES"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tTotal_boxes
+
+		if tCODTRE_FUNC <> "DV" then
+			eEtotal_pieces := tTotal_boxes
+		else
+			eEtotal_pieces := tUVCREC_SUM
+		endif
+	endsegment
+
+	segment Stotal_boxes gGreceiving_confirmation,gGreceiving_confirmation_header
+		if tCODTRE_FUNC = "DV" then
+			eEtotal_boxes := "0"
+		else
+			eEtotal_boxes := tUVCREC_SUM_CAR
+		endif
+	endsegment
+
+	segment Sreceiving_date gGreceiving_confirmation,gGreceiving_confirmation_header
+		eEreceiving_date := tfConvertDate(tDTRREC_FUNC, "YYYYMMDD" , "YYYY-MM-DD")
+	endsegment
+
+	segment Sname gGreceiving_confirmation,gGreceiving_confirmation_header,gGcustom_properties,gGcustom_property
+		if tCODTRE_FUNC = "DV" then
+			eEname := "Return Delivery"
+		else
+			eEname := "Inbound Delivery "
+		endif
+	endsegment
+
+	segment Svalue gGreceiving_confirmation,gGreceiving_confirmation_header,gGcustom_properties,gGcustom_property
+		eEvalue := tREFREC_FUNC
+	endsegment
+endfunction
+
+!===========================================================
+
+function bfCriarBodyReturnDelivery(tCODLOT_FUNC, tCODPRO_FUNC, tEDIPRO_FUNC, tUVCREC_FUNC, tUVCREA_FUNC, tNUMOPE_FUNC, tReceived_FUNC)
+	segment Ssku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eAslot := taVALRUB_1["*SLO"]
+	endsegment
+
+	segment Sbarcode_sku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEbarcode_sku := tCODPRO_FUNC
+	endsegment
+
+	segment Sbarcode_upc gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEbarcode_upc := " "
+	endsegment
+
+	segment Sbarcode_ean gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEbarcode_ean := tEDIPRO_FUNC
+	endsegment
+
+	segment Sreceived gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		if length(tReceived_FUNC) > 0 then
+			eEreceived := tReceived_FUNC
+		else
+			if length(tUVCREC_FUNC) > 0 then
+				eEreceived := "Y"
+			else
+				eEreceived := "N" 
+			endif
+		endif
+	endsegment
+
+	segment Sreceived_qty gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEreceived_qty := tUVCREC_FUNC
+	endsegment
+
+	segment Sover_under_qty gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEover_under_qty := build(number(tUVCREC_FUNC) - number(tUVCREA_FUNC))
+	endsegment
+
+	segment Sprimary_reference gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku,gGorder_line
+		eEprimary_reference := tNUMOPE_FUNC
+	endsegment
+
+	segment Ssecondary_reference gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku,gGorder_line
+		eEsecondary_reference := " "
+	endsegment
+
+	segment Squantity gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku,gGorder_line
+		eEquantity := tUVCREC_FUNC
+	endsegment
+endfunction
+
+!===========================================================
+
+function bfCriarBodyInboundDeliveryBoxes(tReceived_FUNC, tUVCREA_FUNC, tUVCREC_FUNC, tCODLOT_FUNC, tCODPRO_FUNC, tEDIPRO_FUNC, tNUMOPE_FUNC, nUVCREX_FUNC, nUVCREAFalse_FUNC, nUVCREATrue_FUNC, tCODPRO_CARTON_FUNC, bNOVO_CARTON_FUNC, bCARTON_RECEBIDO_FUNC) 
+	if bNOVO_CARTON_FUNC = TRUE then
+		segment Scarton_number gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton
+			eEcarton_number := tCODPRO_CARTON_FUNC
+		endsegment
+		
+		segment Sreceived gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton
+			if length(tReceived_FUNC) > 0 then
+				eEreceived := tReceived_FUNC
+			else
+				eEreceived := " "
+			endif
+		endsegment
+
+		segment Stotal_over_under_qty gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton
+			! QUERY tTotal_over_under_qty_id
+				tQuery := build("SELECT  CASE CA.UVCREC WHEN 0 THEN 0- SUM(RD.UVCREA) ELSE 0 END AS TOTAL_OVER_UNDER_QTY_ID", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+								"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+								"ON CA.NUMREC = RD.NUMREC AND CA.CODPRO = RD.MSGLIG", NL," "\
+								"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+								"AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+								"AND CA.CODPRO = '",tCODPRO_CARTON_FUNC,"'", NL," "\
+								"GROUP BY  CA.NUMREC", NL," "\
+								"         ,CA.CODPRO", NL," "\
+								"         ,CA.UVCREA", NL," "\
+								"         ,CA.UVCREC")
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)					
+				endif
+
+				if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+					tTotal_over_under_qty_id:= taDb2Array["TOTAL_OVER_UNDER_QTY_ID"]
+
+					remove(taDb2Array)
+				endwhile
+
+				if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			! FIM QUERY tTotal_over_under_qty_id
+
+			eEtotal_over_under_qty := tTotal_over_under_qty_id
+		endsegment
+
+		segment Scustom_properties gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGcustom_properties
+			eEcustom_properties := " "
+		endsegment
+	endif
+
+	segment Ssku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku
+		eAslot := taVALRUB_1["*SLO"]
+	endsegment
+
+	segment Sbarcode_sku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku
+		eEbarcode_sku := tCODPRO_FUNC
+	endsegment
+
+	segment Sbarcode_upc gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku
+		eEbarcode_upc := " "
+	endsegment
+
+	segment Sbarcode_ean gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku
+		! QUERY tBarcode_ean_id_sku
+			tQuery := build("SELECT  TRIM(EDIPRO) AS EDIPRO", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
+							"WHERE CODPRO = '",tCODPRO_FUNC,"'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tBarcode_ean_id_sku := taDb2Array["EDIPRO"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tBarcode_ean_id_sku
+		
+		eEbarcode_ean := tBarcode_ean_id_sku
+	endsegment
+
+	segment Sreceived gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku
+		eEreceived := tReceived_FUNC
+	endsegment
+
+	segment Sover_under_qty gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku
+		! QUERY tOver_under_qty_id_sku
+			tQuery := build("SELECT  CASE RD.UVCREC WHEN 0 THEN 0- CA.UVCREA ELSE 0 END AS OVER_UNDER_QTY_ID_SKU", NL," "\
+							"       ,CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END    AS QUANTITY_ID_SKU", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+							"ON CA.NUMREC = RD.NUMREC AND CA.MSGLIG = RD.CODPRO", NL," "\
+							"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+							"AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+							"AND TRIM(CA.MSGLIG) = '",tCODPRO_CARTON_FUNC,"'", NL," "\
+							"AND CA.CODPRO = '",tCODPRO_FUNC,"'", NL," "\
+							"AND CA.NUMOPE = '",tNUMOPE_FUNC,"'", NL," "\
+							"AND CA.UNICDE != 'CAR'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tOver_under_qty_id_sku := taDb2Array["OVER_UNDER_QTY_ID_SKU"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tOver_under_qty_id_sku
+
+		eEover_under_qty := tOver_under_qty_id_sku
+	endsegment
+
+	segment Sprimary_reference gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku,gGorder_line
+		eEprimary_reference := tNUMOPE_FUNC
+	endsegment
+
+	segment Ssecondary_reference gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku,gGorder_line
+		eEsecondary_reference := " "
+	endsegment
+
+	segment Squantity gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGboxes,gGcarton,gGskus,gGsku,gGorder_line
+		! QUERY tQuantity_id_sku
+			tQuery := build("SELECT  CASE RD.UVCREC WHEN 0 THEN 0- CA.UVCREA ELSE 0 END AS OVER_UNDER_QTY_ID_SKU", NL," "\
+							"       ,CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END    AS QUANTITY_ID_SKU", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+							"ON CA.NUMREC = RD.NUMREC AND CA.MSGLIG = RD.CODPRO", NL," "\
+							"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+							"AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+							"AND TRIM(CA.MSGLIG) = '",tCODPRO_CARTON_FUNC,"'", NL," "\
+							"AND CA.CODPRO = '",tCODPRO_FUNC,"'", NL," "\
+							"AND CA.NUMOPE = '",tNUMOPE_FUNC,"'", NL," "\
+							"AND CA.UNICDE != 'CAR'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tQuantity_id_sku := taDb2Array["QUANTITY_ID_SKU"]
+				log("tQuantity_id_sku = ", tQuantity_id_sku,  NL )
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tQuantity_id_sku
+		
+		eEquantity := tQuantity_id_sku
+	endsegment
+endfunction
+
+!===========================================================
+
+function bfCriarBodyInboundDeliveryPieces(tUVCREA_FUNC, tCODPRO_FUNC, tEDIPRO_FUNC, tNUMOPE_FUNC, tUVCREC_FUNC)
+	segment Ssku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eAslot := taVALRUB_1["*SLO"]
+	endsegment
+
+	segment Sbarcode_sku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEbarcode_sku := tCODPRO_FUNC
+	endsegment
+
+	segment Sbarcode_upc gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		eEbarcode_upc := " "
+	endsegment
+
+	segment Sbarcode_ean gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		! QUERY tBarcode_ean_id_pieces
+			tQuery := build("SELECT  TRIM(EDIPRO) AS EDIPRO", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
+							"WHERE CODPRO = '",tCODPRO_FUNC,"'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tBarcode_ean_id_pieces := taDb2Array["EDIPRO"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tBarcode_ean_id_pieces
+		
+		eEbarcode_ean := tBarcode_ean_id_pieces
+	endsegment
+
+	segment Sreceived_qty gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		! QUERY tReceived_qty_id_pieces
+			tQuery := build("SELECT  SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END)    AS RECEIVED_QTY_ID_PIECES", NL," "\
+							"       ,SUM(CASE RD.UVCREC WHEN 0 THEN 0- CA.UVCREA ELSE 0 END) AS OVER_UNDER_QTY_ID_PIECES", NL," "\
+							"       ,SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END)    AS QUANTITY_ID_PIECES", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+							"ON CA.NUMREC = RD.NUMREC", NL," "\
+							"	AND CA.SNUREC = RD.SNUREC", NL," "\
+							"	AND ( (CA.MSGLIG = '' AND CA.SEQREC = RD.SEQREC)", NL," "\
+							"		OR (CA.MSGLIG <> '' AND CA.MSGLIG = RD.CODPRO) )", NL," "\
+							"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+							"	AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+							"	AND CA.UNICDE != 'CAR'", NL," "\
+							"	AND CA.NUMOPE = '",tNUMOPE_FUNC,"'", NL," "\
+							"	AND CA.CODPRO = '",tCODPRO_FUNC,"'", NL," "\
+							"GROUP BY  CA.NUMREC", NL," "\
+							"         ,CA.CODPRO", NL," "\
+							"         ,CA.NUMOPE")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tReceived_qty_id_pieces := taDb2Array["RECEIVED_QTY_ID_PIECES"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tReceived_qty_id_pieces
+
+		eEreceived_qty := tReceived_qty_id_pieces
+	endsegment
+
+	segment Sreceived gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		if length(tReceived_qty_id_pieces) > 0 then
+			eEreceived := "Y"
+		else
+			eEreceived := "N"
+		endif
+	endsegment
+
+	segment Sover_under_qty gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
+		! QUERY tOver_under_qty_id_pieces
+			tQuery := build("SELECT  SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END)    AS RECEIVED_QTY_ID_PIECES", NL," "\
+							"       ,SUM(CASE RD.UVCREC WHEN 0 THEN 0- CA.UVCREA ELSE 0 END) AS OVER_UNDER_QTY_ID_PIECES", NL," "\
+							"       ,SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END)    AS QUANTITY_ID_PIECES", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+							"ON CA.NUMREC = RD.NUMREC", NL," "\
+							"	AND CA.SNUREC = RD.SNUREC", NL," "\
+							"	AND ( (CA.MSGLIG = '' AND CA.SEQREC = RD.SEQREC)", NL," "\
+							"		OR (CA.MSGLIG <> '' AND CA.MSGLIG = RD.CODPRO) )", NL," "\
+							"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+							"	AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+							"	AND CA.UNICDE != 'CAR'", NL," "\
+							"	AND CA.NUMOPE = '",tNUMOPE_FUNC,"'", NL," "\
+							"	AND CA.CODPRO = '",tCODPRO_FUNC,"'", NL," "\
+							"GROUP BY  CA.NUMREC", NL," "\
+							"         ,CA.CODPRO", NL," "\
+							"         ,CA.NUMOPE")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tOver_under_qty_id_pieces := taDb2Array["OVER_UNDER_QTY_ID_PIECES"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tOver_under_qty_id_pieces
+		
+		eEover_under_qty := tOver_under_qty_id_pieces
+	endsegment
+
+	segment Sprimary_reference gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku,gGorder_line
+		eEprimary_reference := tNUMOPE_FUNC
+	endsegment
+
+	segment Ssecondary_reference gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku,gGorder_line
+		eEsecondary_reference := " "
+	endsegment
+
+	segment Squantity gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku,gGorder_line
+		! QUERY tQuantity_id_pieces
+			tQuery := build("SELECT  SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END)    AS RECEIVED_QTY_ID_PIECES", NL," "\
+							"       ,SUM(CASE RD.UVCREC WHEN 0 THEN 0- CA.UVCREA ELSE 0 END) AS OVER_UNDER_QTY_ID_PIECES", NL," "\
+							"       ,SUM(CASE RD.UVCREC WHEN 0 THEN 0 ELSE CA.UVCREA END)    AS QUANTITY_ID_PIECES", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS CA", NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+							"ON CA.NUMREC = RD.NUMREC", NL," "\
+							"	AND CA.SNUREC = RD.SNUREC", NL," "\
+							"	AND ( (CA.MSGLIG = '' AND CA.SEQREC = RD.SEQREC)", NL," "\
+							"		OR (CA.MSGLIG <> '' AND CA.MSGLIG = RD.CODPRO) )", NL," "\
+							"WHERE CA.NUMREC = '",tNUMREC,"'", NL," "\
+							"	AND CA.SNUREC = '",tSNUREC,"'", NL," "\
+							"	AND CA.UNICDE != 'CAR'", NL," "\
+							"	AND CA.NUMOPE = '",tNUMOPE_FUNC,"'", NL," "\
+							"	AND CA.CODPRO = '",tCODPRO_FUNC,"'", NL," "\
+							"GROUP BY  CA.NUMREC", NL," "\
+							"         ,CA.CODPRO", NL," "\
+							"         ,CA.NUMOPE")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)					
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tQuantity_id_pieces := taDb2Array["QUANTITY_ID_PIECES"]
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tQuantity_id_pieces
+		
+		eEquantity := tQuantity_id_pieces
+	endsegment
+endfunction
+
+!===========================================================
+function bfCreateM01(tCODACT_FUNC, tCODLOT_FUNC, tCODCLI_FUNC, tCODPRO_FUNC, tVALPRO_FU41NC, tUVCMVT_FUNC, tCODPAL_FUNC, tDATFAB_FUNC, tMOTIMM_FUNC, tDATREC_FUNC, tPCBPRO_FUNC, tREFREC_FUNC)
+	R_GEEX0101_CODEXC("01")
+	R_GEEX0101_SEPEXC(".")
+	R_GEEX0101_SCOEXC("01")
+	R_GEEX0101_CODACT(tCODACT_FUNC)
+	R_GEEX0101_CODCLI(tCODCLI_FUNC)
+	R_GEEX0101_CODPRO(tCODPRO_FUNC)
+	R_GEEX0101_VALPRO(tVALPRO_FUNC)
+	R_GEEX0101_ZONSTS(substr(tCODLOT_FUNC, 1, 1))
+	R_GEEX0101_ALLSTS(substr(tCODLOT_FUNC, 2, 3))
+	R_GEEX0101_DPLSTS(substr(tCODLOT_FUNC, 5, 4))
+	R_GEEX0101_NIVSTS(substr(tCODLOT_FUNC, 9, 2))
+	R_GEEX0101_MOTMVT("M01")
+	R_GEEX0101_UVCMVT(tUVCMVT_FUNC)
+	R_GEEX0101_CODPAL(tCODPAL_FUNC)
+	R_GEEX0101_DATFAB(tDATFAB_FUNC)
+	R_GEEX0101_MOTIMM(tMOTIMM_FUNC)
+	R_GEEX0101_NBJIMM("000")
+	R_GEEX0101_NBHIMM("000")
+	R_GEEX0101_MDSPRF("M01")
+	R_GEEX0101_DATREC(tDATREC_FUNC)
+	R_GEEX0101_PCBPRO(tPCBPRO_FUNC)
+	R_GEEX0101_ZONSPE("00")
+	R_GEEX0101_CODEMB("PBR")
+	R_GEEX0101_REFREC(tREFREC_FUNC)
+endfunction
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "VEJA"
+	TRACE.MENSAGEM := "M41 - Confirmação Recebimento"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endfunction
+
+!===========================================================
+
+function bfMajtraceM01(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "VEJA"
+	TRACE.MENSAGEM := "M01- Criação de estoque"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut_M01
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endfunction

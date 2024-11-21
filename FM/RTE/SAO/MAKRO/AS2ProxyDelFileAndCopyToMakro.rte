@@ -1,0 +1,26 @@
+base "syslog.cfg" SYSLOG
+begin
+
+SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+
+	tFicheiroAVerificar := build(sHOME,"/FromMakro/Verifica",SYSLOG.INDEX,".txt")
+	close(SYSLOG.a)
+	copy(SYSLOG.a,tFicheiroAVerificar)
+	close(SYSLOG.a)
+	
+	
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAKRO"]
+		
+		
+		
+	tNomeArquivoDevolverFTPMakro := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"OKPA",pEDISEND.ORIGINAL.NAME)
+		copy(tFicheiroAVerificar,tNomeArquivoDevolverFTPMakro)
+		close(tFicheiroAVerificar)
+		close(tNomeArquivoDevolverFTPMakro)
+		remove(tFicheiroAVerificar)
+
+
+exit(0)
+endbegin

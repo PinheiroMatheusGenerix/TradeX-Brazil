@@ -1,0 +1,53 @@
+base "syslog.cfg" SYSLOG
+
+#ifdef PROD
+#define HOME "/usr/local/tx-52/users/h1-fmbrasil"
+#elseif PPD
+#define HOME "/usr/local/tx-52/users/h2-fmbrasil"
+#else
+#define HOME "/usr/local/tx-52/users/h3-fmbrasil"
+#endif
+begin
+	nMessageID := cMessageID
+	tOutputFile := build(sHOME,"/fullcommercetofmbrasil/",build(nMessageID:R015),".xml")
+	log(sQUERY_STRING,NL)
+	
+endbegin
+
+
+
+line (not "")
+	tLog := pick (1, 1, EOL)
+	print(tLog)>> tOutputFile
+
+endline
+
+line ("")
+	tLog := pick (1, 1, EOL)
+	print(tLog)>> tOutputFile
+endline
+
+
+end
+	close (tOutputFile)
+
+	
+	if nValue= 0 then
+		print("Status: 200",NL,NL)
+		 
+		print("Content-type: text/html",NL,NL)
+		print(tLine,NL)
+
+	else
+		print("Status: 500",NL,NL)
+		print("Content-type: text/html",NL,NL)
+		print(tLine,NL)
+		
+	endif
+ 	
+	!remove (tOutputFile)
+	exit(nValue)
+endend
+   
+
+   

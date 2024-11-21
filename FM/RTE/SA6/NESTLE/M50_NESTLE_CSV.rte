@@ -1,0 +1,509 @@
+%@(#) $Id:  M50_NESTLE_CSV.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M50_NESTLE_CSV.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M50_NESTLE_CSV
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M50_NESTLE_CSV
+!
+!===========================================================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define PROG_NAME "$RCSfile: $"
+#define PROG_VER  "$Revision: $"
+#define PROG_DATE "$Date: $"
+#define TX_PROG_INFO "M50_NESTLE_CSV"
+#include "include/generix_func.inc"
+#include "include/M50_NESTLE_CSV.inc"
+#include "include/GEEXM50.inc"
+#include "include/GEEXM20.inc"
+#include "include/M35.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+	tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+
+	nContadorLinhasEscritas  := 0
+	nContadorHeader := 0
+	nMainIndex := 0
+	nNumeroMonoRegisto := 0
+	bHeader := TRUE
+endbegin
+
+!===========================================================
+
+line(not "")
+	S_Registo
+	if length (S_Registo_TipoTrataramento) > 0 then 
+		if bHeader = TRUE then
+			bHeader := FALSE
+		else
+			nNumeroMonoRegisto++
+			if S_Registo_TipoTrataramento = "0" then
+				taTRTEXC[nNumeroMonoRegisto] := ""
+			endif
+			if S_Registo_TipoTrataramento = "1" then
+				taTRTEXC[nNumeroMonoRegisto] := "7"
+			endif
+			tCODACT := S_Registo_Planta
+			taUNIDADE[nNumeroMonoRegisto] := S_Registo_Unidade
+			taCODTLIAntesQuery[nNumeroMonoRegisto] := S_Registo_TipoPedido
+			taCODCLIAntesQuery[nNumeroMonoRegisto] := S_Registo_CNPJDestinatario
+			taPTYCLI[nNumeroMonoRegisto] := S_Registo_Prioridade
+			taDIPLIV5001[nNumeroMonoRegisto] := S_Registo_Prioridade
+			taCLILIV[nNumeroMonoRegisto] := S_Registo_CNPJDestinatario
+
+			if S_Registo_TipoTrataramento = "1" then
+				tQuery := build("SELECT CODCLI ", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GELIVE ", NL," "\
+								"WHERE CODACT = '",tCODACT,"'", NL," "\
+								" AND REFLIV LIKE '%",S_Registo_Pedido,"%'")   
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				baClienteCadastrado[nNumeroMonoRegisto] := FALSE
+				while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+					taCODCLI[nNumeroMonoRegisto] := peel(taDb2Array["CODCLI"]," ")
+					baClienteCadastrado[nNumeroMonoRegisto] := TRUE
+					remove(taDb2Array)
+				endwhile
+
+				if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			else
+				if S_Registo_TipoTrataramento = "0" and length(taCODCLIAntesQuery[nNumeroMonoRegisto]) = 0 then
+					if peel(taPAYCLI[nNumeroMonoRegisto], " ") = "BR" or peel(taPAYCLI[nNumeroMonoRegisto], " ") = "BRA" then
+						taCODCLI[nNumeroMonoRegisto] := "BONIFICACAO"
+					else
+						taCODCLI[nNumeroMonoRegisto] := "EXPORTACAO"
+					endif
+				else
+					if S_Registo_TipoTrataramento = "0" and length(taCODCLIAntesQuery[nNumeroMonoRegisto]) > 0 then
+						taCODCLI[nNumeroMonoRegisto] := taCODCLIAntesQuery[nNumeroMonoRegisto]
+					endif
+				endif
+			endif
+			
+            if length(S_Registo_Prioridade) > 0 then
+			    taPTYDES[nNumeroMonoRegisto] := S_Registo_Prioridade
+            else
+                tQuery := build("SELECT PTYDES, CODMOP ", NL," "\
+                                "FROM FGE50FM",tToInfologPrefixFilename,".GECLI ", NL," "\
+                                "WHERE CODCLI = '",taCODCLI[nNumeroMonoRegisto],"' ", NL," "\
+                                "AND CODACT = '",tCODACT,"'")   
+
+                log("------------------------------------------------------------", NL)
+                log(tQuery,NL)
+                log("------------------------------------------------------------", NL)
+
+                if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                    print("FATAL ", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)					
+                endif
+
+                if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                    print("FATAL ", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+
+                while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+			        taPTYDES[nNumeroMonoRegisto] := taDb2Array["PTYDES"]
+			        taCODMOP[nNumeroMonoRegisto] := taDb2Array["CODMOP"]
+
+                    remove(taDb2Array)
+                endwhile
+
+                if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                    print("FATAL", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+            endif
+			taPAYCLI[nNumeroMonoRegisto] := S_Registo_Pais
+			taNFPedido[nNumeroMonoRegisto] := S_Registo_Pedido
+			taNOMCLI[nNumeroMonoRegisto] := S_Registo_RazSocial
+			taAD1CLI[nNumeroMonoRegisto] := S_Registo_Endereco
+			taAD2CLI[nNumeroMonoRegisto] := S_Registo_Endereco
+			taVILCLI[nNumeroMonoRegisto] := build(S_Registo_Municipio, "/", S_Registo_UF)
+			taCPICLI[nNumeroMonoRegisto] := S_Registo_CEP
+			if length(S_Registo_Serie) > 0 then
+				taSerie[nNumeroMonoRegisto] := build(number(S_Registo_Serie))
+			endif
+			if length(S_Registo_Serie) = 0 or number(S_Registo_Serie) = 0 then
+				taREFLIV[nNumeroMonoRegisto] := S_Registo_Pedido
+			else
+				taREFLIV[nNumeroMonoRegisto] := build(S_Registo_Pedido,".",number(S_Registo_Serie))
+			endif
+			
+			taTOULIV[nNumeroMonoRegisto] := S_Registo_Agrupador1
+			taCODRGT[nNumeroMonoRegisto] := S_Registo_Agrupador2
+			taDATEXP[nNumeroMonoRegisto] := tfConvertDate(S_Registo_DataAgendament, "DD/MM/YYYY", "YYYYMMDD")
+			taHEUEXP[nNumeroMonoRegisto] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")			
+			taCODTRA[nNumeroMonoRegisto] := S_Registo_CodigoTransportadora
+			taCRILIV[nNumeroMonoRegisto] := S_Registo_CriterioExtracao
+			taCODPRO[nNumeroMonoRegisto] := S_Registo_CodigoProduto
+			taUVCCDE[nNumeroMonoRegisto] := S_Registo_Quantidade
+			taCODLOT[nNumeroMonoRegisto] := S_Registo_Lote
+			taIMMFRG[nNumeroMonoRegisto] := S_Registo_Status
+			taCODPAL[nNumeroMonoRegisto] := S_Registo_SSCC
+
+			if nNumeroMonoRegisto >= 2 then
+				taREFLIVAnterior[nNumeroMonoRegisto] := taREFLIV[nNumeroMonoRegisto-1]
+			endif
+			taReferenciaRefgisto[nNumeroMonoRegisto] := build(nNumeroMonoRegisto)
+		endif
+	endif
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	nContadorHeaderTmp := 1
+
+	while nContadorHeaderTmp <= nNumeroMonoRegisto do
+		if nContadorLinhasEscritas = 0 then
+			nContadorNLILIV := 0
+
+			R_GEEX0000_CODEXC("00")
+			R_GEEX0000_SEPEXC(".")
+			R_GEEX0000_SCOEXC("00")
+			R_GEEX0000_TRTEXC("")
+			R_GEEX0000_EMTEXC("FM") 
+			R_GEEX0000_RCTEXC("")
+			R_GEEX0000_DATEXC(time("now", "%Y%m%d"))
+			R_GEEX0000_HEUEXC(time("now", "%H%M%S"))
+			R_GEEX0000_NUMEXC("0000000")
+			R_GEEX0000_ACQEXC("0")
+			R_GEEX0000_VEREXC("5.00") 
+			R_GEEX0000_NOMSYS("")  
+			R_GEEX0000_NOMDTQ("M50")
+			R_GEEX0000_BIBDTQ("")
+			R_GEEX0000_LIBEXC(build(nMessageID:R010))
+			R_GEEX0000_BIBDST("")
+			R_GEEX0000_PGMDST("")
+			R_GEEX0000_PARDST("")
+			R_GEEX0000_CODACT("")
+			R_GEEX0000_IGLSIT("")
+			R_GEEX0000_EDISIT(build(number(tCentro_De_Custo)))
+			R_GEEX0000_IMAEXC("")  
+
+			flush(0,0,NL) >> tFileOutTemp
+			nContadorLinhasEscritas++
+		endif
+   
+		if nContadorHeaderTmp = 1 or taREFLIVAnterior[nContadorHeaderTmp] <> taREFLIV[nContadorHeaderTmp] then
+			if nContadorHeaderTmp > 1 then
+				nContadorNLILIV := 0
+				R_GEEX5099_CODEXC("50")
+				R_GEEX5099_SEPEXC(".")
+				R_GEEX5099_SCOEXC("99")
+				R_GEEX5099_TRTEXC(taTRTEXC[nContadorHeaderTmp-1])
+				R_GEEX5099_CUMLIG(build(nContadorLinhasEncomenda))
+				R_GEEX5099_CODACT(tCODACT)
+				R_GEEX5099_REFLIV(taREFLIV[nContadorHeaderTmp-1])
+				R_GEEX5099_CODCLI(taCODCLI[nContadorHeaderTmp-1])
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")	
+			endif
+
+			if taTRTEXC[nContadorHeaderTmp] = "" then
+				R_GEEX2000_CODEXC("20")
+				R_GEEX2000_SEPEXC(".")
+				R_GEEX2000_SCOEXC("00")
+				R_GEEX2000_TRTEXC(taTRTEXC[nContadorHeaderTmp])
+				R_GEEX2000_CODACT(tCODACT)
+				if baClienteCadastrado[nContadorHeaderTmp] = TRUE then
+					R_GEEX2000_CATCLI(taCATCLI[nContadorHeaderTmp])
+				else
+					R_GEEX2000_CATCLI("STD")
+				endif
+				R_GEEX2000_NOMCLI(taNOMCLI[nContadorHeaderTmp])
+				if length(taAD1CLI[nContadorHeaderTmp]) > 30 then
+					R_GEEX2000_AD1CLI(taAD1CLI[nContadorHeaderTmp])
+					R_GEEX2000_AD2CLI(substr(taAD1CLI[nContadorHeaderTmp], 31, length(taAD1CLI[nContadorHeaderTmp]) - 30))
+				else
+					R_GEEX2000_AD1CLI(taAD1CLI[nContadorHeaderTmp])
+				endif
+				R_GEEX2000_VILCLI(taVILCLI[nContadorHeaderTmp])
+				R_GEEX2000_PAYCLI(taPAYCLI[nContadorHeaderTmp])
+				R_GEEX2000_CODCLI(taCODCLI[nContadorHeaderTmp])
+
+				nContadorLinhasEscritas++
+				flush(0,0,NL) >> tFileOutTemp
+
+				R_GEEX2001_CODEXC("20")
+				R_GEEX2001_SEPEXC(".")
+				R_GEEX2001_SCOEXC("01")
+				R_GEEX2001_TRTEXC(taTRTEXC[nContadorHeaderTmp])
+				R_GEEX2001_CODACT(tCODACT)
+				R_GEEX2001_CPICLI(taCPICLI[nContadorHeaderTmp])
+				R_GEEX2001_PTYDES(taPTYDES[nContadorHeaderTmp])
+				R_GEEX2001_CODCLI(taCODCLI[nContadorHeaderTmp])
+				R_GEEX2001_CODMOP("NES")
+
+				nContadorLinhasEscritas++
+				flush(0,0,NL) >> tFileOutTemp
+
+				R_GEEX2002_CODEXC("20")
+				R_GEEX2002_SEPEXC(".")
+				R_GEEX2002_SCOEXC("02")
+				R_GEEX2002_TRTEXC(taTRTEXC[nContadorHeaderTmp])
+				R_GEEX2002_CODACT(tCODACT)
+				R_GEEX2002_CODCLI(taCODCLI[nContadorHeaderTmp])
+
+				nContadorLinhasEscritas++
+				flush(0,0,NL) >> tFileOutTemp
+			endif
+
+			R_GEEX5000_CODEXC("50")
+			R_GEEX5000_SEPEXC(".")
+			R_GEEX5000_SCOEXC("00")
+			R_GEEX5000_TRTEXC(taTRTEXC[nContadorHeaderTmp])
+			R_GEEX5000_CODACT(tCODACT)
+			R_GEEX5000_CODTLI(taCODTLIAntesQuery[nNumeroMonoRegisto])
+			R_GEEX5000_CODCLI(taCODCLI[nContadorHeaderTmp])  
+			R_GEEX5000_REFLIV(taREFLIV[nContadorHeaderTmp])
+			R_GEEX5000_CODTRA(taCODTRA[nContadorHeaderTmp])
+			R_GEEX5000_TOULIV(taTOULIV[nContadorHeaderTmp])
+			R_GEEX5000_CODRGT(taCODRGT[nContadorHeaderTmp])
+			R_GEEX5000_DTILIV(taDATEXP[nContadorHeaderTmp])
+			R_GEEX5000_HEILIV(taHEUEXP[nContadorHeaderTmp])
+			R_GEEX5000_MSGLIV1(taCODTRA[nContadorHeaderTmp])
+			if baClienteCadastrado[nContadorHeaderTmp] = TRUE then
+				R_GEEX5000_CODMOP(taCODMOP[nContadorHeaderTmp])
+			else
+				R_GEEX5000_CODMOP("NES")
+			endif
+			R_GEEX5000_CLILIV(taCLILIV[nContadorHeaderTmp])	
+			   
+			flush(0,0,NL) >> tFileOutTemp
+			nContadorLinhasEscritas++
+
+			R_GEEX5001_CODEXC("50")
+			R_GEEX5001_SEPEXC(".")
+			R_GEEX5001_SCOEXC("01")
+			R_GEEX5001_TRTEXC(taTRTEXC[nContadorHeaderTmp])
+			R_GEEX5001_CODACT(tCODACT)
+			R_GEEX5001_CODCLI(taCODCLI[nContadorHeaderTmp])  
+			R_GEEX5001_DIPLIV(taDIPLIV5001[nContadorHeaderTmp]) 
+			R_GEEX5001_REFLIV(taREFLIV[nContadorHeaderTmp])
+			R_GEEX5001_CRILIV(taCRILIV[nContadorHeaderTmp])
+			R_GEEX5001_PTYCLI(taPTYCLI[nContadorHeaderTmp])
+
+			flush(0,0,NL) >> tFileOutTemp
+			nContadorLinhasEscritas++		   
+			   
+			taNFPedido[nNumeroMonoRegisto] := S_Registo_Pedido
+			taSerie[nNumeroMonoRegisto] := build(number(S_Registo_Serie))
+		endif
+
+		nContadorLinhasEncomenda := 0
+		nContadorTmpTOTAL := 1
+
+		while nContadorTmpTOTAL <= nNumeroMonoRegisto do  
+			if taReferenciaRefgisto[nContadorTmpTOTAL] = build(nContadorHeaderTmp) and taTRTEXC[nContadorHeaderTmp] <> "7" then
+				R_GEEX5020_CODEXC("50")
+				R_GEEX5020_SEPEXC(".")
+				R_GEEX5020_SCOEXC("20")
+				R_GEEX5020_TRTEXC(taTRTEXC[nContadorTmpTOTAL])
+				R_GEEX5020_CODACT(tCODACT)
+				R_GEEX5020_CODCLI(taCODCLI[nContadorTmpTOTAL])
+				R_GEEX5020_CODPRO(taCODPRO[nContadorTmpTOTAL])
+				R_GEEX5020_UNICDE(taUNIDADE[nContadorTmpTOTAL])
+				R_GEEX5020_CODLOT(taCODLOT[nContadorTmpTOTAL])
+				R_GEEX5020_QTECDE(taUVCCDE[nContadorTmpTOTAL])
+				R_GEEX5020_REFLIV(taREFLIV[nContadorTmpTOTAL])
+				nContadorNLILIV++
+				R_GEEX5020_NLILIV(build(nContadorNLILIV:R05.0))
+				R_GEEX5020_IMMFRG(taIMMFRG[nContadorTmpTOTAL])
+				R_GEEX5020_TYPSTK("1")
+				
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+			
+				if length(taCODPAL[nContadorTmpTOTAL]) > 0 then
+					R_GEEX5025_CODEXC("50")
+					R_GEEX5025_SEPEXC(".")
+					R_GEEX5025_SCOEXC("25")
+					R_GEEX5025_TRTEXC(taTRTEXC[nContadorTmpTOTAL])
+					R_GEEX5025_CODACT(tCODACT)
+					R_GEEX5025_CODCLI(taCODCLI[nContadorTmpTOTAL])
+					R_GEEX5025_REFLIV(taREFLIV[nContadorTmpTOTAL])
+					R_GEEX5025_CODPAL(taCODPAL[nContadorTmpTOTAL])
+					R_GEEX5025_NLILIV(build(nContadorNLILIV:R05.0))
+					
+					flush(0,0,NL) >> tFileOutTemp
+					nContadorLinhasEscritas++
+				endif			
+			endif
+			nContadorTmpTOTAL++
+		endwhile
+
+		nContadorHeaderTmp++
+	endwhile
+   
+	R_GEEX5099_CODEXC("50")
+	R_GEEX5099_SEPEXC(".")
+	R_GEEX5099_SCOEXC("99")
+	R_GEEX5099_TRTEXC(taTRTEXC[nContadorHeaderTmp-1])
+	R_GEEX5099_CUMLIG(build(nContadorLinhasEncomenda))
+	R_GEEX5099_CODACT(tCODACT)
+	R_GEEX5099_CODCLI(taCODCLI[nContadorHeaderTmp-1])
+	R_GEEX5099_REFLIV(taREFLIV[nContadorHeaderTmp-1])
+
+	flush(0,0,NL) >> tFileOutTemp
+	nContadorLinhasEscritas++
+   
+    R_GEEX9900_CODEXC("99")
+    R_GEEX9900_SEPEXC(".")
+    R_GEEX9900_SCOEXC("00")
+    R_GEEX9900_TRTEXC("")
+    R_GEEX9900_EMTEXC("FM")
+    R_GEEX9900_RCTEXC("")
+    R_GEEX9900_DATEXC(time("now", "%Y%m%d"))
+    R_GEEX9900_HEUEXC(time("now", "H%M%S"))
+    R_GEEX9900_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+	R_GEEX9900_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+    flush(0,0,NL)  >> tFileOutTemp
+	nContadorLinhasEscritas++
+    
+	bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+	close(tFileOutTemp)
+
+	copy(tFileOutTemp,tFileOut)
+	close(tFileOutTemp)
+	remove(tFileOutTemp)
+	close(tFileOut)
+			
+	bfSqlClose(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "NESTLE"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "PEDIDO"
+	TRACE.NUMDOC := taREFLIV[nContadorHeaderTmp-1] 
+	TRACE.DATDOC := tfConvertDate(substr(taDATEXP[nContadorHeaderTmp-1],1,8), "YYYYMMDD" , "YYYY-MM-DD") 
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.LIBEXC := tLIBEXC
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOutTemp)
+		copy(tFileOutTemp,TRACE.Out)
+		close(tFileOutTemp)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction

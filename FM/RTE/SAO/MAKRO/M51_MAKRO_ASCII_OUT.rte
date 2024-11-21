@@ -1,0 +1,362 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M51_MAKRO_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/Retord.inc"
+#include "include/M51.inc"
+#include "include/RECORDSTAT.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+
+    
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAKRO"]
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nContador5100 := 0
+    
+nMainIndex := 0
+
+
+
+
+
+endbegin
+
+!===========================================================
+
+
+
+
+line(1:"00.00")
+ !  tCentroCusto := S_00HEADER_EDISIT
+
+endline
+
+line(1:"51.00")
+nContador5100++
+
+nContador5120 := 0
+
+
+nMessageID := cMessageIDM51Makro
+if nMessageID = 9999 then
+        cMessageIDM51Makro := 0
+endif
+
+tNumeroLoja := "00092"
+        tFileOut := build(sHOME,"/rte/FM",tToInfologPrefixFilename,"MAwmw_retordstatuswms.str",tNumeroLoja,".",time("now" ,"%Y%m%d%H%M%S"),".txt")
+        tFileOutTemp := build(sHOME,"/rte/Temp/FM",tToInfologPrefixFilename,"MAwmw_retordstatuswms.str",time("now" ,"%Y%m%d"),tNumeroLoja,".txt")
+		tNameOut := build("FM",tToInfologPrefixFilename,"MAwmw_retordstatuswms.str",tNumeroLoja,".",time("now" ,"%Y%m%d%H%M%S"),".txt")
+print("*",nMessageID:R04,"*",NL) >> tFileOutTemp
+
+
+
+tFileOutRECORD := build(sHOME,"/rte/FM0AOwmw_retordartstatwms.str",tNumeroLoja,".",time("now" ,"%Y%m%d%H%M%S"),".txt")
+        tFileOutTempRECORD := build(sHOME,"/rte/Temp/FM0AOwmw_retordartstatwms.str",time("now" ,"%Y%m%d"),tNumeroLoja,".txt")
+		tNameOutRECORD := build("FM0AOwmw_retordartstatwms.str",tNumeroLoja,".",time("now" ,"%Y%m%d%H%M%S"),".txt")
+print("*",nMessageID:R04,"*",NL) >> tFileOutTemp
+
+
+
+
+
+
+
+
+
+!wmw_retordstatus.strLLLLL.aaaammddhhmmss
+
+	nLinha := 0
+	nConta5120 := 0
+	
+	
+	
+	tCodigoCliente := S_5100ORDERHEADER_CODCLI
+	tNumeroPedido := S_5100ORDERHEADER_REFLIV
+	tRota := S_5100ORDERHEADER_TOULIV
+tNumLivLido := S_5100ORDERHEADER_NUMLIV
+	tData := S_5100ORDERHEADER_DATEXP
+	if length(S_5100ORDERHEADER_HEUEXP) = 4 then
+		tHora := build(S_5100ORDERHEADER_HEUEXP,"00")
+	else
+		tHora := S_5100ORDERHEADER_HEUEXP
+	endif
+   
+   
+   
+   
+   R_HEADER_cdEmpresa("92")
+   R_HEADER_cdRepresentante("0")
+   R_HEADER_flOrigemPedido("E")
+   R_HEADER_nuPedido(tNumeroPedido)
+   R_HEADER_cdCliente(tCodigoCliente)
+   R_HEADER_cdTabelaPreco("")
+   R_HEADER_dtEmissao(tfConvertDate(tData, "YYYYMMDD" , "DD/MM/YYYY") )
+   R_HEADER_cdStatusPedido("75")
+   R_HEADER_vlTotalPedido("")
+   R_HEADER_dsObservacao("")
+   R_HEADER_nuPedidoRelacionado("ver")
+   R_HEADER_flOrigemPedidoRelacionado("E")
+   R_HEADER_dtAtualizacaoStatus(build(tData,tHora))
+	
+	flush(0,0,NL) >> tFileOutTemp
+   
+   
+   
+   
+endline
+
+
+	
+
+
+
+line(1:"51.20")
+
+nContador5120++
+
+tCodigoProduto := S_5120ORDERLINE_CODPRO
+tQuantidadeSeparada := S_5120ORDERLINE_UVCLIV
+
+
+   R_RECORD_cdEmpresa("91")
+   R_RECORD_cdRepresentante("0")
+   R_RECORD_flOrigemPedido("E")
+   R_RECORD_nuPedido(tNumeroPedido)
+   R_RECORD_cdProduto(tCodigoProduto)
+   R_RECORD_flTipoItemPedido("V")
+   R_RECORD_nuSeqProduto("1")
+   R_RECORD_cdTabelaPreco("")
+      tCont := build(number(tQuantidadeSeparada) * 10000)
+   R_RECORD_qtItemFisico(build(number(tCont):R16.7)) !ver formatacao
+
+   R_RECORD_vlItemPedido("")
+   R_RECORD_vlBaseItemTabelaPreco("")
+   R_RECORD_vlTotalItemPedido("")
+   R_RECORD_cdUnidade("BASE")
+   R_RECORD_dtAtualizacaoStatus(build(tData,tHora))
+flush(0,0,NL) >> tFileOutTempRECORD
+
+endline
+
+
+
+
+
+line(1:"51.99")
+
+   
+   
+print("*",time("now","%Y%m%d"),"*") >> tFileOutTemp 
+print("*",time("now","%Y%m%d"),"*") >> tFileOutTempRECORD 
+
+   
+   bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+   
+	
+
+
+close(tFileOutTemp)
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+		
+		
+		close(tFileOutTempRECORD)
+copy(tFileOutTempRECORD,tFileOutRECORD)
+    close(tFileOutTempRECORD)
+	remove(tFileOutTempRECORD)
+	    close(tFileOutRECORD)
+
+system("sleep 1")
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "MAKRO"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO"
+   TRACE.NUMDOC := tNumeroPedido
+   TRACE.DATDOC := tfConvertDate(tData, "YYYYMMDD" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOutLEGADO,NL,NL) >> TRACE.Detail
+ print(build("Ficheiro de Saida: "),tFileOutSA,NL,NL) >> TRACE.Detail
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+! HASH PRIMEIRO FICHEIRO
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.OutWithoutHASH)
+close(tFileOutTemp)
+close(TRACE.OutWithoutHASH)
+
+
+tCmdHASH := build("CRC32_v2 ",TRACE.OutWithoutHASH," >> ",TRACE.Hash) 
+log("executing command ",tCmdHASH,NL)
+nRet := system(tCmdHASH) 
+log("nRet ", nRet,NL)
+close(TRACE.OutWithoutHASH)
+close(TRACE.Hash)
+
+tFileHash := tolower(read(TRACE.Hash))
+close(TRACE.OutWithoutHASH)
+close(TRACE.Hash)
+! nConta41Total:=nConta4120+2 !para contar o 41.00 e 41.99
+print(build(1:R06),"*",tFileHash,"*",NL) >> tFileOutTemp 
+
+
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+
+close(TRACE.OutWithoutHASH)
+remove(TRACE.OutWithoutHASH)
+
+
+
+!HASH SEGUNDO FICHEIRO
+
+
+close(tFileOutTempRECORD)
+copy(tFileOutTempRECORD,TRACE.OutWithoutHASHRECORD)
+close(tFileOutTempRECORD)
+close(TRACE.OutWithoutHASHRECORD)
+
+
+tCmdHASH := build("CRC32_v2 ",TRACE.OutWithoutHASHRECORD," >> ",TRACE.HashRECORD) 
+log("executing command ",tCmdHASH,NL)
+nRet := system(tCmdHASH) 
+log("nRet ", nRet,NL)
+close(TRACE.OutWithoutHASHRECORD)
+close(TRACE.HashRECORD)
+
+tFileHash := tolower(read(TRACE.HashRECORD))
+close(TRACE.OutWithoutHASHRECORD)
+close(TRACE.HashRECORD)
+! nConta41Total:=nConta4120+2 !para contar o 41.00 e 41.99
+print(build(nContador5120:R06),"*",tFileHash,"*",NL) >> tFileOutTemp 
+
+
+close(tFileOutTempRECORD)
+copy(tFileOutTempRECORD,TRACE.OutRECORD)
+close(tFileOutTempRECORD)
+close(TRACE.OutRECORD)
+
+close(TRACE.OutWithoutHASHRECORD)
+remove(TRACE.OutWithoutHASHRECORD)
+
+
+
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+

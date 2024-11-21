@@ -1,0 +1,305 @@
+%@(#)  source_filename.rte     modif:21-11-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/NFE/procNFe_v4.00.xsd" validating
+message "XML/FMBrasil/nfeProc.dtd" receiving, passthru
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "NFE_ROUTING_XML_IN"
+#include "include/generix_func.inc"
+
+
+!==============================================================================
+
+! Initialization section
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	nMessageID := cMessageID
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+	! Parametros da XML
+		PROCESS_ERRONEOUS := TRUE
+		pXML.INCONVIN := "UTF-8"
+		pXML.INCOVIN := "UTF-8"
+		pXML.ENCODING := "UTF-8"
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+	!Variaveis Gerais
+		tEmitCNPJ := ""
+		tDestCNPJ := ""
+		tAmbiente := ""
+		tCODACT := ""
+
+endbegin
+
+!==============================================================================
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGemit : M 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
+	tEmitCNPJ := eECNPJ   ! C
+endsegment
+
+! Group gGnfeProc,gGNFe,gGinfNFe,gGdest : C 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+	tDestCNPJ := eECNPJ   ! C  
+endsegment
+
+! Default statements section
+default
+
+enddefault
+
+!==============================================================================
+
+! End statements section
+end
+
+	!Abertura do banco de dados - WMS
+		tDbBase			:= "FMWMS"
+		tDbUsername		:= taPARAM["WMSDBUSER"]
+		tDbPassword		:= taPARAM["WMSDBPASS"]
+		tDbUrl			:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+
+	!=======================================================
+	! SAO
+
+	!=======================================================
+	! SA2
+		tAmbiente := taPARAM[build("ToInfologPrefixFilename","SA2")]
+
+		! Rubrica: L'OREAL
+			if bfValidaACT(tAmbiente, tEmitCNPJ) then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+		
+	!=======================================================
+	! SA3
+		tAmbiente := taPARAM[build("ToInfologPrefixFilename","SA3")]
+
+		! SISLEY
+			tCODACT := "SIS"
+			if tEmitCNPJ = "16587166000439" then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! TOPCAU
+			tCODACT := "TOP"
+			if tEmitCNPJ = "00132010000180" and tDestCNPJ <> "00132010000180" \
+				or tEmitCNPJ <> "00132010000180" and tDestCNPJ = "00132010000180" then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! VIKING
+			tCODACT := "VIK"
+			if tEmitCNPJ = "24804709000108" or tDestCNPJ = "24804709000108" then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! Rubrica: SEM PARAR / LINDT
+			if bfValidaACT(tAmbiente, tEmitCNPJ) then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! Rubrica: NOBAR
+			if bfValidaACT(tAmbiente, tDestCNPJ) then
+				if tCODACT = "BAR" then
+					bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+				endif
+			endif
+
+	!=======================================================
+	! SA4
+
+	!=======================================================
+	! SA5
+
+	!=======================================================
+	! SA6
+		tAmbiente := taPARAM[build("ToInfologPrefixFilename","SA6")]
+
+		! HENKEL
+			tCODACT := "HEN"
+			if tEmitCNPJ = "02777131000105" and tDestCNPJ = "02462805000778" or tEmitCNPJ <> "02777131000105" \
+				and tDestCNPJ = "02777131000105" or tEmitCNPJ = "02777131000105" and tDestCNPJ <> "02462805000778" then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! BRAE
+			tCODACT := "BRA"
+			if tEmitCNPJ = "50751773000188" or tDestCNPJ = "50751773000188" then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! FULL COMMERCE
+			tCODACT := "FAN"
+			if tEmitCNPJ = "22648371000389" or tDestCNPJ = "22648371000389" then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+		! Rubrica: NESTLE
+			if bfValidaACT(tAmbiente, tEmitCNPJ) then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+	!=======================================================
+	! SA7
+		tAmbiente := taPARAM[build("ToInfologPrefixFilename","SA7")]
+
+		! Rubrica: MARS
+			if bfValidaACT(tAmbiente, tEmitCNPJ) then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+	!=======================================================
+	! SA8
+		tAmbiente := taPARAM[build("ToInfologPrefixFilename","SA8")]
+
+		! Rubrica: VEJA
+			if bfValidaACT(tAmbiente, tEmitCNPJ) then
+				bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+			endif
+
+	!=======================================================
+	! SA9
+
+	!=======================================================
+	! CGE
+
+	!=======================================================
+	! QNS
+
+	!=======================================================
+	! QN1
+
+	!=======================================================
+	! ITJ
+
+	!=======================================================
+	! IT6
+
+	!=======================================================
+	! NAO ENCONTRADO
+		log(NL)
+		log("------------------------------------------------------------", NL)
+		log("Não encontrou nenhuma condição valida.", NL)
+		log("------------------------------------------------------------", NL)
+		bfGeraArquivo("", "", tEmitCNPJ, tDestCNPJ)
+		exit(0)
+
+endend
+
+!==============================================================================
+
+function bfValidaACT(tToInfologPrefixFilename,tCNPJ_FUNC)
+
+	bValidado := FALSE
+
+	tQuery := build("SELECT CODACT", NL," "\
+					"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+					"WHERE CODRUB LIKE 'CNP%'", NL," "\
+					"AND VALRUB = '",tCNPJ_FUNC,"'")  
+
+    log("------------------------------------------------------------", NL)
+    log(tQuery,NL)
+    log("------------------------------------------------------------", NL)
+
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+		bfSqlErro()
+		exit(1)
+    endif
+
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+		bfSqlErro()
+		exit(1)
+    endif
+
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+		bValidado := TRUE
+        tCODACT := peel(taDb2Array["CODACT"]," ")
+
+        remove(taDb2Array)
+    endwhile
+
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+		bfSqlErro()
+		exit(1)
+    endif
+
+	return bValidado
+
+endfunction
+
+!==============================================================================
+
+function bfGeraArquivo(tAmbiente, tCODACT, tEmitCNPJ, tDestCNPJ)
+
+	! Logs
+		log("------------------------------------------------------------", NL)
+		log("CNPJ Emit: ", tEmitCNPJ, NL)
+		log("CNPJ Dest: ", tDestCNPJ, NL)
+		log("Ambiente.: ", tAmbiente, NL)
+		log("Atividade: ", tCODACT, NL)
+		log("------------------------------------------------------------", NL)
+
+	! Variaveis de Arquivo
+		tNameOut := build(tEmitCNPJ,tCODACT,"_nfeProc_RP_",SYSLOG.INDEX,".xml")
+		tFileOut := build(sHOME,"/tmp/",tNameOut)
+
+	! Encerramento SYSLOG
+		close(SYSLOG.a)
+		copy(SYSLOG.a,tFileOut)
+		close(SYSLOG.a)
+		close(tFileOut)
+		log("Creating in: ",tFileOut, NL, NL)
+	
+	! Fim
+		bfSqlClose(tDbBase)
+
+		log("------------------------------------------------------------", NL)
+		log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("------------------------------------------------------------", NL)
+
+		exit(0)
+
+endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    log(build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+!========================================================================

@@ -1,0 +1,439 @@
+%@(#)  source_filename.rte     modif:05-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 05-12-2017  XX  Creation
+! 05-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M50_COTY_CSV_IN"
+#include "include/generix_func.inc"
+#include "include/M50CotyCSV.inc"
+#include "include/M50.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+  !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+    
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+ ! tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+    
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    nNumeroLinha := 0
+	nMainIndex := 0
+endbegin
+
+!===========================================================
+
+
+line(not "")
+S_HEADER
+   
+   if length(peel(S_HEADER_Type," ")) > 0 and peel(S_HEADER_Type," ") <> "Type" then
+	   nNumeroLinha++
+
+   
+		taCODTLI[nNumeroLinha]	:=   S_HEADER_Type
+		taDTILIV[nNumeroLinha]	:=   S_HEADER_PostingDate
+		!taItem [nNumeroLinha]	:=   S_HEADER_Item
+		taCODPRO[nNumeroLinha]	:=   S_HEADER_Material
+		!taMaterialdescription [nNumeroLinha]	:=   S_HEADER_Materialdescription
+		taREFLIV[nNumeroLinha]	:=   S_HEADER_DANFE_DELIVERY
+		taUVCCDE[nNumeroLinha]	:=   replace(S_HEADER_Quantity,".","")
+		taUNICDE[nNumeroLinha]	:=   S_HEADER_BaseUnitofMeasure
+		!taStoragelocation_Status [nNumeroLinha]	:=   S_HEADER_Storagelocation_Status
+		taLote [nNumeroLinha]	:=   S_HEADER_Lote
+		
+		
+		/*
+		
+		SE DANFE = DT SEPARAÇÃO = Agrupador DANFE / DELIVERY, ENTÃO CODCLI=ZSEP.
+		SE DANFE <> DT SEPARAÇÃO = Agrupador DANFE / DELIVERY, ENTÃO CODCLI= Supplier/Customer ID (CPF/CNPJ)
+		*/
+		
+		if S_HEADER_DANFE_DELIVERY = S_HEADER_ZSEP_AgrupadorDANFE_DELIVERY then
+			taCODCLI[nNumeroLinha]	:=   "ZSEP"
+			taNOMCLI [nNumeroLinha]	:=   "ZSEP"
+		else
+			taCODCLI[nNumeroLinha]	:=   S_HEADER_Supplier_CustomerID_CPF_CNPJ
+			taNOMCLI [nNumeroLinha]	:=   S_HEADER_Supplier_CustomerName
+		endif
+		
+		
+		
+		taAD1CLI [nNumeroLinha]	:=   S_HEADER_Adress
+		taVILCLI [nNumeroLinha]	:=   S_HEADER_City
+		taCPOCLI [nNumeroLinha]	:=   S_HEADER_ZipCode
+		taVILCLI  [nNumeroLinha]	:=   S_HEADER_UF 
+		taCRILIV[nNumeroLinha]	:=   build(number(S_HEADER_ZSEP_AgrupadorDANFE_DELIVERY))
+		taIdentificacaoveiculo[nNumeroLinha]	:=   S_HEADER_Z100_Identificacaoveiculo
+		taVolume [nNumeroLinha]	:=   S_HEADER_Volumeaserimpressonaetiquetadabomba
+		taMSGLIV[nNumeroLinha]	:=   S_HEADER_Transportadora
+
+	   baConsideraHeader[nNumeroLinha] := TRUE
+	   baProdutoDuplicado[nNumeroLinha] := FALSE
+ 
+endif
+   
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+nTempNumeroLinha := 1
+while nTempNumeroLinha  <= nNumeroLinha do
+   nTempNumeroLinha2 := nTempNumeroLinha+1
+   while nTempNumeroLinha2  <= nNumeroLinha do
+      if taREFLIV[nTempNumeroLinha2] = taREFLIV[nTempNumeroLinha] then
+         baConsideraHeader[nTempNumeroLinha2] := FALSE
+      endif
+	  
+	  
+	  if taREFLIV[nTempNumeroLinha2] = taREFLIV[nTempNumeroLinha] and taCODPRO[nTempNumeroLinha2] = taCODPRO[nTempNumeroLinha] then !and taCODLOT[nTempNumeroLinha2] = taCODLOT[nTempNumeroLinha] then
+			baProdutoDuplicado[nTempNumeroLinha2] := TRUE
+			taUVCCDE[nTempNumeroLinha] := build(number(taUVCCDE[nTempNumeroLinha])+ number(taUVCCDE[nTempNumeroLinha2]))
+			!taPDBCOL[nTempNumeroLinha] := build(number(taPDBCOL[nTempNumeroLinha])+ number(taPDBCOL[nTempNumeroLinha2]))
+	  endif
+	  
+	  
+      nTempNumeroLinha2 ++
+   endwhile
+   
+   
+   
+   
+   nTempNumeroLinha ++
+endwhile
+
+nTempNumeroLinha := 1
+while nTempNumeroLinha  <= nNumeroLinha do
+if baConsideraHeader[nTempNumeroLinha] = TRUE then
+
+  if nContadorLinhasEscritas = 0 then
+     R_0000HEADER_CODEXC("00")
+     R_0000HEADER_SEPEXC(".")
+     R_0000HEADER_SCOEXC("00")
+     R_0000HEADER_TRTEXC("")
+     R_0000HEADER_EMTEXC("FM") 
+     R_0000HEADER_RCTEXC("")
+     R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_0000HEADER_NUMEXC("0000000")
+     R_0000HEADER_ACQEXC("0")
+     R_0000HEADER_VEREXC("5.00") 
+     R_0000HEADER_NOMSYS("")  
+     R_0000HEADER_NOMDTQ("M50")
+     R_0000HEADER_BIBDTQ("")
+     R_0000HEADER_LIBEXC(build(nMessageID:R010))
+     R_0000HEADER_BIBDST("")
+     R_0000HEADER_PGMDST("")
+     R_0000HEADER_PARDST("")
+     R_0000HEADER_CODACT("")
+     R_0000HEADER_IGLSIT("")
+     R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_0000HEADER_IMAEXC("")  
+     !R_0000HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+     nContadorLinhasEscritas++
+   endif
+
+
+
+ 
+						   R_5000ORDERHEADER_CODEXC("50")
+						   R_5000ORDERHEADER_SEPEXC(".")
+						   R_5000ORDERHEADER_SCOEXC("00")
+						 R_5000ORDERHEADER_CODACT(tCODACTConst)
+						 R_5000ORDERHEADER_CODCLI(taCODCLI[nTempNumeroLinha] )  
+						 
+						 R_5000ORDERHEADER_CODTRA("33306929000798")
+
+						 R_5000ORDERHEADER_REFLIV(taREFLIV[nTempNumeroLinha])
+						   R_5000ORDERHEADER_DTILIV(tfConvertDate(taDTILIV[nTempNumeroLinha] , "DD-MM-YYYY" , "YYYYMMDD"))
+						   !R_5000ORDERHEADER_HEILIV(substr(tHoraEntregaPrevista,1,4) )
+						   R_5000ORDERHEADER_CODTLI(taCODTLI[nTempNumeroLinha])
+						  R_5000ORDERHEADER_MSGLIV1(substr(taMSGLIV[nTempNumeroLinha],1,30))
+						   R_5000ORDERHEADER_MSGLIV2(substr(taMSGLIV[nTempNumeroLinha],31,30))
+						   R_5000ORDERHEADER_TOULIV(build(number(substr(taIdentificacaoveiculo[nTempNumeroLinha],(length(taIdentificacaoveiculo[nTempNumeroLinha])-3),4)):R04))
+    flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+
+   R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
+   R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
+   R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
+   R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACTConst)
+   R_5001ORDERHEADER_COMPLEMENT_CODCLI(taCODCLI[nTempNumeroLinha])  
+   !R_5000ORDERHEADER_CLILIV(tCentroDeCusto) !  tNumeroPedido)
+
+   R_5001ORDERHEADER_COMPLEMENT_REFLIV(taREFLIV[nTempNumeroLinha])
+R_5001ORDERHEADER_COMPLEMENT_CRILIV(taCRILIV[nTempNumeroLinha])
+!R_5001ORDERHEADER_COMPLEMENT_DIPLIV(substr(taTVROMCAB_DTVEN[nTempNumeroLinha],1,8))
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+
+   R_GEEX5005_CODEXC("50")   ! C N Code du mouvement d'échange-Code exchange movement
+   R_GEEX5005_SEPEXC(".")   ! C AN Séparateur entre code et sous-code-Separator between code and subcode
+   R_GEEX5005_SCOEXC("05")   ! C N Sous-code du mouvement d'échange-Subcode exchange movement
+  !R_GEEX5005_TRTEXC("")   ! C AN Code traitement du mouvement-motion processing codes
+  !R_GEEX5005_NUMLIV("")   ! C N Numéro de la commande à livrer-Order Number to deliver
+  !R_GEEX5005_SNULIV("")   ! C N Sous-numéro de la commande à livrer-Sub-order number for delivery
+  R_GEEX5005_CODACT(tCODACTConst)   ! C AN Code activité logistique-Code logistics buss
+  R_GEEX5005_CODCLI(taCODCLI[nTempNumeroLinha])   ! C AN Code du client (Commandé par)-Custt
+  R_GEEX5005_REFLIV(taREFLIV[nTempNumeroLinha])   ! C AN Référence de la livraison-Number oo f delivery
+
+
+   R_GEEX5005_CODRUB("VOL")   ! C AN Code de la rubrique-Code of item
+   R_GEEX5005_VALRUB(taVolume[nTempNumeroLinha] )   ! C AN Valeur de la rubrique-Value in field
+  !R_GEEX5005_DISEXC("")   ! C AN Zone disponible pour de futures utilisations-Area available for future use
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+						R_5010_CODEXC("50")
+						   R_5010_SEPEXC(".")
+						   R_5010_SCOEXC("10")
+						 R_5010_CODACT(tCODACTConst)
+						
+							 R_5010_NOMCLI(taNOMCLI[nTempNumeroLinha])
+						R_5010_AD1CLI(taAD1CLI[nTempNumeroLinha])
+						R_5010_VILCLI(taVILCLI[nTempNumeroLinha])
+						R_5010_CPOCLI(taCPOCLI[nTempNumeroLinha])
+						R_5010_VILCLI(taVILCLI[nTempNumeroLinha])
+						
+			
+						 R_5010_CODCLI(taCODCLI[nTempNumeroLinha]) 
+						! R_5010_CODTRA("33306929000798")
+
+						 R_5010_REFLIV(taREFLIV[nTempNumeroLinha])
+						   !R_5010_DTILIV(tfConvertDate(taDTILIV[nTempNumeroLinha] , "DD-MM-YYYY" , "YYYYMMDD"))
+						   !R_5010_HEILIV(substr(tHoraEntregaPrevista,1,4) )
+						   !R_5010_CODTLI("PRO" )
+						   !R_5010_KAILIV("999" )
+						   
+		flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+		nContadorLinhasEscritas++
+
+
+
+
+
+
+      nContadorLinhasEncomenda := 1
+      
+      
+        
+nContadorTmpTOTAL := 1
+
+
+   nTempNumeroLinha2 := nTempNumeroLinha
+   while nTempNumeroLinha2  <= nNumeroLinha do
+   
+   if taREFLIV[nTempNumeroLinha2] = taREFLIV[nTempNumeroLinha] then
+
+   ! fazer aqui um while e validar
+     if baProdutoDuplicado[nTempNumeroLinha2] = FALSE then
+			
+			R_5020ORDERLINE_CODEXC("50")
+			R_5020ORDERLINE_SEPEXC(".")
+			R_5020ORDERLINE_SCOEXC("20")
+			R_5020ORDERLINE_CODACT(tCODACTConst)
+			R_5020ORDERLINE_CODCLI(taCODCLI[nTempNumeroLinha2])
+			!R_5020ORDERLINE_NOMCLI(taCODCLI[nTempNumeroLinha2])
+			R_5020ORDERLINE_CODPRO(taCODPRO[nTempNumeroLinha2])
+         R_5020ORDERLINE_CODLOT(taCODLOT[nTempNumeroLinha2])
+			R_5020ORDERLINE_QTECDE(taUVCCDE[nTempNumeroLinha2])
+			R_5020ORDERLINE_UNICDE(taUNICDE[nTempNumeroLinha2])
+			R_5020ORDERLINE_REFLIV(taREFLIV[nTempNumeroLinha2])
+			R_5020ORDERLINE_NLILIV(build(nContadorLinhasEncomenda:R05.0))
+			!R_5020ORDERLINE_MSGLIV(build(build(number(peel(S_DETALHE_CodigoProduto,"\"")):L17),build(number(peel(S_DETALHE_Quantidade,"\"")):R09)))
+			flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+			nContadorLinhasEscritas++
+
+
+		endif
+
+   endif
+   
+   nContadorLinhasEncomenda++
+   nContadorTmpTOTAL++
+   nTempNumeroLinha2++ 
+    
+   endwhile
+
+
+    
+
+R_5099ORDERFOOTER_CODEXC("50")
+   R_5099ORDERFOOTER_SEPEXC(".")
+   R_5099ORDERFOOTER_SCOEXC("99")
+   R_5099ORDERFOOTER_CUMLIG(build(number(tCUMLIG) :R04.0))!ver conversao
+R_5099ORDERFOOTER_CODACT(tCODACTConst)
+R_5099ORDERFOOTER_CODCLI(taCODCLI[nTempNumeroLinha]) !(taCODCLI[nTempNumeroLinha])
+   !tTotalLinhas
+ R_5099ORDERFOOTER_REFLIV(taREFLIV[nTempNumeroLinha])
+    
+        flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+   nContadorLinhasEscritas++
+   
+   bfMajtrace("Recebida","0",taREFREC[nTempNumeroLinha],tDataDocumento,tFileInput,tFileOut,"Produtos","")
+   
+   endif
+   
+   
+   nTempNumeroLinha++
+endwhile
+   
+
+    R_9900FILEFOOTER_CODEXC("99")
+    R_9900FILEFOOTER_SEPEXC(".")
+    R_9900FILEFOOTER_SCOEXC("00")
+    R_9900FILEFOOTER_TRTEXC("")
+    R_9900FILEFOOTER_EMTEXC("FM")
+    R_9900FILEFOOTER_RCTEXC("")
+    R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+    R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+    R_9900FILEFOOTER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_9900FILEFOOTER_NOMSYS("")
+    !R_9900FILEFOOTER_NOMDTQ("")
+    !R_9900FILEFOOTER_BIBDTQ("")
+    !R_9900FILEFOOTER_IDEMSG("")
+    !R_9900FILEFOOTER_DISEXC("")
+
+    flush(0,0,NL)  >> tFileOutTemp
+    close(tFileOutTemp)
+
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+
+exit(0)
+
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "PEDIDO"
+   TRACE.NUMDOC := taREFLIV[nTempNumeroLinha]
+   TRACE.DATDOC := taDTILIV[nTempNumeroLinha]
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+
+
+if tError="0" then
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction

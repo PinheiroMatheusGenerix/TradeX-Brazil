@@ -1,0 +1,349 @@
+%@(#)  M50_LASA_TXT.rte     modif:01-12-2017
+!==============================================================================
+% File          : M50_LASA_TXT.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M50_LASA_TXT"
+#include "include/generix_func.inc"
+#include "include/M50_LASA_TXT.inc"
+#include "include/GEEXM50.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameGAMAITALY"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", \
+					"1", \
+					"", \
+					time("now","%Y-%m-%dT%H:%M:%S"), \
+					"", \
+					"PEDIDO", \
+					build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+    nCountLine1 := 0
+	nWhileLine1 := 0
+	nContLineEscritas := 0
+endbegin
+
+!===========================================================
+line(1:"1")
+    nCountLine1++
+	naCountLine2by1[nCountLine1] := 0
+	nCountLine2 := 0
+
+endline
+
+line(1:"2")
+    nCountLine2++
+	naCountLine2by1[nCountLine1]++
+
+	taCODTLI[build(nCountLine1,"-",nCountLine2)] := substr(S_DETAIL_LOCATION, 2, 3)
+	taDIPLIV[build(nCountLine1,"-",nCountLine2)] := S_DETAIL_LOCATION
+	taDTILIV[build(nCountLine1,"-",nCountLine2)] := substr(S_DETAIL_TRANSACTION_TS, 1, 8)
+	taHEILIV[build(nCountLine1,"-",nCountLine2)] := substr(S_DETAIL_TRANSACTION_TS, 9, 4)
+    taREFLIV[build(nCountLine1,"-",nCountLine2)] := S_DETAIL_DISTRO_NBR
+    taCODPRO[build(nCountLine1,"-",nCountLine2)] := S_DETAIL_ITEM_ID
+    taUVCCDE[build(nCountLine1,"-",nCountLine2)] := S_DETAIL_REQUESTED_UNIT_QTY
+    taCODCLI[build(nCountLine1,"-",nCountLine2)] := S_DETAIL_DEST_ID
+	taPRILIV[build(nCountLine1,"-",nCountLine2)] := build(strip(S_DETAIL_RETAIL_PRICE, "."),"0")
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	while nWhileLine1 < nCountLine1 do
+		nWhileLine1++
+		nWhileLine2 := 0
+		nWhileLine3020 := 0
+
+		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50LAS",build(nMessageID:R015),nWhileLine1,".DAT")
+		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50LAS",build(nMessageID:R015),nWhileLine1,".DAT")
+		tNameOut := build(tToInfologPrefixFilename,"50LAS",build(nMessageID:R015),nWhileLine1,".DAT")
+		
+		R_GEEX0000_CODEXC("00")
+		R_GEEX0000_SEPEXC(".")
+		R_GEEX0000_SCOEXC("00")
+		R_GEEX0000_TRTEXC("")
+		R_GEEX0000_EMTEXC("FM") 
+		R_GEEX0000_RCTEXC("")
+		R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX0000_NUMEXC("0000000")
+		R_GEEX0000_ACQEXC("0")
+		R_GEEX0000_VEREXC("5.00") 
+		R_GEEX0000_NOMSYS("")  
+		R_GEEX0000_NOMDTQ("M50")
+		R_GEEX0000_BIBDTQ("")
+		R_GEEX0000_LIBEXC(build(nMessageID:R010))
+		R_GEEX0000_BIBDST("")
+		R_GEEX0000_PGMDST("")
+		R_GEEX0000_PARDST("")
+		R_GEEX0000_CODACT("")
+		R_GEEX0000_IGLSIT("")
+		R_GEEX0000_EDISIT("")
+		R_GEEX0000_IMAEXC("")  
+		R_GEEX0000_DISEXC("")
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContLineEscritas++
+
+		while nWhileLine2 < naCountLine2by1[nWhileLine1] do
+			nWhileLine2++
+			nCount2000 := 0
+
+			tQuery := build("SELECT CODCLI, NOMCLI", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GECLI", NL," "\
+							"WHERE TRIM(EDICLI) = '",taCODCLI[build(nWhileLine1,"-",nWhileLine2)],"'", NL," "\
+							"AND CODACT = 'LAS'")   
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+						"1", \
+						tNumeroDocumento, \
+						tDataDocumento, \
+						tFileInput, \
+						tFileOut, \
+						"Produtos", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+						"1", \
+						tNumeroDocumento, \
+						tDataDocumento, \
+						tFileInput, \
+						tFileOut, \
+						"Produtos", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			bExistCODCLI := FALSE
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+				tCODCLI := peel(taDb2Array["CODCLI"]," ")
+				tNOMCLI := peel(taDb2Array["NOMCLI"]," ")
+				bExistCODCLI := TRUE
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao", \
+						"1", \
+						tNumeroDocumento, \
+						tDataDocumento, \
+						tFileInput, \
+						tFileOut, \
+						"Produtos", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if nWhileLine2 = 1 then
+                R_GEEX5000_CODEXC("50")
+                R_GEEX5000_SEPEXC(".")
+                R_GEEX5000_SCOEXC("00")
+                R_GEEX5000_CODACT("LAS")
+                R_GEEX5000_CODTLI(taCODTLI[build(nWhileLine1,"-",nWhileLine2)])
+                R_GEEX5000_REFLIV(taREFLIV[build(nWhileLine1,"-",nWhileLine2)])
+                R_GEEX5000_DTILIV(taDTILIV[build(nWhileLine1,"-",nWhileLine2)])
+                R_GEEX5000_HEILIV(taHEILIV[build(nWhileLine1,"-",nWhileLine2)])
+				if bExistCODCLI = TRUE then
+					R_GEEX5000_CODCLI(tCODCLI)
+				endif
+                R_GEEX5000_CODMOP("LAS")
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContLineEscritas++
+                
+                R_GEEX5001_CODEXC("50")
+                R_GEEX5001_SEPEXC(".")
+                R_GEEX5001_SCOEXC("01")
+                R_GEEX5001_CODACT("LAS")
+				if bExistCODCLI = TRUE then
+					R_GEEX5001_CODCLI(tCODCLI)
+				endif
+				R_GEEX5001_REFLIV(taREFLIV[build(nWhileLine1,"-",nWhileLine2)])
+                R_GEEX5001_DIPLIV(taCODTLI[build(nWhileLine1,"-",nWhileLine2)])
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContLineEscritas++
+			endif
+
+            R_GEEX5020_CODEXC("50")
+            R_GEEX5020_SEPEXC(".")
+            R_GEEX5020_SCOEXC("20")
+            R_GEEX5020_CODACT("LAS")
+			if bExistCODCLI = TRUE then
+				R_GEEX5020_CODCLI(tCODCLI)
+			endif
+			R_GEEX5020_REFLIV(taREFLIV[build(nWhileLine1,"-",nWhileLine2)])
+            R_GEEX5020_CODPRO(taCODPRO[build(nWhileLine1,"-",nWhileLine2)])
+			R_GEEX5020_NLILIV(build(nWhileLine2:R05))
+            R_GEEX5020_QTECDE(build(number(taUVCCDE[build(nWhileLine1,"-",nWhileLine2)]):R09))
+            R_GEEX5020_PRILIV(build(number(taPRILIV[build(nWhileLine1,"-",nWhileLine2)]):R08))
+            R_GEEX5020_UNICDE("UCX")
+
+			flush(0,0,NL) >> tFileOutTemp
+			nCount2000++
+			nContLineEscritas++
+		
+			if nWhileLine2 = naCountLine2by1[nWhileLine1] then
+				R_GEEX5099_CODEXC("50")
+				R_GEEX5099_SEPEXC(".")
+				R_GEEX5099_SCOEXC("99")
+				R_GEEX5099_CODACT("LAS")
+				R_GEEX5099_REFLIV(taREFLIV[build(nWhileLine1,"-",nWhileLine2)])
+				R_GEEX5099_CODCLI(tCODCLI)
+				R_GEEX5099_CUMLIG(build(nCount2000:R04))
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContLineEscritas++
+
+				R_GEEX9900_CODEXC("99")
+				R_GEEX9900_SEPEXC(".")
+				R_GEEX9900_SCOEXC("00")
+				R_GEEX9900_TRTEXC("")
+				R_GEEX9900_EMTEXC("FM")
+				R_GEEX9900_RCTEXC("")
+				R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+				R_GEEX9900_HEUEXC(time("now" ,"H%M%S"))
+				R_GEEX9900_NUMEXC("")
+				R_GEEX9900_CPTEXC(build(nContLineEscritas:R08))
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContLineEscritas++
+
+				close(tFileOutTemp)
+				copy(tFileOutTemp,tFileOut)
+				close(tFileOutTemp)
+				remove(tFileOutTemp)
+				close(tFileOut)
+
+				bfMajtrace("Recebida", \
+							"0", \
+							taREFLIV[build(nWhileLine1,"-",nWhileLine2)], \
+							time("now","%Y-%m-%dT%H:%M:%S"), \
+							tFileOut, \
+							"PEDIDO", \
+							"")
+			endif
+		endwhile
+	endwhile
+	close(tDbBase)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "LASA"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOutDoc)
+		copy(tFileOutDoc,TRACE.Out)
+		close(tFileOutDoc)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction

@@ -1,0 +1,358 @@
+%@(#)  source_filename.rte     modif:01-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M62_MAKRO_CSV_IN"
+#include "include/generix_func.inc"
+#include "include/ROUTE.inc"
+#include "include/M62.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+   
+    
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAKRO"]
+
+  
+
+	
+	
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	 	
+      exit(1)
+   endif
+
+
+	
+	
+
+	
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nContadorHeader := 0
+	nContadorItems := 0
+	nMainIndex := 0
+	nNumeroLinha := 0
+endbegin
+
+!===========================================================
+
+
+
+line(not "")
+   S_ROTASdoPEDIDO
+   
+   
+   
+   
+
+   nNumeroLinha++
+   if nNumeroLinha = 1 then
+      !nao faz nada
+   else
+
+	  
+	  
+	  
+	  taR_PED_cdEmpresa[nNumeroLinha] := S_ROTASdoPEDIDO_cdEmpresa
+	  taR_PED_nuPedido[nNumeroLinha] := S_ROTASdoPEDIDO_nuPedido
+	  taR_PED_TVROMNFS_CNLOJCLI[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_CNLOJCLI
+	  taR_PED_TVROMNFS_CNEMP[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_CNEMP
+	  taR_PED_TVROMNFS_ANPLCVEC[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_ANPLCVEC
+	  taR_PED_TVROMNFS_CAUFEVEC[nNumeroLinha] := S_ROTASdoPEDIDO_TVROMNFS_CAUFEVEC
+	  taR_PED_idGrupoCarga[nNumeroLinha] := S_ROTASdoPEDIDO_idGrupoCarga
+	  taR_PED_numRomaneio[nNumeroLinha] := S_ROTASdoPEDIDO_numRomaneio
+	  taR_PED_seqCarga[nNumeroLinha] := S_ROTASdoPEDIDO_seqCarga
+	  taR_PED_inicioPrevisao[nNumeroLinha] := S_ROTASdoPEDIDO_inicioPrevisao
+	  taR_PED_fimPrevisao[nNumeroLinha] := S_ROTASdoPEDIDO_fimPrevisao
+	  
+	  
+	 		!Rodar a query: 
+		!SELECT NUMLIV, NUMSUP, KAILIV 
+		!FROM FGE50FM0AO.GESUPE
+		!WHERE REFLIV='nuPedido'
+		!NOTA: 0AO = TESTE / SAO = PROD 
+	  
+
+	  
+	  
+    endif
+   
+
+endline
+
+
+   
+   
+
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+
+
+
+
+
+
+bErroGeral := FALSE
+
+
+  if nContadorLinhasEscritas = 0 then
+
+!0AOwmw_route.str00010.20171026113027.txt
+if length(pEDISEND.ORIGINAL.NAME) >= 37 then
+  tLIBEXC := build(substr(pEDISEND.ORIGINAL.NAME,8,5),".",substr(pEDISEND.ORIGINAL.NAME,23,14))
+  else
+	tLIBEXC := build(nMessageID:R010)
+  endif
+    
+     
+ endif
+ tSucesso :=  ""
+ tSucesso2 := ""
+ tEmailErro := ""
+bSempreAMesmaRota := TRUE
+ nTempNumeroLinha  := 2
+ tRotaAnt := ""
+while nTempNumeroLinha <= (nNumeroLinha-1) do
+				nPosicaoInicial := 1
+		nPosicaoInicial := index(taR_PED_idGrupoCarga[nTempNumeroLinha],"ROTA_") + 5
+		nComprimento := length(taR_PED_idGrupoCarga[nTempNumeroLinha])
+		tREFMIT := substr(taR_PED_idGrupoCarga[nTempNumeroLinha],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+		nPosicaoFinal := 1
+		nPosicaoFinal := (index(tREFMIT,"-")-1)
+		log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+		log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+		tRota := substr(tREFMIT,1,nPosicaoFinal)
+		if nTempNumeroLinha = 2 then
+			tRotaAnt := tRota
+		endif
+		
+		if tRotaAnt = tRota then
+			!a rota é a mesma
+		else
+			bSempreAMesmaRota := FALSE
+		endif
+		
+		tRotaAnt := tRota
+
+	nTempNumeroLinha++
+
+endwhile
+
+ 
+ nTempNumeroLinha  := 2
+while nTempNumeroLinha <= (nNumeroLinha-1) do
+
+
+		log("nTempNumeroLinha ",nTempNumeroLinha,NL)
+		tQuery := build("SELECT NUMLIV, NUMSUP, KAILIV,NUMTOU AS EXPEDICAO FROM FGE50FM",tToInfologPrefixFilename,".GESUPE WHERE REFLIV='",taR_PED_nuPedido[nTempNumeroLinha],"' AND TYPSUP<>3")
+		
+
+
+			log("aqui_0_0",NL)
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 					exit(1)
+				
+			endif
+log("aqui_0_1",NL)
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+							exit(1)
+
+			endif
+log("aqui_0_2",NL)
+		bQueryTemResul := FALSE
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					
+				
+				taNUMLIV[nTempNumeroLinha] := peel(taDb2Array["NUMLIV"]," ")
+				taNUMSUP[nTempNumeroLinha] := peel(taDb2Array["NUMSUP"]," ")
+				taKAILIV[nTempNumeroLinha] := peel(taDb2Array["KAILIV"]," ")
+				tEXPEDICAO := peel(taDb2Array["EXPEDICAO"]," ")
+				
+				
+				if bQueryTemResul = FALSE then
+										
+											
+											
+						
+				
+						tSucesso := build(tSucesso,taR_PED_nuPedido[nTempNumeroLinha], " : ONDA LANCADA",NL,NL)
+						tSucesso2 := build(tSucesso2,taR_PED_nuPedido[nTempNumeroLinha],NL)
+				endif
+				
+				
+	
+
+	  
+	  
+				 
+			 
+				
+							
+							
+				
+				
+				
+				bQueryTemResul := TRUE
+				
+				
+				
+				remove(taDb2Array)
+
+			endwhile
+			log("aqui_0_3",NL)
+			
+if bQueryTemResul = FALSE then
+			bErroGeral := TRUE
+			tEmailErro := build(tEmailErro,taR_PED_nuPedido[nTempNumeroLinha], " : ONDA NAO LANCADA",NL,NL)
+endif			
+			
+log("aqui_0_4",NL)
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+						exit(1)
+			endif
+
+
+	nTempNumeroLinha++
+
+
+endwhile
+
+
+
+
+
+bfSqlClose(tDbBase)
+
+
+/*
+
+
+
+Rota L92_ROTA_101-D1-92_2018-02-15 (REFMIT) criada com sucesso para os pedidos:
+
+001513000000030 (REFLIV)
+001513000000031 (REFLIV)
+001513000000034 (REFLIV)
+001513000000042 (REFLIV)
+001513000000044 (REFLIV)
+001513000000046 (REFLIV)
+
+Referência no L2:
+
+DATA: 20180215 (DATLIV)
+ROTA: 0101 (TOULIV)
+EXPEDICAO: XXXXX (NUMTOU)
+
+*/
+
+
+						nPosicaoInicial := 1
+						nPosicaoInicial := index(taR_PED_idGrupoCarga[nNumeroLinha-1],"ROTA_") + 5
+						nComprimento := length(taR_PED_idGrupoCarga[nNumeroLinha-1])
+						tREFMIT := substr(taR_PED_idGrupoCarga[nNumeroLinha-1],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+						
+						
+						
+						nPosicaoFinal := 1
+						nPosicaoFinal := (index(tREFMIT,"-")-1)
+						log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+						log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+						tTOULIVCalc := substr(tREFMIT,1,nPosicaoFinal)
+						log("TOULIV formatado ",tTOULIVCalc,NL)
+						
+						
+
+nMessageID := cMessageID
+remove(tArquivoEmailErro)
+tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/Erro",nMessageID:R010,".txt")
+nPosicaoInicial := 1
+nPosicaoInicial := index(taR_PED_idGrupoCarga[nNumeroLinha-1],"ROTA_") + 5
+nComprimento := length(taR_PED_idGrupoCarga[nNumeroLinha-1])
+tREFMIT := substr(taR_PED_idGrupoCarga[nNumeroLinha-1],nPosicaoInicial,(nComprimento-nPosicaoInicial+1))
+nPosicaoFinal := 1
+nPosicaoFinal := (index(tREFMIT,"-")-1)
+log("nPosicaoFinalREFMIT ",nPosicaoFinal,NL)
+log("TOULIV ",substr(tREFMIT,1,nPosicaoFinal),NL)
+tRota := substr(tREFMIT,1,nPosicaoFinal)	
+!print("Nao foi possivel criar rota ",tRota,NL,NL,NL,NL) >> tArquivoEmailErro
+!001511368515357 : ONDA NÃO LANÇADA
+if length(tSucesso2) > 0 then
+	print(NL,"Rota ",taR_PED_idGrupoCarga[nNumeroLinha-1]," criada com sucesso para os pedidos:",NL,NL,tSucesso2,NL,NL,"Referencia no L2:"\
+	"",NL,NL,"DATA: ",tfConvertDate(substr(taR_PED_inicioPrevisao[nNumeroLinha-1],1,10), "YYYY-MM-DD" , "YYYYMMDD"),NL,"ROTA: ",build(number(tTOULIVCalc):R04),NL,"EXPEDICAO: ",tEXPEDICAO,NL) >> tArquivoEmailErro
+	
+	endif
+close(tArquivoEmailErro)
+tSubjectEmail := build("[WMW]_Rota_Criada_",taR_PED_idGrupoCarga[nNumeroLinha-1]) ![[WMW}_Rota_Criada_L92_ROTA_101-D1-92_2018-02-15  
+tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EmailSucessoM62 ",tArquivoEmailErro)
+log("executing command ",tCmdEmailErro,NL)
+nRet := system(tCmdEmailErro)
+				
+remove(tArquivoEmailErro)
+
+
+
+
+
+
+exit(0)
+
+endend
+

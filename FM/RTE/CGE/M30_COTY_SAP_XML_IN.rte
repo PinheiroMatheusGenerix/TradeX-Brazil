@@ -1,0 +1,783 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/EU_MATERIAL_MASTER_SHADOW-IWAY-WMS_OUP - v07.xsd" validating
+message "XML/FMBrasil/MTL_MST-SHADOW-FMLOG-IWAY_OUP.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_uomcoty/fmbrasil_uomcoty.cfg" fmbrasil_uomcoty
+
+
+#include "include/M30.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   PROCESS_ERRONEOUS := TRUE
+   pXML.INCONVIN := "ISO-8859-1"
+   pXML.ENCODING := "ISO-8859-1"
+
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+   nPos := 1
+   nRec := 1
+   nMainIndex := 0
+   
+    
+ 
+if not(valid(MESSAGE_IN)) then
+      bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"ERRO ESQUEMA",build("Schema not matched file IN",NL))
+      exit(1)
+endif
+
+
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+
+  
+  
+    nNumeroLinha := 0
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nNumeroEANs := 0
+endbegin
+
+!===========================================================
+
+segment SMTL_MST-SHADOW-FMLOG-IWAY_OUP gGMTL_MST-SHADOW-FMLOG-IWAY_OUP     ! M 1/1 
+
+endsegment
+
+! Group gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG : M 1/unbound 
+segment STrnNam gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+
+endsegment
+
+segment STrnVer gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+
+endsegment
+
+segment STrnTyp gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+
+endsegment
+
+! Group gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG : M 1/unbound 
+segment SPlant gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+
+endsegment
+
+segment SMaterialNumber gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+   nNumeroLinha++
+   taCODPRO[nNumeroLinha] := build((eEMaterialNumber))   ! C  
+   log("eEMaterialNumber ",eEMaterialNumber,NL)
+   taCODACT[nNumeroLinha] := tCODACTConst 
+   taDS1PRO_PT[nNumeroLinha]:= ""
+   taDS1PRO_EN[nNumeroLinha]:= ""
+   taDS1PRO_FR[nNumeroLinha]:= ""
+   taEDIPROUN[nNumeroLinha] :=   ""
+   taEDIPROCX[nNumeroLinha] :=   ""
+   taEDIPROPAL[nNumeroLinha] :=  ""
+   taUnitMeasure[nNumeroLinha] := ""
+   taUOMConvertida[nNumeroLinha] := ""
+   taUnitMeasureConv[nNumeroLinha]:= ""
+   tPerOptFrsh := "0"
+endsegment
+
+segment SUnitMeasure gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+   
+   taUnitMeasure[nNumeroLinha] := eEUnitMeasure
+   
+    if length(taUnitMeasure[nNumeroLinha]) > 0 then
+							   fmbrasil_uomcoty := find(build(sHOME,"/fmbrasil_uomcoty"),ISO=taUnitMeasure[nNumeroLinha])
+							   if valid(fmbrasil_uomcoty) then
+									taUOMConvertida[nNumeroLinha] := fmbrasil_uomcoty.UMI
+									
+								else
+									taUOMConvertida[nNumeroLinha] := taUnitMeasure[nNumeroLinha]
+								 endif
+									
+					else
+						taUOMConvertida[nNumeroLinha] := taUnitMeasure[nNumeroLinha]
+					endif
+   taUnitMeasureConv[nNumeroLinha]:= taUOMConvertida[nNumeroLinha]
+endsegment
+
+
+segment SMaxWhseStor gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+   
+   tMaxWhseStor := eEMaxWhseStor
+   
+   
+   !se nao vier a tag abaixo calcula aqui
+   
+   	if number(tPerOptFrsh) = 0 then
+		taSECDLV[nNumeroLinha] := "150"
+	else
+		tPerOptFrsh := tPerOptFrsh
+	endif
+	
+	if number(tMaxWhseStor) = 0 then
+		taNBJDLV[nNumeroLinha] := "0"
+		taNBJFVI[nNumeroLinha] := "0"
+		taSECDLV[nNumeroLinha] := "0"
+	else
+	
+		taNBJDLV[nNumeroLinha] := build(number(tMaxWhseStor)-number(taSECDLV[nNumeroLinha]))
+		taNBJFVI[nNumeroLinha] := tMaxWhseStor
+	endif
+   
+endsegment
+
+
+segment SPerOptFrsh gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+	tPerOptFrsh := eEPerOptFrsh
+	if number(tMaxWhseStor) = 0 then
+		taNBJDLV[nNumeroLinha] := "0"
+		taNBJFVI[nNumeroLinha] := "0"
+		taSECDLV[nNumeroLinha] := "0"
+	else
+		if tMaxWhseStor = tPerOptFrsh then
+			tPerOptFrsh := "180"
+			taSECDLV[nNumeroLinha] := "180"
+		else
+		
+			if number(tPerOptFrsh) = 0 then
+				taSECDLV[nNumeroLinha] := "150"
+			else
+				tPerOptFrsh := tPerOptFrsh
+				taSECDLV[nNumeroLinha] := tPerOptFrsh
+			endif
+		endif
+		taNBJDLV[nNumeroLinha] := build(number(tMaxWhseStor)-number(taSECDLV[nNumeroLinha]))
+		taNBJFVI[nNumeroLinha] := tMaxWhseStor
+	endif
+	
+	
+	
+endsegment
+
+
+
+/*
+
+<NCM>3305.90.00EX01</NCM>
+<MaterialPricingGrp>48</MaterialPricingGrp>
+*/
+
+
+
+segment SNCM gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+taNCM[nNumeroLinha] := eENCM   ! C  
+endsegment
+
+
+segment SMaterialPricingGrp gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG     ! C 1/1 
+taMaterialPricingGrp[nNumeroLinha] := eEMaterialPricingGrp   ! C  
+endsegment
+
+!UNIDADE
+
+segment SUntLen gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taLNGUVC2[nNumeroLinha] := eEUntLen   ! C  
+endsegment
+
+segment SUntWid gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taLRGUVC2[nNumeroLinha] := eEUntWid   ! C  
+endsegment
+
+segment SUntHgt gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taHAUUVC2[nNumeroLinha] := eEUntHgt   ! C  
+endsegment
+
+
+segment SUntWgt gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taPDBUVC[nNumeroLinha] := eEUntWgt  ! C  
+endsegment
+
+!CAIXA
+
+segment SPakLen gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taLNGSPC2[nNumeroLinha] := eEPakLen   ! C  
+endsegment
+
+segment SPakWid gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taLRGSPC2[nNumeroLinha] := eEPakWid   ! C  
+endsegment
+
+segment SPakHgt gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taHAUSPC2[nNumeroLinha] := eEPakHgt   ! C  
+endsegment
+
+segment SPakWgt gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taPDBSPC[nNumeroLinha] := eEPakWgt  ! C  
+endsegment
+
+
+!PALETE
+
+segment SCasLen gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taLNGCOL2[nNumeroLinha] := eECasLen   ! C  
+endsegment
+
+segment SCasWid gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taLRGCOL2[nNumeroLinha] := eECasWid   ! C  
+endsegment
+
+segment SCasHgt gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taHAUCOL2[nNumeroLinha] := eECasHgt   ! C  
+   taHAUCOU2[nNumeroLinha] := eECasHgt   ! C  
+endsegment
+
+segment SCasWgt gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taPDBCOL[nNumeroLinha] := eECasWgt  ! C  
+endsegment
+
+
+segment SUntPak gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taSPCPRO[nNumeroLinha] := eEUntPak  ! C  
+endsegment
+
+
+segment SUntCas gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taPCBPRO[nNumeroLinha] := eEUntCas  ! C  
+endsegment
+
+
+
+
+   
+segment SCasLvl gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taCOLCOU[nNumeroLinha] := eECasLvl !build(number(eEUntPal) / number(taCOLCOU[nNumeroLinha]))  ! C  
+endsegment
+
+segment SLvlPal gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_CONFIG_SEG     ! C 1/1 
+   taCOUPAL[nNumeroLinha] := eELvlPal !build(number(eEUntPal) / number(taCOLCOU[nNumeroLinha]))  ! C  
+ !  log("taCOLPAL ",taCOLPAL[nNumeroLinha],NL)
+endsegment
+
+
+
+
+! Group gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_DESC_SEG : C 1/unbound 
+!segment SLanguage gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_DESC_SEG     ! C 1/1 
+
+!endsegment
+
+
+
+segment SDescription gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_DESC_SEG     ! C 1/1 
+	tDescriptionTagAnt := eEDescription
+endsegment
+
+segment SLocaleId gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_DESC_SEG     ! C 1/1 
+tLocaleId := eELocaleId
+
+if tLocaleId = "PT" then
+	taDS1PRO_PT[nNumeroLinha]:= substr(tDescriptionTagAnt,1,30)
+endif
+if tLocaleId = "EN" then
+	taDS1PRO_EN[nNumeroLinha]:= substr(tDescriptionTagAnt,1,30)
+	!log("taDS1PRO_EN ",taDS1PRO_EN[nNumeroLinha],NL)
+endif
+if tLocaleId = "FR" then
+	taDS1PRO_FR[nNumeroLinha]:= substr(tDescriptionTagAnt,1,30)
+	!log("taDS1PRO_EN ",taDS1PRO_EN[nNumeroLinha],NL)
+endif
+endsegment
+
+segment SAltMaterialTyp gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_ALTERNATE_SEG     ! C 1/1 
+	nNumeroEANs++
+	taReferenciaLinhaNosEANs[nNumeroEANs] := build(nNumeroLinha)
+	taAltMaterialTyp[nNumeroEANs] := eEAltMaterialTyp
+	log("tAltMaterialTyp ",taAltMaterialTyp[nNumeroEANs],NL)
+	
+endsegment
+
+segment SAltMaterialLgxLvl gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_ALTERNATE_SEG     ! C 1/1 
+	taAltMaterialLgxLvl[nNumeroEANs] := eEAltMaterialLgxLvl
+	!log("tAltMaterialLgxLvl ",taAltMaterialLgxLvl[nNumeroEANs],NL)
+endsegment
+
+segment SAltMaterial gGMTL_MST-SHADOW-FMLOG-IWAY_OUP,gGCTRL_SEG,gGMATERIAL_SEG,gGMATERIAL_ALTERNATE_SEG     ! C 1/1 
+
+	taEDIPRO[nNumeroEANs] := eEAltMaterial
+/*
+log("eEAltMaterial ",eEAltMaterial,NL)
+	if taAltMaterialTyp[nNumeroEANs] = "EAN" and taAltMaterialLgxLvl[nNumeroEANs] = "EA" then
+	   taEDIPROUN[nNumeroLinha] := eEAltMaterial   ! C  
+	endif
+	
+	
+	if taAltMaterialTyp[nNumeroEANs] = "EAN" and taAltMaterialLgxLvl[nNumeroEANs] = "BX" then
+	   taEDIPROCX[nNumeroLinha] := eEAltMaterial   ! C  
+	endif
+
+	if taAltMaterialTyp[nNumeroEANs] = "EAN" and taAltMaterialLgxLvl[nNumeroEANs] = "ZUI" then
+	   taEDIPROPAL[nNumeroLinha] := eEAltMaterial   ! C  
+	endif
+	
+	*/
+endsegment
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+ nTempNumeroLinha  := 1
+while nTempNumeroLinha <= nNumeroLinha do
+
+	nMessageID := cMessageID
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+  !tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+
+     R_00HEADER_CODEXC("00")
+     R_00HEADER_SEPEXC(".")
+     R_00HEADER_SCOEXC("00")
+     R_00HEADER_TRTEXC("")
+     R_00HEADER_EMTEXC("FM") 
+     R_00HEADER_RCTEXC("")
+     R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_00HEADER_NUMEXC("0000000")
+     R_00HEADER_ACQEXC("0")
+     R_00HEADER_VEREXC("5.00") 
+     R_00HEADER_NOMSYS("")  
+     R_00HEADER_NOMDTQ("M30")
+     R_00HEADER_BIBDTQ("")
+     R_00HEADER_LIBEXC(build(nMessageID:R010))
+     R_00HEADER_BIBDST("")
+     R_00HEADER_PGMDST("")
+     R_00HEADER_PARDST("")
+     R_00HEADER_CODACT("")
+     R_00HEADER_IGLSIT("")
+     R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_00HEADER_IMAEXC("")  
+     R_00HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+     
+
+ 
+ 
+ 
+
+   R_30PRODUCTINFORMATION_CODEXC("30")
+   R_30PRODUCTINFORMATION_SEPEXC(".")
+   R_30PRODUCTINFORMATION_SCOEXC("00")
+   R_30PRODUCTINFORMATION_TRTEXC("2")
+   R_30PRODUCTINFORMATION_CODACT(taCODACT[nTempNumeroLinha] )    !(eECODACT)
+   R_30PRODUCTINFORMATION_CODPRO(taCODPRO[nTempNumeroLinha])  
+   !R_30PRODUCTINFORMATION_FOUPRO("9999")
+   R_30PRODUCTINFORMATION_FAMPRO(taMaterialPricingGrp[nTempNumeroLinha])
+   R_30PRODUCTINFORMATION_ANAPRO(taNCM[nTempNumeroLinha])   ! M 
+
+
+
+
+
+   R_30PRODUCTINFORMATION_SPCPRO(build(number(taSPCPRO[nTempNumeroLinha]):R04))
+   R_30PRODUCTINFORMATION_PCBPRO(build(number(taPCBPRO[nTempNumeroLinha]):R05))   ! M  
+   R_30PRODUCTINFORMATION_UNIPRO("UN")   ! M  
+	if length(taDS1PRO_PT[nTempNumeroLinha]) = 0 then
+		taDS1PRO[nTempNumeroLinha] := taDS1PRO_EN[nTempNumeroLinha]
+	else
+		taDS1PRO[nTempNumeroLinha] := taDS1PRO_PT[nTempNumeroLinha]
+	endif
+   R_30PRODUCTINFORMATION_DS1PRO(taDS1PRO_PT[nTempNumeroLinha])
+   if length(taDS1PRO_EN[nTempNumeroLinha]) > 0 then
+	R_30PRODUCTINFORMATION_DS2PRO(taDS1PRO_EN[nTempNumeroLinha])
+   else
+	R_30PRODUCTINFORMATION_DS2PRO(taDS1PRO_FR[nTempNumeroLinha])
+   endif
+ !  R_30PRODUCTINFORMATION_ABCSTS(taABCSTS_ABCPRO[nTempNumeroLinha])! ver
+ !  R_30PRODUCTINFORMATION_ABCPRO(taABCSTS_ABCPRO[nTempNumeroLinha])
+   R_30PRODUCTINFORMATION_COLCOU(build(number(taCOLCOU[nTempNumeroLinha]):R04)) !ver
+   R_30PRODUCTINFORMATION_COLCOU2(build(number(taCOLCOU[nTempNumeroLinha]):R04)) !ver
+   R_30PRODUCTINFORMATION_COUPAL(build(number(taCOUPAL[nTempNumeroLinha] ):R04)) !ver
+   R_30PRODUCTINFORMATION_COUPAL2(build(number(taCOUPAL[nTempNumeroLinha] ):R04)) !ver
+   
+
+      tCont := build(number(taPDBCOL[nTempNumeroLinha]) * 1000 * 1000 )
+ 
+   R_30PRODUCTINFORMATION_PDBCOL(build(number(tCont):R07)) 
+   
+tCont1 := build(number(taHAUCOU2[nTempNumeroLinha])  * 1000)
+	!R_30PRODUCTINFORMATION_HAUCOU(build(number(taHAUCOU2[nTempNumeroLinha] ):R03)) 
+   R_30PRODUCTINFORMATION_HAUCOU(build(number(tCont1 ):R03.0)) 
+   
+   
+
+   
+   
+   
+
+      tCont := build(number(taPDBUVC[nTempNumeroLinha]) * 1000 * 1000 )
+log("peso ",tCont,NL)
+   
+   R_30PRODUCTINFORMATION_PDBUVC(build(number(tCont ):R07)) 
+	R_30PRODUCTINFORMATION_PDNUVC(build(number(tCont ):R07))    
+ 
+ 
+ !fazer NBJDLV = 4/5 do NBJFVI 
+
+
+    tConta := build(number(taNBJDLV[nTempNumeroLinha]))
+	log("tConta ",tConta,NL)
+   if number(tConta) >= 1000 then
+	tConta := "999"
+   endif
+	
+   R_30PRODUCTINFORMATION_NBJDLV(build(number(tConta ):R03))
+
+   
+   
+   
+   
+   
+   
+!   R_30PRODUCTINFORMATION_CODMDR(taCODMDR[nTempNumeroLinha] )
+!   R_30PRODUCTINFORMATION_CODMDS(taCODMDS[nTempNumeroLinha] )
+   
+!   R_30PRODUCTINFORMATION_ZONPRF(taZONPRF[nTempNumeroLinha] )
+!   R_30PRODUCTINFORMATION_ALLPRF(taALLPRF[nTempNumeroLinha] )
+!   R_30PRODUCTINFORMATION_CODMDP(taCODMDP[nTempNumeroLinha] )
+	
+   
+   
+   nContadorLinhasEscritas++
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+
+
+   
+!R_3001_CODEXC("30")
+!R_3001_SEPEXC(".")
+!R_3001_SCOEXC("01") 
+!R_3001_TRTEXC("2")
+! R_3001_CODACT(taCODACT[nTempNumeroLinha] )
+! R_3001_CODPRO(taCODPRO[nTempNumeroLinha])
+ ! R_3001_CIRDET(taCIRDET[nTempNumeroLinha])
+! R_3001_CIRPAL(taCIRPAL[nTempNumeroLinha])
+   
+   
+	
+	
+ !  nContadorLinhasEscritas++
+ !  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+
+
+R_GEEX3002_CODEXC("30")
+R_GEEX3002_SEPEXC(".")
+R_GEEX3002_SCOEXC("02") 
+R_GEEX3002_TRTEXC("2")
+ R_GEEX3002_CODACT(taCODACT[nTempNumeroLinha] )
+ R_GEEX3002_CODPRO(taCODPRO[nTempNumeroLinha])
+ R_GEEX3002_UNIFAC(taUnitMeasureConv[nTempNumeroLinha])
+ 
+ tConta := build(number(taSECDLV[nTempNumeroLinha]))
+   if number(tConta) >= 1000 then
+	tConta := "999"
+   endif
+   R_GEEX3002_SECDLV(build(number(tConta ):R03))
+   
+ 
+   
+    tConta := build(number(taNBJFVI[nTempNumeroLinha]))
+   if number(tConta) >= 10000 then
+	tConta := "9999"
+   endif
+
+   R_GEEX3002_NBJFVI(build(number(tConta ):R04))
+   
+   
+
+!R_GEEX3002_CODTMD(taCODTMD[nTempNumeroLinha])
+
+
+ 
+      tCont1 := build(number(taHAUUVC2[nTempNumeroLinha]) * 100000)
+      tCont2 := build(number(taLNGUVC2[nTempNumeroLinha]) * 100000)
+      tCont3 := build(number(taLRGUVC2[nTempNumeroLinha]) * 100000)
+
+
+R_GEEX3002_HAUUVC2(build(number(tCont1 ):R05))
+R_GEEX3002_LNGUVC2(build(number(tCont2 ):R05))
+R_GEEX3002_LRGUVC2(build(number(tCont3 ):R05))
+
+
+	  
+ 
+      tCont1 := build(number(taHAUSPC2[nTempNumeroLinha]) * 100000)
+      tCont2 := build(number(taLNGSPC2[nTempNumeroLinha]) * 100000)
+      tCont3 := build(number(taLRGSPC2[nTempNumeroLinha]) * 100000)
+ 
+
+	  
+R_GEEX3002_HAUSPC2(build(number(tCont1):R05))
+R_GEEX3002_LNGSPC2(build(number(tCont2):R05))
+R_GEEX3002_LRGSPC2(build(number(tCont3):R05))
+
+   tCont := build(number(taPDBSPC[nTempNumeroLinha]) * 1000 * 1000 )
+   R_GEEX3002_PDBSPC(build(number(tCont ):R07)) 
+
+
+   
+   
+      tCont1 := build(number(taHAUCOU2[nTempNumeroLinha])  * 100000)
+      tCont2 := build(number(taLNGCOL2[nTempNumeroLinha])  * 100000)
+      tCont3 := build(number(taLRGCOL2[nTempNumeroLinha])  * 100000)
+ 
+
+	  
+R_GEEX3002_HAUCOL2(build(number(tCont1):R05))
+R_GEEX3002_LNGCOL2(build(number(tCont2):R05))
+R_GEEX3002_LRGCOL2(build(number(tCont3):R05))
+
+
+
+ !  R_GEEX3002_CODRDS(taCODRDS[nTempNumeroLinha])
+ 
+   
+   nContadorLinhasEscritas++
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+
+
+
+  nTempNumeroEANs := 1
+  bPrimeiroPCE := TRUE
+  
+	  while nTempNumeroEANs <= nNumeroEANs do
+		if taReferenciaLinhaNosEANs[nTempNumeroEANs] = build(nTempNumeroLinha) then
+			
+			if  taAltMaterialLgxLvl[nTempNumeroEANs] = "EA" then
+				  R_30EANINFORMATION_CODEXC("30")
+				  R_30EANINFORMATION_SEPEXC(".")
+				  R_30EANINFORMATION_SCOEXC("20")
+				  R_30EANINFORMATION_TRTEXC("2")
+				  R_30EANINFORMATION_CODACT(taCODACT[nTempNumeroLinha] ) 
+				  R_30EANINFORMATION_CODPRO(taCODPRO[nTempNumeroLinha])
+				  R_30EANINFORMATION_EDIPRO(taEDIPRO[nTempNumeroEANs])
+				  if bPrimeiroPCE = TRUE then
+						R_30EANINFORMATION_EDIPRN("1")
+						bPrimeiroPCE := FALSE
+				  else
+						R_30EANINFORMATION_EDIPRN("0")
+				  endif
+
+				  R_30EANINFORMATION_EDIQLF("0")
+				  R_30EANINFORMATION_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+				  nContadorLinhasEscritas++
+				  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00  
+			
+			endif
+			
+			
+			if  taAltMaterialLgxLvl[nTempNumeroEANs] = "BX" then
+				  R_30EANINFORMATION_CODEXC("30")
+				  R_30EANINFORMATION_SEPEXC(".")
+				  R_30EANINFORMATION_SCOEXC("20")
+				  R_30EANINFORMATION_TRTEXC("2")
+				  R_30EANINFORMATION_CODACT(taCODACT[nTempNumeroLinha] ) 
+				  R_30EANINFORMATION_CODPRO(taCODPRO[nTempNumeroLinha])
+				  R_30EANINFORMATION_EDIPRO(taEDIPRO[nTempNumeroEANs])
+				  R_30EANINFORMATION_EDIPRN("0")
+				  R_30EANINFORMATION_EDIQLF("3")
+				  R_30EANINFORMATION_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+				  nContadorLinhasEscritas++
+				  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00  
+			
+			endif
+			
+			if  taAltMaterialLgxLvl[nTempNumeroEANs] = "ZUI" then
+				  R_30EANINFORMATION_CODEXC("30")
+				  R_30EANINFORMATION_SEPEXC(".")
+				  R_30EANINFORMATION_SCOEXC("20")
+				  R_30EANINFORMATION_TRTEXC("2")
+				  R_30EANINFORMATION_CODACT(taCODACT[nTempNumeroLinha] ) 
+				  R_30EANINFORMATION_CODPRO(taCODPRO[nTempNumeroLinha])
+				  R_30EANINFORMATION_EDIPRO(taEDIPRO[nTempNumeroEANs])
+				  R_30EANINFORMATION_EDIPRN("0")
+				  R_30EANINFORMATION_EDIQLF("2")
+				  R_30EANINFORMATION_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+				  nContadorLinhasEscritas++
+				  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00  
+			
+			endif
+			
+			
+			if  taAltMaterialLgxLvl[nTempNumeroEANs] = "PAL" then
+				  R_30EANINFORMATION_CODEXC("30")
+				  R_30EANINFORMATION_SEPEXC(".")
+				  R_30EANINFORMATION_SCOEXC("20")
+				  R_30EANINFORMATION_TRTEXC("2")
+				  R_30EANINFORMATION_CODACT(taCODACT[nTempNumeroLinha] ) 
+				  R_30EANINFORMATION_CODPRO(taCODPRO[nTempNumeroLinha])
+				  R_30EANINFORMATION_EDIPRO(taEDIPRO[nTempNumeroEANs])
+				  R_30EANINFORMATION_EDIPRN("0")
+				  R_30EANINFORMATION_EDIQLF("5")
+				  R_30EANINFORMATION_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+				  nContadorLinhasEscritas++
+				  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00  
+			
+			endif
+		
+		endif
+	  
+		nTempNumeroEANs++
+	  endwhile
+   
+   
+
+
+ 
+
+    R_99FILEFOOTER_CODEXC("99")
+    R_99FILEFOOTER_SEPEXC(".")
+    R_99FILEFOOTER_SCOEXC("00")
+    R_99FILEFOOTER_TRTEXC("")
+    R_99FILEFOOTER_EMTEXC("FM")
+    R_99FILEFOOTER_RCTEXC("")
+    R_99FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+    R_99FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+    R_99FILEFOOTER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_99FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_99FILEFOOTER_NOMSYS("")
+    !R_99FILEFOOTER_NOMDTQ("")
+    !R_99FILEFOOTER_BIBDTQ("")
+    !R_99FILEFOOTER_IDEMSG("")
+    !R_99FILEFOOTER_DISEXC("")
+
+    flush(0,0,NL)  >> tFileOutTemp
+    close(tFileOutTemp)
+
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+
+bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+
+		close(tFileOut)
+		
+  nTempNumeroLinha++
+endwhile
+
+exit(0)
+
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "PRODUTOS"
+   TRACE.NUMDOC := taCODPRO[nTempNumeroLinha]
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pGW.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+
+if nMainIndex = 0 then
+	copy(SYSLOG.e,TRACE.In)
+	close(SYSLOG.e)
+	close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+if tError="0" then
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+endif
+
+flush(TRACE)
+
+endfunction
+
+
+
+
+
+
+!===========================================================
+

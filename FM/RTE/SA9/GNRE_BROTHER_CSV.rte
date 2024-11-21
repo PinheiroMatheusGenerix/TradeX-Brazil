@@ -1,0 +1,350 @@
+%@(#) $Id:  GNRE_BROTHER_CSV.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: GNRE_BROTHER_CSV.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : GNRE_BROTHER_CSV
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! GNRE_BROTHER_CSV
+!
+!===========================================================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "GNRE_BROTHER_CSV"
+#include "include/generix_func.inc"
+#include "include/GNRE_BROTHER_CSV.inc"
+
+!===========================================================================================================
+
+! Initialization section
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+    nMessageID := cMessageID
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA9"]
+
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "FMWMS"
+        tDbBase2	:= "FMWMS2"
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= taPARAM["WMSDBPASS"]
+		tDbUrl		:= taPARAM["WMSDBURL"]
+
+    tDbUsernameUPDATES  := taPARAM["WMSDBUSERUPDATES"]
+	tDbPasswordUPDATES  := taPARAM["WMSDBPASSUPDATES"]
+	tDbUrlUPDATES	    := taPARAM["WMSDBURLUPDATES"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		bfSqlErro()
+		exit(1)
+	endif
+
+    if not bfSqlJdbc(tDbBase2 , tDbUsernameUPDATES, tDbPasswordUPDATES, tDbUrlUPDATES) then
+		bfSqlClose(tDbBase2)
+		bfSqlErro()
+		exit(1)
+	endif
+endbegin
+
+!===========================================================================================================
+line(not "")
+	S_VALUE
+
+    tNameOut := build("FM", tToInfologPrefixFilename, "BRO_GNRE_", time("now" ,"%Y%m%d%H%M%S"), ".txt")
+    tFileOutTemp := build(sHOME,"/mdn/auto/Temp/",tNameOut)
+    tFileOut := build(sHOME,"/mdn/auto/",tNameOut)
+
+    log("INICIO------------------------------------------------------", NL)
+    ! QUERY tNUMLIV, tETALIV
+        tQuery := build("SELECT NUMLIV, ETALIV", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GELIVE", NL," "\
+                        "WHERE REFLIV LIKE '",S_VALUE_PEDIDO,"%'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+        
+        if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+            log("NUMLIV = ", peel(taDb2Array["NUMLIV"], " "), NL)
+            log("ETALIV = ", peel(taDb2Array["ETALIV"], " "), NL)
+            tNUMLIV := peel(taDb2Array["NUMLIV"], " ")
+            tETALIV := peel(taDb2Array["ETALIV"], " ")
+            
+            remove(taDb2Array)
+        endif
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+    ! FIM QUERY tNUMLIV, tETALIV
+
+    if S_VALUE_STATUS = "B" and length(tNUMLIV) > 0 then
+        log("tNUMLIV = ", tNUMLIV, NL)
+        ! QUERY UPDATE BLOECR, CODPRP
+            tQueryUpdate := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPE", NL," "\
+                                    "SET BLOECR = 'FALTA_GNRE'", NL," "\
+                                    "    ,CODPRP = 'FALTA_GNRE'", NL," "\
+                                    "WHERE REFLIV LIKE '",S_VALUE_PEDIDO,"%'", NL," "\
+                                    "AND TYPSUP <> '3'", NL," "\
+                                    "WITH NONE")
+            
+            log("------------------------------------------------------------", NL)
+            log(tQueryUpdate,NL)
+            print(tQueryUpdate, NL, NL) >> tFileOut
+            log("------------------------------------------------------------", NL)
+            
+            if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdate) then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if not bfSqlExec(tDbBase2, "Updatedb2") then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if not bfSqlCommit(tDbBase2, "Updatedb2") then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if not bfSqlFree(tDbBase2, "Updatedb2") then
+                bfSqlErro()
+                exit(1)
+            endif
+        ! FIM QUERY UPDATE BLOECR, CODPRP
+
+        ! QUERY VALRUB
+            tQueryUpdate := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GELIRUB", NL," "\
+                                    "SET VALRUB = 'BLOQUEADO'", NL," "\
+                                    "WHERE NUMLIV = (", NL," "\
+                                    "    SELECT NUMLIV", NL," "\
+                                    "    FROM FGE50FM",tToInfologPrefixFilename,".GELIVE", NL," "\
+                                    "    WHERE REFLIV LIKE '",S_VALUE_PEDIDO,"%')", NL," "\
+                                    "AND CODRUB = 'GNRE'", NL," "\
+                                    "WITH NONE")
+            
+            log("------------------------------------------------------------", NL)
+            log(tQueryUpdate,NL)
+            print(tQueryUpdate, NL, NL) >> tFileOut
+            log("------------------------------------------------------------", NL)
+            
+            if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdate) then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if not bfSqlExec(tDbBase2, "Updatedb2") then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if not bfSqlCommit(tDbBase2, "Updatedb2") then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if not bfSqlFree(tDbBase2, "Updatedb2") then
+                bfSqlErro()
+                exit(1)
+            endif
+        ! FIM QUERY VALRUB
+    else
+        if S_VALUE_STATUS = "D" and length(tNUMLIV) > 0 then
+            ! QUERY UPDATE BLOECR, CODPRP
+                tQueryUpdate := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPE", NL," "\
+                                        "SET BLOECR = ''", NL," "\
+                                        "    ,CODPRP = ''", NL," "\
+                                        "WHERE REFLIV LIKE '",S_VALUE_PEDIDO,"%'", NL," "\
+                                        "AND TYPSUP <> '3'", NL," "\
+                                        "AND BLOECR = 'FALTA_GNRE'", NL," "\
+                                        "WITH NONE")
+                
+                log("------------------------------------------------------------", NL)
+                log(tQueryUpdate,NL)
+                print(tQueryUpdate, NL, NL) >> tFileOut
+                log("------------------------------------------------------------", NL)
+                
+                if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdate) then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                if not bfSqlExec(tDbBase2, "Updatedb2") then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                if not bfSqlCommit(tDbBase2, "Updatedb2") then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                if not bfSqlFree(tDbBase2, "Updatedb2") then
+                    bfSqlErro()
+                    exit(1)
+                endif
+            ! FIM QUERY UPDATE BLOECR, CODPRP
+
+            ! QUERY VALRUB
+                tQueryUpdate := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GELIRUB", NL," "\
+                                        "SET VALRUB = 'LIBERADO'", NL," "\
+                                        "WHERE NUMLIV = (", NL," "\
+                                        "    SELECT NUMLIV", NL," "\
+                                        "    FROM FGE50FM",tToInfologPrefixFilename,".GELIVE", NL," "\
+                                        "    WHERE REFLIV LIKE '",S_VALUE_PEDIDO,"%')", NL," "\
+                                        "AND CODRUB = 'GNRE'", NL," "\
+                                        "WITH NONE")
+                
+                log("------------------------------------------------------------", NL)
+                log(tQueryUpdate,NL)
+                print(tQueryUpdate, NL, NL) >> tFileOut
+                log("------------------------------------------------------------", NL)
+                
+                if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdate) then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                if not bfSqlExec(tDbBase2, "Updatedb2") then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                if not bfSqlCommit(tDbBase2, "Updatedb2") then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                if not bfSqlFree(tDbBase2, "Updatedb2") then
+                    bfSqlErro()
+                    exit(1)
+                endif
+            ! FIM QUERY VALRUB
+        endif
+    endif
+
+    if length(tNUMLIV) > 1 then
+        close(tFileOutTemp)
+        copy(tFileOutTemp,tFileOut)
+        close(tFileOutTemp)
+        remove(tFileOutTemp)
+        close(tFileOut)
+
+        bfMajtrace("Recebida" \
+                    ,"0" \
+                    ,S_VALUE_PEDIDO \
+                    ,tDataDocumento \
+                    ,tFileInput \
+                    ,tFileOut \
+                    ,"SHIPCONF" \
+                    ,"")
+
+        remove(tFileOut)
+    else
+        remove(tFileOutTemp)
+        remove(tFileOut)
+    endif
+    log("FIM---------------------------------------------------------", NL, NL)
+endline
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+
+endend
+
+!==============================================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+    TRACE:=new(build(sHOME,"/trace"))
+    TRACE.ESTADO := tStatus
+    TRACE.ERRO := tError
+    TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+    TRACE.PERFIL := "BROTHER"
+    TRACE.SENTIDO := "O"
+    TRACE.MENSAGEM := "GNRE"
+    TRACE.NUMDOC := tNumDoc
+    TRACE.DATDOC := time("now","%Y-%m-%d")
+    TRACE.MESSAGEID := build(nMessageID:R010)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+    TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+    TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+    close(TRACE.Detail)
+    close(SYSLOG.a)
+
+    if nMainIndex = 0 then
+        copy(SYSLOG.a,TRACE.In)
+        close(SYSLOG.a)
+        close(TRACE.In)
+        nMainIndex := TRACE.INDEX
+    else
+        tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+        system(tCmd)
+    endif
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+
+    flush(TRACE)
+endfunction
+
+!===========================================================================================================
+
+function bfSqlErro()
+    log("FATAL: ",tfSqlErrorStr())
+endfunction
+
+!===========================================================================================================
+

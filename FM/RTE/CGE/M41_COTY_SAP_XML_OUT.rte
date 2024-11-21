@@ -1,0 +1,1709 @@
+%@(#)  source_filename.rte     modif:18-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 18-09-2018  XX  Creation
+! 18-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/RCPT_CONF-BR_FMLOG-SAP-IWAY_INP - v01.xsd" validating
+message "XML/FMBrasil/RCPT_CONF-BR_FMLOG-SAP-IWAY_INP.dtd" building
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_depositoscoty/fmbrasil_depositoscoty.cfg" fmbrasil_depositoscoty
+
+#define TX_PROG_INFO "M41_COTY_SAP_OUT"
+#include "include/generix_func.inc"
+#include "include/M41.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    !nMessageID := cMessageID
+    pXML.INCONVOUT := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+
+
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+
+endbegin
+
+
+
+!===========================================================
+
+
+
+
+line(1:"00.00")
+ !  tCentroCusto := S_00HEADER_EDISIT
+
+endline
+
+line(1:"41.00")
+
+
+
+
+nContadorRegisto := 0
+
+
+tNumeroLoja := "00092"
+       
+tCODACTLido := S_4100HEADER_CODACT   
+tCODTRE := S_4100HEADER_CODTRE
+
+	tPlacaVeiculo := substr(S_4100HEADER_REFREC,1,7)
+	tRomaneio := peel(substr(S_4100HEADER_REFREC,8,18)," ")
+	tNumeroDocumento := S_4100HEADER_REFREC
+
+	tData := S_4100HEADER_DTRREC
+	tHora := S_4100HEADER_HERREC
+   
+   tNUMREC := S_4100HEADER_NUMREC
+   
+   
+   
+   tDTIREC := S_4100HEADER_DTIREC
+   tHEIREC := S_4100HEADER_HEIREC
+	nLinha := 0
+	nConta4120 := 0
+	nConta4122 := 0
+	nConta4130 := 0
+	nConta4180 := 0
+   
+
+   
+   
+   
+   
+endline
+
+line(1:"41.01")
+	
+endline
+
+
+line(1:"41.20")
+
+
+	nConta4120++ 
+	taNLIREC4120[nConta4120] := S_4120ORDERLINE_NLIREC
+   taCODPRO4120[nConta4120] := S_4120ORDERLINE_CODPRO
+taUVCREC4120[nConta4120] := S_4120ORDERLINE_UVCREC
+taCODLOT4120[nConta4120] := S_4120ORDERLINE_CODLOT
+taUVCREA[nConta4120] := S_4120ORDERLINE_UVCREA    
+
+taUVCREC4120Acumulado[nConta4120] :=  taUVCREC4120[nConta4120]
+
+taNUMOPE4120[nConta4120] := S_4120ORDERLINE_NUMOPE
+taUNICDE4120[nConta4120] := S_4120ORDERLINE_UNICDE
+
+
+taMOTRFU4120[nConta4120] := S_4120ORDERLINE_MOTRFU
+taUVCRFU4120[nConta4120] := S_4120ORDERLINE_UVCRFU
+taDATFAB4120[nConta4120] :=  S_4120ORDERLINE_DATFAB
+
+taUVCRFU4122acum[nConta4120] := "0"
+bEscreveuUVCRFUno4130 := FALSE
+
+
+baTem4122[nConta4120] := FALSE
+endline
+
+line(1:"41.22")
+	
+	if length(S_GEEX4122_MOTRFU) > 0 then
+		nConta4122++
+	    
+		baTem4122[nConta4120] := TRUE
+		taUVCRFU4122acum[nConta4120] := build(number(taUVCRFU4122acum[nConta4120])+number(S_GEEX4122_UVCRFU)) !para o conf receipt
+		
+		taUVCRFU4122[nConta4122] := build(number(S_GEEX4122_UVCRFU))
+		taMOTRFU4122[nConta4122] := S_GEEX4122_MOTRFU
+		taCODPRO4122[nConta4122] := taCODPRO4120[nConta4120]
+		taUNICDE4122[nConta4122] := taUNICDE4120[nConta4120]
+		taCODLOT4122[nConta4122] := taCODLOT4120[nConta4120]
+		
+		taReferencia4120bno41220[nConta4122] := build(nConta4120)
+	endif
+	
+	
+	
+	
+	
+endline
+line(1:"41.30")
+
+
+	nConta4130++ 
+
+	taDATFAB4130[nConta4130] :=  S_4130ORDERLINE_DETAIL_DATFAB
+	taNLIREC4130[nConta4130] := S_4130ORDERLINE_DETAIL_NLIREC
+	taCODLOT4130[nConta4130] := S_4130ORDERLINE_DETAIL_CODLOT
+	taCODPRO4130[nConta4130] := S_4130ORDERLINE_DETAIL_CODPRO
+	taUVCMVT4130[nConta4130] := S_4130ORDERLINE_DETAIL_UVCMVT
+	taUVCMVT4130Acumulado[nConta4130] := taUVCMVT4130[nConta4130]
+	taReferencia4120no4130[nConta4130] := build(nConta4120)
+	baPrimeiroLote[nConta4130] := TRUE
+	taNUMOPE4130[nConta4130] := build(number(taNUMOPE4120[nConta4120]))
+	taUNICDE4130[nConta4130] := taUNICDE4120[nConta4120]
+	taUVCRFU4130[nConta4130] := "0"
+	
+	if taCODLOT4130[nConta4130] = taCODLOT4120[nConta4120] and bEscreveuUVCRFUno4130 = FALSE then !escreve no primeiro lote
+		bEscreveuUVCRFUno4130 :=TRUE
+		if number(taUVCRFU4122acum[nConta4120]) = 0 then
+			taUVCRFU4130[nConta4130] := taUVCRFU4120[nConta4120]
+		else
+			taUVCRFU4130[nConta4130] := taUVCRFU4122acum[nConta4120]
+		endif
+	endif
+	
+	taSPCPRO4130[nConta4130] :=  S_4130ORDERLINE_DETAIL_SPCPRO
+	taPCBPRO4130[nConta4130] :=  S_4130ORDERLINE_DETAIL_PCBPRO 
+	
+
+	
+	if number(taSPCPRO4130[nConta4130]) = 0 then
+		taSPCPRO4130[nConta4130] := "1"
+	endif
+	
+	if number(taPCBPRO4130[nConta4130]) = 0 then
+		taPCBPRO4130[nConta4130] := "1"
+	endif
+	
+	
+	taSPCPRO4120[nConta4120] :=  taSPCPRO4130[nConta4130] 
+	taPCBPRO4120[nConta4120] :=  taPCBPRO4130[nConta4130] 
+	
+	if baTem4122[nConta4120] = TRUE then 
+		nTempConta4122 := 1
+		while nTempConta4122<= nConta4122 do
+			if taReferencia4120bno41220[nTempConta4122] = build(nConta4120) then
+				taSPCPRO4122[nTempConta4122] :=  taSPCPRO4130[nConta4130] 
+				taPCBPRO4122[nTempConta4122] :=  taPCBPRO4130[nConta4130] 
+			endif
+		
+			nTempConta4122++
+		endwhile
+	endif
+	
+endline
+
+
+/*
+
+line(1:"41.80")
+	 
+
+	tCodigoEmb := S_4180_PROEMB
+	
+
+endline
+
+*/
+
+
+line(1:"41.99")
+
+if tCODTRE = "DV" then
+		log(NL,"CODTRE = DV",NL)
+		
+		tPickingStaDate  := ""
+		tPickingStaTime  := ""
+		                    
+							
+		tPickingEnddate  := ""
+		tPickingEndTime  := ""
+		                    
+							
+		tLoadStaDate  :=    ""
+		tLoadStaTime  :=    ""
+		                    
+		                    
+		tLoadEnddate  :=    ""
+		tLoadEndTime  :=    ""
+		                    
+		                    
+		tShippedDate  :=    ""
+		tShippedTime  :=    ""
+		
+		! 1 querie
+
+		tQuery := build("SELECT DTIREC PickingStaDate, HEIREC PickingStaTime "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE "\
+						"WHERE NUMREC= '",tNUMREC,"'")
+
+		log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				
+				tPickingStaDate  := peel(taDb2Array["PICKINGSTADATE"]," ")
+				tPickingStaTime  := build(number(peel(taDb2Array["PICKINGSTATIME"]," ")):R06)
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+			endif
+		
+		
+		
+		
+		
+		
+		
+		
+		
+			! 2 querie
+		
+		
+			tQuery := build("SELECT DTRREC PickingEnddate, HERREC PickingEndTime "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE "\
+						"WHERE NUMREC= '",tNUMREC,"'")
+
+		log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				
+				tPickingEnddate  := peel(taDb2Array["PICKINGENDDATE"]," ")
+				tPickingEndTime  := build(number(peel(taDb2Array["PICKINGENDTIME"]," ")):R06)
+				
+				tLoadStaDate  := tPickingEnddate
+                tLoadStaTime  := tPickingEndTime
+				
+				
+				tLoadEnddate  := tPickingEnddate
+				tLoadEndTime  := tPickingEndTime
+				
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+			endif
+			
+		
+		
+		
+		
+		
+		
+		! 3 querie
+		
+		
+			tQuery := build("SELECT MAJDAT ShippedDate, MAJHMS ShippedTime "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE "\
+						"WHERE NUMREC= '",tNUMREC,"'")
+
+		log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				
+				tShippedDate  := peel(taDb2Array["SHIPPEDDATE"]," ")
+				tShippedTime  := build(number(peel(taDb2Array["SHIPPEDTIME"]," ")):R06)
+
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+			endif
+		
+		
+		
+		
+		
+				
+
+		/*
+		
+		<?xml version="1.0" encoding="UTF-8"?>
+		<SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>
+			<CTRL_SEG>
+				<TrnNam>SHIP_CONFIRM</TrnNam>
+				<TrnVer>1.0</TrnVer>
+				<TrnTyp>SHIP</TrnTyp>
+				<SHIPMENT_SEG>
+					<ShippedDate>2018-11-27T16:03:35+00:00</ShippedDate>
+					<ShippedTime>2018-11-27T16:03:35+00:00</ShippedTime>
+					<DELIVERY_SEG>
+						<DlvNum>0803493060</DlvNum>
+					</DELIVERY_SEG>
+				</SHIPMENT_SEG>
+			</CTRL_SEG>
+		</SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>
+
+
+		*/
+		
+		if length(tPickingStaDate) > 0 then
+				nMessageID := cMessageIDSHCCOTY
+				if nMessageID = 999999 then
+						cMessageIDSHCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				
+				
+				print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp
+				print("<SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+				print("	<CTRL_SEG>",NL) >> tFileOutTemp
+				print("		<TrnNam>SHIP_CONFIRM</TrnNam>",NL) >> tFileOutTemp
+				print("		<TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp
+				print("		<TrnTyp>SHIP</TrnTyp>",NL) >> tFileOutTemp
+				print("		<SHIPMENT_SEG>",NL) >> tFileOutTemp
+				
+					print("			<PickingStaDate>",build(tfConvertDate(build(   tPickingStaDate,tPickingStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</PickingStaDate>",NL) >> tFileOutTemp
+					print("			<PickingStaTime>",build(tfConvertDate(build(   tPickingStaDate,tPickingStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</PickingStaTime>",NL) >> tFileOutTemp
+				
+				
+				
+				
+				
+				
+				print("			<DELIVERY_SEG>",NL) >> tFileOutTemp
+				print("				<DlvNum>",tNumeroDocumento,"</DlvNum>",NL) >> tFileOutTemp
+				print("			</DELIVERY_SEG>",NL) >> tFileOutTemp
+				print("		</SHIPMENT_SEG>",NL) >> tFileOutTemp
+				print("	</CTRL_SEG>",NL) >> tFileOutTemp
+				print("</SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+
+			   close(tFileOutTemp)
+			   
+			   
+				bfMajtraceDEVOLUCAO("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV IP","")
+
+
+			close(tFileOutTemp)
+			copy(tFileOutTemp,tFileOut)
+				close(tFileOutTemp)
+				remove(tFileOutTemp)
+					close(tFileOut)
+					!system("sleep 1")
+					
+		
+		endif
+		
+		
+		if length(tPickingEnddate) > 0 then
+		
+				nMessageID := cMessageIDSHCCOTY
+				if nMessageID = 999999 then
+						cMessageIDSHCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+
+		
+		
+			
+			
+			
+			
+			print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp
+			print("<SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+			print("	<CTRL_SEG>",NL) >> tFileOutTemp
+			print("		<TrnNam>SHIP_CONFIRM</TrnNam>",NL) >> tFileOutTemp
+			print("		<TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp
+			print("		<TrnTyp>SHIP</TrnTyp>",NL) >> tFileOutTemp
+			print("		<SHIPMENT_SEG>",NL) >> tFileOutTemp
+			
+
+			
+				print("			<PickingEnddate>",build(tfConvertDate(build(   tPickingEnddate,tPickingEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</PickingEnddate>",NL) >> tFileOutTemp
+				print("			<PickingEndTime>",build(tfConvertDate(build(   tPickingEnddate,tPickingEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</PickingEndTime>",NL) >> tFileOutTemp
+			
+			
+			
+			print("			<DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("				<DlvNum>",tNumeroDocumento,"</DlvNum>",NL) >> tFileOutTemp
+			print("			</DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("		</SHIPMENT_SEG>",NL) >> tFileOutTemp
+			print("	</CTRL_SEG>",NL) >> tFileOutTemp
+			print("</SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+
+		   close(tFileOutTemp)
+		   
+		   
+			bfMajtraceDEVOLUCAO("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV FP","")
+
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+				close(tFileOut)
+				!system("sleep 1")
+				
+			
+		endif
+		
+		
+		
+		if length(tLoadStaDate) > 0 then
+			   nMessageID := cMessageIDSHCCOTY
+				if nMessageID = 999999 then
+						cMessageIDSHCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+
+			
+			
+			
+			print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp
+			print("<SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+			print("	<CTRL_SEG>",NL) >> tFileOutTemp
+			print("		<TrnNam>SHIP_CONFIRM</TrnNam>",NL) >> tFileOutTemp
+			print("		<TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp
+			print("		<TrnTyp>SHIP</TrnTyp>",NL) >> tFileOutTemp
+			print("		<SHIPMENT_SEG>",NL) >> tFileOutTemp
+			
+
+			
+				print("			<LoadStaDate>",build(tfConvertDate(build(   tLoadStaDate,tLoadStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</LoadStaDate>",NL) >> tFileOutTemp
+				print("			<LoadStaTime>",build(tfConvertDate(build(   tLoadStaDate,tLoadStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</LoadStaTime>",NL) >> tFileOutTemp
+			
+			
+			print("			<DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("				<DlvNum>",tNumeroDocumento,"</DlvNum>",NL) >> tFileOutTemp
+			print("			</DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("		</SHIPMENT_SEG>",NL) >> tFileOutTemp
+			print("	</CTRL_SEG>",NL) >> tFileOutTemp
+			print("</SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+
+		   close(tFileOutTemp)
+		   
+		   
+			bfMajtraceDEVOLUCAO("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV IC","")
+
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+				close(tFileOut)
+				!system("sleep 1")
+				
+			
+		endif
+		
+		
+		
+		if length(tLoadEnddate) > 0 then
+				nMessageID := cMessageIDSHCCOTY
+				if nMessageID = 999999 then
+						cMessageIDSHCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+			
+			
+			
+			print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp
+			print("<SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+			print("	<CTRL_SEG>",NL) >> tFileOutTemp
+			print("		<TrnNam>SHIP_CONFIRM</TrnNam>",NL) >> tFileOutTemp
+			print("		<TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp
+			print("		<TrnTyp>SHIP</TrnTyp>",NL) >> tFileOutTemp
+			print("		<SHIPMENT_SEG>",NL) >> tFileOutTemp
+			
+				print("			<LoadEnddate>",build(tfConvertDate(build(   tLoadEnddate,tLoadEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</LoadEnddate>",NL) >> tFileOutTemp
+				print("			<LoadEndTime>",build(tfConvertDate(build(   tLoadEnddate,tLoadEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</LoadEndTime>",NL) >> tFileOutTemp
+			
+			
+			print("			<DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("				<DlvNum>",tNumeroDocumento,"</DlvNum>",NL) >> tFileOutTemp
+			print("			</DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("		</SHIPMENT_SEG>",NL) >> tFileOutTemp
+			print("	</CTRL_SEG>",NL) >> tFileOutTemp
+			print("</SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+
+		   close(tFileOutTemp)
+		   
+		   
+			bfMajtraceDEVOLUCAO("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV FC","")
+
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+				close(tFileOut)
+				!system("sleep 1")
+				
+			
+		endif
+		
+		
+		
+		
+		if length(tShippedDate) > 0 then
+			nMessageID := cMessageIDSHCCOTY
+				if nMessageID = 999999 then
+						cMessageIDSHCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+			
+			
+			
+			print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp
+			print("<SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+			print("	<CTRL_SEG>",NL) >> tFileOutTemp
+			print("		<TrnNam>SHIP_CONFIRM</TrnNam>",NL) >> tFileOutTemp
+			print("		<TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp
+			print("		<TrnTyp>SHIP</TrnTyp>",NL) >> tFileOutTemp
+			print("		<SHIPMENT_SEG>",NL) >> tFileOutTemp
+			
+			
+				print("			<ShippedDate>",build(tfConvertDate(build(   tShippedDate,tShippedTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</ShippedDate>",NL) >> tFileOutTemp
+				print("			<ShippedTime>",build(tfConvertDate(build(   tShippedDate,tShippedTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</ShippedTime>",NL) >> tFileOutTemp
+			
+			
+			print("			<DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("				<DlvNum>",tNumeroDocumento,"</DlvNum>",NL) >> tFileOutTemp
+			print("			</DELIVERY_SEG>",NL) >> tFileOutTemp
+			print("		</SHIPMENT_SEG>",NL) >> tFileOutTemp
+			print("	</CTRL_SEG>",NL) >> tFileOutTemp
+			print("</SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp
+
+		   close(tFileOutTemp)
+		   
+		   
+			bfMajtraceDEVOLUCAO("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV PE","")
+
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+				close(tFileOut)
+				!system("sleep 1")
+				
+			
+		endif
+		
+else !CODTRE != "DV"
+
+	   
+	   
+	   
+				nMessageID := cMessageIDERCCOTY
+				if nMessageID = 999999 then
+						cMessageIDERCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"ERC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"ERC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				tNameOut := build("FM",tToInfologPrefixFilename,"ERC_",tNumeroDocumento,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				
+				
+	   
+		tfEscreveXMLHeader()
+		
+	
+			
+	   nTempConta4130 := 1
+	   while nTempConta4130 <= nConta4130 do
+
+							
+							nTempConta4130_2 := nTempConta4130+1
+							while nTempConta4130_2 <= nConta4130 do
+								
+									if taCODPRO4130[nTempConta4130_2] = taCODPRO4130[nTempConta4130] and taCODLOT4130[nTempConta4130_2] = taCODLOT4130[nTempConta4130] and taNLIREC4130[nTempConta4130_2] = taNLIREC4130[nTempConta4130] then
+										baPrimeiroLote[nTempConta4130_2] := FALSE
+										taUVCMVT4130Acumulado[nTempConta4130] := build(number(taUVCMVT4130Acumulado[nTempConta4130])+number(taUVCMVT4130[nTempConta4130_2]))
+									endif
+								
+								nTempConta4130_2++
+							endwhile
+							
+			nTempConta4130++
+	   endwhile
+			
+		
+		
+		
+		
+		
+		
+	   nTempConta4130 := 1
+	   while nTempConta4130 <= nConta4130 do
+	   
+		  if baPrimeiroLote[nTempConta4130] = TRUE then
+			tfEscreveXMLDetail()
+		  endif
+		  nTempConta4130++
+	   endwhile
+	   
+	   
+	   !escreve as linhas 41.20 MOTRFU sem 41.30
+	   
+	   	nTempConta4120 := 1
+		while nTempConta4120<= nConta4120 do
+			if length(taMOTRFU4120[nTempConta4120]) > 0 then
+				tfEscreveXMLDetail41200MOTRFU()
+			endif
+		
+			nTempConta4120++
+		endwhile
+		
+		
+	   
+		  if valid(MESSAGE) then
+	   
+	   print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+		 print(MESSAGE) > tFileOutTemp
+		 
+		 close(tFileOutTemp)
+	   
+	   
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+			close(tFileOut)
+			
+		   else
+		   print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+			print(MESSAGE) > tFileOutTemp
+			close(tFileOutTemp)      
+		   tErroTraducao := build("Schema not matched",NL)
+		   bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Orders",build("Schema not matched ",NL))
+			  
+		  close(tFileOutTemp)
+	   
+		 !exit(1)
+	   endif
+			system("sleep 1")
+
+endif
+
+
+
+
+!colocar se CODTRE = TR ou DV -  fazer um arquivo de goods movement para cada 41.20 - MOTRFU <> ' ' 
+if tCODTRE = "DV" or tCODTRE = "TR" then
+	
+	!escreve os do 4120
+	nTempConta4120 := 1
+	while nTempConta4120<= nConta4120 do
+		log("taMOTRFU4120 nTempConta4120 ",taMOTRFU4120[nTempConta4120],NL)
+		if length(taMOTRFU4120[nTempConta4120]) > 0 and baTem4122[nTempConta4120] = FALSE then
+		
+						nMessageID := cMessageIDINACOTY
+						if nMessageID = 999999 then
+								cMessageIDINACOTY := 0
+						endif
+
+							
+							tFileOut_GoodsMove := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+							tFileOutTemp_GoodsMove := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+							tNameOut_GoodsMove := build("FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+									
+		
+			
+
+
+			
+				print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp_GoodsMove
+				print("<GOODS_MOVE-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp_GoodsMove
+				print("    <CTRL_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("        <TrnNam>GOODS_MOVEMENT</TrnNam>",NL) >> tFileOutTemp_GoodsMove
+				print("        <TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp_GoodsMove
+				print("        <GOODS_MOVEMENT_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("            <DocumentDate>",build(tfConvertDate(build(   tData,tHora,"000000"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</DocumentDate>",NL) >> tFileOutTemp_GoodsMove
+				print("            <TransactionRef>",tNumeroDocumento,"</TransactionRef>",NL) >> tFileOutTemp_GoodsMove
+				print("            <TransactionDate>",build(tfConvertDate(build(   tData,tHora,"000000"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</TransactionDate>",NL) >> tFileOutTemp_GoodsMove
+				print("            <TransactionCode>MB1B</TransactionCode>",NL) >> tFileOutTemp_GoodsMove
+				print("            <Plant_Id>8004</Plant_Id>",NL) >> tFileOutTemp_GoodsMove
+				if tCODTRE = "TR" then
+					print("            <StorageLoc>3000</StorageLoc>",NL) >> tFileOutTemp_GoodsMove
+				endif
+				if tCODTRE = "DV" then
+					print("            <StorageLoc>6001</StorageLoc>",NL) >> tFileOutTemp_GoodsMove
+				endif
+				print("            <StockType> </StockType>",NL) >> tFileOutTemp_GoodsMove
+				print("            <MaterialNumber>",taCODPRO4120[nTempConta4120],"</MaterialNumber>",NL) >> tFileOutTemp_GoodsMove
+				print("            <MovementType>311</MovementType>",NL) >> tFileOutTemp_GoodsMove
+				
+			
+				tContUnitQty  := build((number(taUVCRFU4120[nTempConta4120]))) 
+				
+				
+				print("            <UnitQty>",tContUnitQty,"</UnitQty>",NL) >> tFileOutTemp_GoodsMove
+				
+
+			tQuery := build("SELECT UNIPRO "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO "\
+						"WHERE CODPRO= '",taCODPRO4120[nTempConta4120],"'")
+
+			log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtrace_GoodsMove("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtrace_GoodsMove("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				tUNIPROQuery  := peel(taDb2Array["UNIPRO"]," ")
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtrace_GoodsMove("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+			endif
+				
+				
+				print("            <UOM>",tUNIPROQuery,"</UOM>",NL) >> tFileOutTemp_GoodsMove
+				print("            <Xfer_Plant_Id>8004</Xfer_Plant_Id>",NL) >> tFileOutTemp_GoodsMove
+				
+				fmbrasil_depositoscoty := find(build(sHOME,"/fmbrasil_depositoscoty"),DEPOSITOFM=taMOTRFU4120[nTempConta4120])
+							   if valid(fmbrasil_depositoscoty) then
+									tXfer_Storage_Loc_AUx_TX   := fmbrasil_depositoscoty.DEPOSITOCOTY  
+									
+								else
+										bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build(taMOTRFU4120[nTempConta4120]," nao esta nos DEPOSITOS FM da tabela fmbrasil_depositoscoty!"))
+									
+								  exit(1)
+								  endif
+				
+				print("            <Xfer_Storage_Loc>",tXfer_Storage_Loc_AUx_TX,"</Xfer_Storage_Loc>",NL) >> tFileOutTemp_GoodsMove	
+
+
+
+							
+					tQuery := build("SELECT CODPRO, CODLOT, PCBPRO, SPCPRO "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GERECD "\
+									"WHERE NUMREC= '",tNUMREC,"' and CODPRO='",taCODPRO4120[nTempConta4120],"'")
+
+									
+									
+					log(tQuery,NL)
+
+
+						if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+									 print("FATAL ", tfSqlErrorStr())
+									 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+									exit(1)
+							
+						endif
+
+						if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+							 print("FATAL ", tfSqlErrorStr())
+							  bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+									exit(1)
+
+						endif
+
+					
+						while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+							
+							
+							tCODLOTQuery  := peel(taDb2Array["CODLOT"]," ")
+							tPCBPROQuery  := peel(taDb2Array["PCBPRO"]," ")
+							tSPCPROQuery  := peel(taDb2Array["SPCPRO"]," ")
+
+							remove(taDb2Array)
+
+						endwhile
+						
+						
+
+						if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+
+						endif
+
+				
+				print("            <Batch>",tCODLOTQuery,"</Batch>",NL) >> tFileOutTemp_GoodsMove
+				print("        </GOODS_MOVEMENT_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("    </CTRL_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("</GOODS_MOVE-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp_GoodsMove
+
+			   close(tFileOutTemp_GoodsMove)
+			   
+			   
+				bfMajtrace_GoodsMove("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+
+			close(tFileOutTemp_GoodsMove)
+			copy(tFileOutTemp_GoodsMove,tFileOut_GoodsMove)
+				close(tFileOutTemp_GoodsMove)
+				remove(tFileOutTemp_GoodsMove)
+					close(tFileOut_GoodsMove)
+					system("sleep 1")
+			endif
+		nTempConta4120++
+	endwhile
+	
+	
+	!escreve os do 4122
+	nTempConta4122 := 1
+	while nTempConta4122<= nConta4122 do
+	 
+		if length(taMOTRFU4122[nTempConta4122]) > 0 then
+		
+		
+							nMessageID := cMessageIDINACOTY
+						if nMessageID = 999999 then
+								cMessageIDINACOTY := 0
+						endif
+
+							
+							tFileOut_GoodsMove := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+							tFileOutTemp_GoodsMove := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+							tNameOut_GoodsMove := build("FM",tToInfologPrefixFilename,"INA_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+									
+		
+		
+
+
+
+			
+				print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) >> tFileOutTemp_GoodsMove
+				print("<GOODS_MOVE-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp_GoodsMove
+				print("    <CTRL_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("        <TrnNam>GOODS_MOVEMENT</TrnNam>",NL) >> tFileOutTemp_GoodsMove
+				print("        <TrnVer>1.0</TrnVer>",NL) >> tFileOutTemp_GoodsMove
+				print("        <GOODS_MOVEMENT_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("            <DocumentDate>",build(tfConvertDate(build(   tData,tHora,"000000"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</DocumentDate>",NL) >> tFileOutTemp_GoodsMove
+				print("            <TransactionRef>",tNumeroDocumento,"</TransactionRef>",NL) >> tFileOutTemp_GoodsMove
+				print("            <TransactionDate>",build(tfConvertDate(build(   tData,tHora,"000000"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00"),"</TransactionDate>",NL) >> tFileOutTemp_GoodsMove
+				print("            <TransactionCode>MB1B</TransactionCode>",NL) >> tFileOutTemp_GoodsMove
+				print("            <Plant_Id>8004</Plant_Id>",NL) >> tFileOutTemp_GoodsMove
+				if tCODTRE = "TR" then
+					print("            <StorageLoc>3000</StorageLoc>",NL) >> tFileOutTemp_GoodsMove
+				endif
+				if tCODTRE = "DV" then
+					print("            <StorageLoc>6001</StorageLoc>",NL) >> tFileOutTemp_GoodsMove
+				endif
+				print("            <StockType> </StockType>",NL) >> tFileOutTemp_GoodsMove
+				print("            <MaterialNumber>",taCODPRO4122[nTempConta4122],"</MaterialNumber>",NL) >> tFileOutTemp_GoodsMove
+				print("            <MovementType>311</MovementType>",NL) >> tFileOutTemp_GoodsMove
+				
+				
+				log("taUNICDE4122 nTempConta4122 ",taUNICDE4122[nTempConta4122],NL)
+				if taUNICDE4122[nTempConta4122] = "KI" then
+					tContUnitQty  := build((number(taUVCRFU4122[nTempConta4122]))/number(taPCBPRO4122[nTempConta4122] )) ! C  
+				else
+					if taUNICDE4122[nTempConta4122] = "UN" then
+						tContUnitQty  := build((number(taUVCRFU4122[nTempConta4122]))) ! C  
+						
+					else
+						if taUNICDE4122[nTempConta4122] = "ZUI" then
+							tContUnitQty  := build((number(taUVCRFU4122[nTempConta4122]))/number(taSPCPRO4122[nTempConta4122] )) ! C  
+						else
+							tContUnitQty  := build((number(taUVCRFU4122[nTempConta4122]))) ! C  
+						endif
+					endif
+				endif		
+				
+				
+				
+				
+				print("            <UnitQty>",tContUnitQty,"</UnitQty>",NL) >> tFileOutTemp_GoodsMove
+				
+
+			tQuery := build("SELECT UNIPRO "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO "\
+						"WHERE CODPRO= '",taCODPRO4122[nTempConta4122],"'")
+
+			log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtrace_GoodsMove("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtrace_GoodsMove("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				tUNIPROQuery  := peel(taDb2Array["UNIPRO"]," ")
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtrace_GoodsMove("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+			endif
+				
+				
+				print("            <UOM>",tUNIPROQuery,"</UOM>",NL) >> tFileOutTemp_GoodsMove
+				print("            <Xfer_Plant_Id>8004</Xfer_Plant_Id>",NL) >> tFileOutTemp_GoodsMove
+				
+				fmbrasil_depositoscoty := find(build(sHOME,"/fmbrasil_depositoscoty"),DEPOSITOFM=taMOTRFU4122[nTempConta4122])
+							   if valid(fmbrasil_depositoscoty) then
+									tXfer_Storage_Loc_AUx_TX   := fmbrasil_depositoscoty.DEPOSITOCOTY  
+									
+								else
+										bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build(taMOTRFU4122[nTempConta4122]," nao esta nos DEPOSITOS FM da tabela fmbrasil_depositoscoty!"))
+									
+								  exit(1)
+								  endif
+				
+				print("            <Xfer_Storage_Loc>",tXfer_Storage_Loc_AUx_TX,"</Xfer_Storage_Loc>",NL) >> tFileOutTemp_GoodsMove			
+				print("            <Batch>",taCODLOT4122[nTempConta4122],"</Batch>",NL) >> tFileOutTemp_GoodsMove
+				print("        </GOODS_MOVEMENT_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("    </CTRL_SEG>",NL) >> tFileOutTemp_GoodsMove
+				print("</GOODS_MOVE-BR_FMLOG-SAP-IWAY_INP>",NL) >> tFileOutTemp_GoodsMove
+
+			   close(tFileOutTemp_GoodsMove)
+			   
+			   
+				bfMajtrace_GoodsMove("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+
+			close(tFileOutTemp_GoodsMove)
+			copy(tFileOutTemp_GoodsMove,tFileOut_GoodsMove)
+				close(tFileOutTemp_GoodsMove)
+				remove(tFileOutTemp_GoodsMove)
+					close(tFileOut_GoodsMove)
+					system("sleep 1")
+			endif
+		nTempConta4122++
+	endwhile
+	
+endif	
+
+
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+bfSqlClose(tDbBase)
+exit(0)
+endend
+
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace_GoodsMove(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "DIFERENCA RECEBIMENTO"
+   TRACE.NUMDOC := taCODPRO4120[nTempConta4120]
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut_GoodsMove
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut_GoodsMove,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		    if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+		
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+close(tFileOutTemp_GoodsMove)
+copy(tFileOutTemp_GoodsMove,TRACE.Out)
+close(tFileOutTemp_GoodsMove)
+close(TRACE.Out_GoodsMove)
+
+
+
+
+
+
+
+
+
+flush(TRACE)
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+!===========================================================
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONFIRMACAO DE RECEBIMENTO"
+   TRACE.NUMDOC := tNumeroDocumento
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		    if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+		
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+
+
+
+
+
+
+
+
+
+flush(TRACE)
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+!===========================================================
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtraceDEVOLUCAO(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   !TRACE.MENSAGEM := "CONFIRMACAO DE RECEBIMENTO - DV"
+   TRACE.NUMDOC := tNumeroDocumento
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		    if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+		
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+
+
+
+
+
+
+
+
+
+flush(TRACE)
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+!===========================================================
+
+function tfEscreveXMLHeader()
+
+
+
+!===========================================================
+
+segment SRCPT_CONF-BR_FMLOG-SAP-IWAY_INP gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP     ! M 1/1 
+  ! eAxsi:noNamespaceSchemaLocation   ! C  
+  ! eAxsi:schemaLocation   ! C  
+
+endsegment
+
+! Group gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG : M 1/1 
+segment STrnNam gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnNam := "RECEIPT_CONFIRM"  ! C  
+
+endsegment
+
+segment STrnVer gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnVer := "1.0"   ! C  
+
+endsegment
+
+segment STrnTyp gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnTyp := "GRC"  ! C  
+
+endsegment
+
+segment SSAP_Plant_Id gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eESAP_Plant_Id := "8004"  ! C  
+
+endsegment
+
+! Group gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG : M 1/1 
+segment SDeliveryNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEDeliveryNumber := tNumeroDocumento  ! C  
+
+endsegment
+
+segment SReceiptDate gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEReceiptDate  :=  build(tfConvertDate(build(   tData , tHora,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00") ! C  
+
+endsegment
+
+endfunction
+
+function tfEscreveXMLDetail()
+
+! Group gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG : C 1/unbound 
+segment SLineNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+
+      if length(build(number(taNLIREC4130[nTempConta4130]))) = 5 and substr(taNLIREC4130[nTempConta4130],1,1) = "9" then
+         tNumeroLinhaTemp := build(substr(taNLIREC4130[nTempConta4130],1,1),"0",substr(taNLIREC4130[nTempConta4130],2,4))
+      else
+         tNumeroLinhaTemp := build(number(taNLIREC4130[nTempConta4130]))
+      endif
+
+
+   eELineNumber  := build(build(number(tNumeroLinhaTemp):R06)) ! C  
+
+endsegment
+
+segment SMaterialNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEMaterialNumber  := taCODPRO4130[nTempConta4130] ! C  
+
+endsegment
+
+segment SSAP_StorageLoc gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eESAP_StorageLoc   := taNUMOPE4130[nTempConta4130] !"3000" C  
+
+endsegment
+
+segment SStockType gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEStockType   := " " ! C  
+
+endsegment
+
+segment SUnitQty gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+
+
+/*
+SE UNICDE = KI, UnitQty=UVCMVT / PCBPRO
+SE UNICDE = UN, UnitQty= UVCMVT
+SE UNICDE = ZUI, UnitQty=UVCMVT/SPCPRO
+
+
+
+taUNICDE4130[nTempConta4130]
+
+
+	taSPCPRO4130[nTempConta4130] 
+	taPCBPRO4130[nTempConta4130]  
+*/
+log("taUNICDE4130 nTempConta4130 ",taUNICDE4130[nTempConta4130],NL)
+if taUNICDE4130[nTempConta4130] = "KI" then
+	eEUnitQty  := build((number(taUVCMVT4130Acumulado[nTempConta4130])+number(taUVCRFU4130[nTempConta4130]))/number(taPCBPRO4130[nTempConta4130] )) ! C  
+else
+	if taUNICDE4130[nTempConta4130] = "UN" then
+		eEUnitQty  := build((number(taUVCMVT4130Acumulado[nTempConta4130])+number(taUVCRFU4130[nTempConta4130]))) ! C  
+		
+    else
+		if taUNICDE4130[nTempConta4130] = "ZUI" then
+			eEUnitQty  := build((number(taUVCMVT4130Acumulado[nTempConta4130])+number(taUVCRFU4130[nTempConta4130]))/number(taSPCPRO4130[nTempConta4130] )) ! C  
+	    else
+			eEUnitQty  := build((number(taUVCMVT4130Acumulado[nTempConta4130])+number(taUVCRFU4130[nTempConta4130]))) ! C  
+		endif
+	endif
+endif
+
+endsegment
+
+!segment SQtyUom gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+!   eEQtyUom  := "ST"  ! C  
+
+!endsegment
+
+segment SBatch gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEBatch := taCODLOT4130[nTempConta4130]  ! C 
+
+endsegment
+
+if number(taDATFAB4130[nTempConta4130]) > 0 then
+segment SManufacDate gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEManufacDate  := build(tfConvertDate(build(   taDATFAB4130[nTempConta4130] ,"000000"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00") ! C  
+
+endsegment
+endif
+
+segment SDelvComp gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+ ! eEDelvComp  := "ver"  ! C  
+
+endsegment
+
+!segment SPoNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+!  eEPoNumber  := ver  ! C  
+
+!endsegment
+
+!segment SItemPO gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+ ! eEItemPO  := ver  ! C  
+
+!endsegment
+
+
+endfunction
+
+
+
+function tfEscreveXMLDetail41200MOTRFU()
+
+! Group gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG : C 1/unbound 
+segment SLineNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+
+      if length(build(number(taNLIREC4120[nTempConta4120]))) = 5 and substr(taNLIREC4120[nTempConta4120],1,1) = "9" then
+         tNumeroLinhaTemp := build(substr(taNLIREC4120[nTempConta4120],1,1),"0",substr(taNLIREC4120[nTempConta4120],2,4))
+      else
+         tNumeroLinhaTemp := build(number(taNLIREC4120[nTempConta4120]))
+      endif
+
+
+   eELineNumber  := build(build(number(tNumeroLinhaTemp):R06)) ! C  
+
+endsegment
+
+segment SMaterialNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEMaterialNumber  := taCODPRO4120[nTempConta4120] ! C  
+
+endsegment
+
+segment SSAP_StorageLoc gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eESAP_StorageLoc   := build(number(taNUMOPE4120[nTempConta4120])) !"3000" C  
+
+endsegment
+
+segment SStockType gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEStockType   := " " ! C  
+
+endsegment
+
+segment SUnitQty gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+
+
+	
+		tQuery := build("SELECT CODPRO, CODLOT, PCBPRO, SPCPRO "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GERECD "\
+						"WHERE NUMREC= '",tNUMREC,"' and CODPRO='",taCODPRO4120[nTempConta4120],"'")
+
+						
+						
+		log(tQuery,NL)
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+				
+				tCODLOTQuery  := peel(taDb2Array["CODLOT"]," ")
+				tPCBPROQuery  := peel(taDb2Array["PCBPRO"]," ")
+				tSPCPROQuery  := peel(taDb2Array["SPCPRO"]," ")
+
+				remove(taDb2Array)
+
+			endwhile
+			
+			
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtraceDEVOLUCAO("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"CONFIRMACAO DE RECEBIMENTO - DV",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+			endif
+		
+
+	!eEUnitQty  := build(number(taUVCREA[nTempConta4120]/number())) ! C  
+if taUNICDE4120[nTempConta4120] = "KI" then
+	eEUnitQty  := build((number(taUVCREA[nTempConta4120]))/number(tPCBPROQuery)) ! C  
+else
+	if taUNICDE4120[nTempConta4120] = "UN" then
+		eEUnitQty  := build((number(taUVCREA[nTempConta4120]))) ! C  
+		
+    else
+		if taUNICDE4120[nTempConta4120] = "ZUI" then
+			eEUnitQty  := build((number(taUVCREA[nTempConta4120]))/number(tSPCPROQuery )) ! C  
+	    else
+			eEUnitQty  := build((number(taUVCREA[nTempConta4120]))) ! C 
+		endif
+	endif
+endif
+
+endsegment
+
+!segment SQtyUom gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+!   eEQtyUom  := "ST"  ! C  
+
+!endsegment
+
+segment SBatch gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEBatch := tCODLOTQuery !taCODLOT4120[nTempConta4120]  ! C 
+
+endsegment
+
+if number(taDATFAB4120[nTempConta4120]) > 0 then
+segment SManufacDate gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+   eEManufacDate  := build(tfConvertDate(build(   taDATFAB4120[nTempConta4120] ,"000000"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00") ! C  
+
+endsegment
+endif
+
+segment SDelvComp gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+ ! eEDelvComp  := "ver"  ! C  
+
+endsegment
+
+!segment SPoNumber gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+!  eEPoNumber  := ver  ! C  
+
+!endsegment
+
+!segment SItemPO gGRCPT_CONF-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG,gGLINE_SEG     ! C 1/1 
+ ! eEItemPO  := ver  ! C  
+
+!endsegment
+
+
+endfunction
+

@@ -1,0 +1,612 @@
+%@(#) $Id:  M40_HASBRO_ASCII_IN.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M40_HASBRO_ASCII_IN.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M40_HASBRO_ASCII_IN
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M40_HASBRO_ASCII_IN
+!
+!===========================================================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_consolidacao_m40hasbro/fmbrasil_consolidacao_m40hasbro.cfg" fmbrasil_consolidacao_m40hasbro,autoflush off
+base "../fmbrasil_consolidacao_m40hasbro/fmbrasil_consolidacao_m40hasbro.cfg" fmbrasil_consolidacao_m40hasbro_validacao
+base "../fmbrasil_consolidacao_m40hasbro/fmbrasil_consolidacao_m40hasbro.cfg" fmbrasil_consolidacao_m40hasbro_validacao2
+
+!===========================================================
+
+! Input/output macros file
+#define PROG_NAME "$RCSfile: $"
+#define PROG_VER  "$Revision: $"
+#define PROG_DATE "$Date: $"
+#define PROG_INFO build(PROG_NAME,PROG_VER,PROG_DATE)
+#define TX_PROG_INFO build(PROG_NAME,PROG_VER,PROG_DATE)
+#include "include/generix_func.inc"
+#include "include/HASBROCRPOS.inc"
+#include "include/M40.inc"
+!===========================================================
+
+! Initialization section
+
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+    
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHASBRO"]
+
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  !tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+    
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    nNumeroLinha := 0
+	nMainIndex := 0
+	bJaExisteAlgumReturn := FALSE
+	
+	!fmbrasil_consolidacao_m40hasbro_validacao2 := find(build(sHOME,"/fmbrasil_consolidacao_m40hasbro"),CODTRE = "RT")
+	!while valid(fmbrasil_consolidacao_m40hasbro_validacao2) do
+	!	remove(fmbrasil_consolidacao_m40hasbro_validacao2)
+	!	fmbrasil_consolidacao_m40hasbro_validacao2 := find()
+	!endwhile
+endbegin
+!===========================================================
+
+line(1:"CR")
+   if S_CR_plant = "1425" then
+		bFazMSGPLant :=  TRUE
+	else
+		bFazMSGPLant := FALSE
+   endif
+   nContadorProdutos := 0
+endline
+
+
+
+line(1:"1425")
+
+   
+   
+	   nNumeroLinha++
+	   
+	   tCODACTConst := "HAS"
+		taDIPREC4001[nNumeroLinha] := S_DETAIL_container
+		taDIPREC4021[nNumeroLinha] := S_DETAIL_POnumber
+		taNLIREC[nNumeroLinha] := S_DETAIL_POlinenumber
+		taCODPRO[nNumeroLinha] := S_DETAIL_materialnumber
+		taUVCREA[nNumeroLinha] := S_DETAIL_quantity
+		taUVCREA_original[nNumeroLinha] := S_DETAIL_quantity
+		taDTIREC[nNumeroLinha] := S_DETAIL_estimatedarrivaldate 
+		taREFREC[nNumeroLinha] := build(S_DETAIL_NFnumber,".",S_DETAIL_NotaFiscalNumberSeries)
+		taNFnumber[nNumeroLinha] := S_DETAIL_NFnumber
+		taNotaFiscalNumberSeries[nNumeroLinha] := S_DETAIL_NotaFiscalNumberSeries
+		taReferenceNumber[nNumeroLinha] := S_DETAIL_referencenumber
+		baConsideraHeader[nNumeroLinha] := TRUE
+        
+   
+		baProdutoDuplicado[nNumeroLinha] := FALSE
+   
+   
+endline
+
+
+
+line(1:"TR")
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	nTempNumeroLinha := 1
+while nTempNumeroLinha  <= nNumeroLinha do
+    if taDIPREC4001[nTempNumeroLinha] <> "RETURN" then
+		   nTempNumeroLinha2 := nTempNumeroLinha+1
+		   while nTempNumeroLinha2  <= nNumeroLinha do
+			  if taREFREC[nTempNumeroLinha2] = taREFREC[nTempNumeroLinha] then
+				 baConsideraHeader[nTempNumeroLinha2] := FALSE
+			  endif
+			  
+			  !baProdutoDuplicado[nNumeroLinha] := FALSE
+			  if taREFREC[nTempNumeroLinha2] = taREFREC[nTempNumeroLinha] and taCODPRO[nTempNumeroLinha2] = taCODPRO[nTempNumeroLinha] then !and taCODLOT[nTempNumeroLinha2] = taCODLOT[nTempNumeroLinha] then
+					baProdutoDuplicado[nTempNumeroLinha2] := TRUE
+					taUVCREA[nTempNumeroLinha] := build(number(taUVCREA[nTempNumeroLinha])+ number(taUVCREA[nTempNumeroLinha2]))
+			  endif
+
+			  nTempNumeroLinha2 ++
+		   endwhile
+   endif
+   nTempNumeroLinha ++
+endwhile
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+	nTempNumeroLinha := 1
+	while nTempNumeroLinha  <= nNumeroLinha do
+		if taDIPREC4001[nTempNumeroLinha] <> "RETURN" then
+			if baConsideraHeader[nTempNumeroLinha] = TRUE then
+
+			  if nContadorLinhasEscritas = 0 then
+				 R_00HEADER_CODEXC("00")
+				 R_00HEADER_SEPEXC(".")
+				 R_00HEADER_SCOEXC("00")
+				 R_00HEADER_TRTEXC("")
+				 R_00HEADER_EMTEXC("FM") 
+				 R_00HEADER_RCTEXC("")
+				 R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+				 R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+				 R_00HEADER_NUMEXC("0000000")
+				 R_00HEADER_ACQEXC("0")
+				 R_00HEADER_VEREXC("5.00") 
+				 R_00HEADER_NOMSYS("")  
+				 R_00HEADER_NOMDTQ("M40")
+				 R_00HEADER_BIBDTQ("")
+				 R_00HEADER_LIBEXC(build(nMessageID:R010))
+				 R_00HEADER_BIBDST("")
+				 R_00HEADER_PGMDST("")
+				 R_00HEADER_PARDST("")
+				 R_00HEADER_CODACT("")
+				 R_00HEADER_IGLSIT("")
+				 R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+				 R_00HEADER_IMAEXC("")  
+				 R_00HEADER_DISEXC("")
+				 
+				 flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+				 nContadorLinhasEscritas++
+			   endif
+
+
+
+			   R_40HEADER_CODEXC("40")
+			   R_40HEADER_SEPEXC(".")
+			   R_40HEADER_SCOEXC("00")
+			   R_40HEADER_TRTEXC("2")
+			   R_40HEADER_REFREC(taREFREC[nTempNumeroLinha])
+			   R_40HEADER_CODACT(tCODACTConst )
+			   R_40HEADER_DTIREC(taDTIREC[nTempNumeroLinha])
+			   R_40HEADER_CODFOU("08743754000305")
+			   if taDIPREC4001[nTempNumeroLinha] = "RETURN" then
+					R_40HEADER_CODTRE("RT")
+				else
+					R_40HEADER_CODTRE("TR")
+				endif
+
+				flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+			   nContadorLinhasEscritas++
+
+					R_40_01ORDHEADER_CODEXC("40")
+					R_40_01ORDHEADER_SEPEXC(".")
+					R_40_01ORDHEADER_SCOEXC("01")
+					   R_40_01ORDHEADER_TRTEXC("2")
+					R_40_01ORDHEADER_REFREC(taREFREC[nTempNumeroLinha] )
+			
+					R_40_01ORDHEADER_DIPREC(taDIPREC4001[nTempNumeroLinha])
+
+						flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+					nContadorLinhasEscritas++
+
+
+
+				  nContadorLinhasEncomenda := 1
+				  
+				  
+					 nContador := 8
+					 print("ve ",peel(taREGISTO[nContador+1],"\""),NL)
+
+			  nContadorTmpTOTAL := 1
+
+
+			   nTempNumeroLinha2 := nTempNumeroLinha
+			   while nTempNumeroLinha2  <= nNumeroLinha do
+			   
+			   if taREFREC[nTempNumeroLinha2] = taREFREC[nTempNumeroLinha] then
+			   
+				fmbrasil_consolidacao_m40hasbro_validacao  := find(build(sHOME,"/fmbrasil_consolidacao_m40hasbro"),CODTRE="TR",CODPRO=taCODPRO[nTempNumeroLinha2],NLIREC=build(taNLIREC[nTempNumeroLinha2 ]:R05),REFRECDepoisConsolidacao=taREFREC[nTempNumeroLinha2],NF= taReferenceNumber[nTempNumeroLinha2] )
+				if valid(fmbrasil_consolidacao_m40hasbro_validacao) then
+					!é duplicado nao faz nada
+				else
+			   
+			   		fmbrasil_consolidacao_m40hasbro := new(build(sHOME,"/fmbrasil_consolidacao_m40hasbro"))
+					fmbrasil_consolidacao_m40hasbro.TraceM40AntesConsolidacao := build(SYSLOG.INDEX)
+					if taDIPREC4001[nTempNumeroLinha2] = "RETURN" then
+						fmbrasil_consolidacao_m40hasbro.CODTRE := "RT"
+					else
+						fmbrasil_consolidacao_m40hasbro.CODTRE := "TR"
+					endif
+
+					fmbrasil_consolidacao_m40hasbro.EDIFOU := tEDIFOU
+					fmbrasil_consolidacao_m40hasbro.CODFOU  := "08743754000305"
+					fmbrasil_consolidacao_m40hasbro.CODACT := tCODACTConst
+					fmbrasil_consolidacao_m40hasbro.DTIREC := taDTIREC[nTempNumeroLinha2]
+					fmbrasil_consolidacao_m40hasbro.DIPREC := taDIPREC4001[nTempNumeroLinha2]
+					fmbrasil_consolidacao_m40hasbro.DIPREC4021 := taDIPREC4021[nTempNumeroLinha2]
+					fmbrasil_consolidacao_m40hasbro.CODPRO := taCODPRO[nTempNumeroLinha2]
+					fmbrasil_consolidacao_m40hasbro.NLIREC := build(taNLIREC[nTempNumeroLinha2 ]:R05)
+					fmbrasil_consolidacao_m40hasbro.UVCREA := build(build(number(taUVCREA_original[nTempNumeroLinha2 ]):R09.0))
+					fmbrasil_consolidacao_m40hasbro.REFRECDepoisConsolidacao := taREFREC[nTempNumeroLinha2] 
+					fmbrasil_consolidacao_m40hasbro.NF := taReferenceNumber[nTempNumeroLinha2] 
+					flush(fmbrasil_consolidacao_m40hasbro)	
+			   endif
+			   
+			   
+			   
+				if baProdutoDuplicado[nTempNumeroLinha2] = FALSE then
+			   
+						   
+			   
+			   
+						
+
+								! fazer aqui um while e validar
+								R_40_20M40_CODEXC("40")
+								R_40_20M40_SEPEXC(".")
+								R_40_20M40_SCOEXC("20")
+								R_40_20M40_TRTEXC("2")
+								R_40_20M40_CODACT(tCODACTConst )
+
+								R_40_20M40_REFREC(taREFREC[nTempNumeroLinha2])
+								R_40_20M40_CODPRO(taCODPRO[nTempNumeroLinha2])
+								R_40_20M40_UVCREA(build(number(taUVCREA[nTempNumeroLinha2 ]):R09.0))
+								R_40_20M40_NLIREC(build(taNLIREC[nTempNumeroLinha2 ]:R05)) 
+								flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+
+								nContadorLinhasEscritas++
+								  
+								
+								
+								
+								
+								
+								R_40_21M40_CODEXC("40")
+								R_40_21M40_SEPEXC(".")
+								R_40_21M40_SCOEXC("21")
+								R_40_21M40_TRTEXC("2")
+
+								R_40_21M40_REFREC(taREFREC[nTempNumeroLinha2] )
+								R_40_21M40_DIPREC(taDIPREC4021[nTempNumeroLinha2 ])
+								R_40_20M40_NLIREC(build(taNLIREC[nTempNumeroLinha2 ]:R05))
+								flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+
+								nContadorLinhasEscritas++
+								
+								
+								flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+								nContadorLinhasEscritas++
+						
+
+					endif
+			
+				endif
+				
+	   
+	   nContadorLinhasEncomenda++
+	   nContadorTmpTOTAL++
+	   nTempNumeroLinha2++ 
+		
+	   endwhile
+
+
+		
+		
+		
+		R_40_99TRAILLER_CODEXC("40")
+	   R_40_99TRAILLER_SEPEXC(".")
+	   R_40_99TRAILLER_SCOEXC("99")
+	  R_40_99TRAILLER_TRTEXC("2")
+
+	   R_40_99TRAILLER_REFREC(taREFREC[nTempNumeroLinha] )
+	   R_40_99TRAILLER_CUMLIG(build(number(tCUMLIG) :R04.0)) !ver conversao e  por erro!!!!!
+		flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+	   nContadorLinhasEscritas++
+	   
+	   bfMajtrace("Recebida","0",taREFREC[nTempNumeroLinha],tDataDocumento,tFileInput,tFileOut,"Produtos","")
+	   endif
+	   endif
+	   
+	   
+	   
+	   
+	   
+	   if taDIPREC4001[nTempNumeroLinha] = "RETURN" then
+					
+			  !valida se existe
+			  
+			  if bJaExisteAlgumReturn = FALSE then
+				bJaExisteAlgumReturn := TRUE
+				bfMajtraceRETURN("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+			endif
+				
+				
+				bJaexistenaTabela := FALSE
+				
+				
+				!log("taNFnumber[nTempNumeroLinha] ",taNFnumber[nTempNumeroLinha],NL)
+				!if taNFnumber[nTempNumeroLinha] = "22943" then
+				!	log("taNFnumber[nTempNumeroLinha] ",taNFnumber[nTempNumeroLinha],NL)
+				!	log("build(number(taNFnumber[nTempNumeroLinha])) ",build(number(taNFnumber[nTempNumeroLinha])),NL)
+				!	log("build(number(taNotaFiscalNumberSeries[nTempNumeroLinha])) ",build(number(taNotaFiscalNumberSeries[nTempNumeroLinha])),NL)
+				!endif
+				
+				fmbrasil_consolidacao_m40hasbro_validacao := find(build(sHOME,"/fmbrasil_consolidacao_m40hasbro"),CODTRE="RT",DIPREC4021=build(taDIPREC4021[nTempNumeroLinha]),NF = build(number(taNFnumber[nTempNumeroLinha])),SNF = build(number(taNotaFiscalNumberSeries[nTempNumeroLinha])),NLIREC=build(taNLIREC[nTempNumeroLinha ]:R05),CODPRO = taCODPRO[nTempNumeroLinha])
+				
+			
+				if valid(fmbrasil_consolidacao_m40hasbro_validacao) do
+					
+						!log(fmbrasil_consolidacao_m40hasbro_validacao.DIPREC402,NL)
+						!log(build(taDIPREC4021[nTempNumeroLinha]),NL)
+						!nao faz nada
+				else
+			 
+				
+			 
+				
+					
+					 
+						fmbrasil_consolidacao_m40hasbro := new(build(sHOME,"/fmbrasil_consolidacao_m40hasbro"))
+						fmbrasil_consolidacao_m40hasbro.TraceM40AntesConsolidacao := build(TRACE.INDEX)
+						fmbrasil_consolidacao_m40hasbro.NF := build(number(taNFnumber[nTempNumeroLinha]))
+						fmbrasil_consolidacao_m40hasbro.SNF := build(number(taNotaFiscalNumberSeries[nTempNumeroLinha]))
+						if taDIPREC4001[nTempNumeroLinha] = "RETURN" then
+							fmbrasil_consolidacao_m40hasbro.CODTRE := "RT"
+						else
+							fmbrasil_consolidacao_m40hasbro.CODTRE := "TR"
+						endif
+						
+
+						fmbrasil_consolidacao_m40hasbro.EDIFOU := tEDIFOU
+						fmbrasil_consolidacao_m40hasbro.CODFOU  := "08743754000305"
+						fmbrasil_consolidacao_m40hasbro.CODACT := tCODACTConst
+						fmbrasil_consolidacao_m40hasbro.DTIREC := taDTIREC[nTempNumeroLinha]
+																  
+						
+						fmbrasil_consolidacao_m40hasbro.DIPREC := taDIPREC4001[nTempNumeroLinha]
+						
+						fmbrasil_consolidacao_m40hasbro.DIPREC4021 := taDIPREC4021[nTempNumeroLinha]
+					
+
+						
+						
+						fmbrasil_consolidacao_m40hasbro.CODPRO := taCODPRO[nTempNumeroLinha]
+						fmbrasil_consolidacao_m40hasbro.NLIREC := build(taNLIREC[nTempNumeroLinha ]:R05)
+						
+					
+						fmbrasil_consolidacao_m40hasbro.UVCREA := build(build(number(taUVCREA_original[nTempNumeroLinha ]):R09.0))
+						
+						flush(fmbrasil_consolidacao_m40hasbro)	
+				endif
+				
+				
+			
+				
+		endif
+	   nTempNumeroLinha++
+	endwhile
+	   
+if nContadorLinhasEscritas > 0 then
+
+		R_TRAILLER_CODEXC("99")
+		R_TRAILLER_SEPEXC(".")
+		R_TRAILLER_SCOEXC("00")
+		R_TRAILLER_TRTEXC("")
+		R_TRAILLER_EMTEXC("FM")
+		R_TRAILLER_RCTEXC("")
+		R_TRAILLER_DATEXC(time("now" ,"%Y%m%d"))
+		R_TRAILLER_HEUEXC(time("now" ,"H%M%S"))
+		R_TRAILLER_NUMEXC("")
+		tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+		!print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+		R_TRAILLER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+		!R_TRAILLER_NOMSYS("")
+		!R_TRAILLER_NOMDTQ("")
+		!R_TRAILLER_BIBDTQ("")
+		!R_TRAILLER_IDEMSG("")
+		!R_TRAILLER_DISEXC("")
+
+		flush(0,0,NL)  >> tFileOutTemp
+		close(tFileOutTemp)
+
+	copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+			close(tFileOut)
+			
+endif
+
+
+
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+exit(0)
+
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "HASBRO"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "RECEBIMENTO E DEVOLUCAO"
+   TRACE.NUMDOC := taREFREC[nTempNumeroLinha]
+   TRACE.DATDOC := taDTIREC[nTempNumeroLinha]
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,35)
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+if tError="0" then
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtraceRETURN(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "HASBRO"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "RECEBIMENTO E DEVOLUCAO (RT)"
+   TRACE.NUMDOC := build(time("now" ,"%Y-%m-%dT%H:%M:%S"))
+   TRACE.DATDOC := taDTIREC[nTempNumeroLinha]
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,35)
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+if tError="0" then
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction
+
+

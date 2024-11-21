@@ -1,0 +1,75 @@
+%@(#)  source_filename.rte     modif:03-02-2015
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 03-02-2015  XX  Creation
+! 03-02-2015  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "syslog.cfg" SYSLOG
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+
+        SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+
+	
+	
+	close(SYSLOG.a)
+	
+	if substr(pEDISEND.ORIGINAL.NAME,4,3) = "FEX" then
+			nMessagePROCESSED := cMessagePROCESSED
+			tFileOut := build(sHOME,"/IDOCSFROMLOREAL/PROCESSED/",pEDISEND.ORIGINAL.NAME,".",nMessagePROCESSED:R010)
+			copy(SYSLOG.a,tFileOut)
+			close(tFileOut)
+	else
+	
+	
+	
+	
+		nLinha := 1
+		tLinhaLida := read(SYSLOG.a)
+		while tLinhaLida <> EOF do
+				if substr(tLinhaLida,1,8) = "EDI_DC40" then
+						close(tFileOut)
+							nMessagePROCESSED := cMessagePROCESSED
+							tFileOut :=build(sHOME,"/IDOCSFROMLOREAL/PROCESSED/",pEDISEND.ORIGINAL.NAME,".",nMessagePROCESSED:R010)
+							print(tLinhaLida,NL) >> tFileOut
+							
+				else
+						print(tLinhaLida,NL) >> tFileOut
+				endif	
+
+				
+						
+			tLinhaLida := read(SYSLOG.a)
+		endwhile 
+	
+	endif
+
+close(tFileOut)
+exit(0)
+
+
+endbegin
+
+!===========================================================
+

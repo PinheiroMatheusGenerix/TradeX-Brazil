@@ -1,0 +1,936 @@
+%@(#)  M80_VEJA_XML.rte     modif:21-11-2017
+!==============================================================================
+% File          : M80_VEJA_XML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+! schema "XML/FMBrasil/NFE/procNFe_v4.00.xsd" validating, building
+message "XML/FMBrasil/VEJA/VEJA_M80.dtd" building
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "M80_VEJA_XML"
+#include "include/generix_func.inc"
+#include "include/GEEXM80.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1
+
+	log("------------------------------------------------------------", NL)
+	log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA8"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    "", \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+    
+    nCountLine := 0
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+    tNUMEXC := S_GEEX0000_NUMEXC
+    tCODACT := S_GEEX0000_CODACT
+    tHEUEXC := S_GEEX0000_HEUEXC
+
+    ! QUERY tEDIACT
+        tQuery := build("SELECT EDIACT", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEACT", NL," "\
+                        "WHERE CODACT = '",tCODACT,"'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            tEDIACT := peel(taDb2Array["EDIACT"], " ")
+            log("EDIACT = ", peel(taDb2Array["EDIACT"], " "), NL)
+            remove(taDb2Array)
+        endwhile
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    ! FIM QUERY tEDIACT
+endline
+
+line(1:"80.00")
+    tCODPRO := S_GEEX8000_CODPRO
+    tSENMVT := S_GEEX8000_SENMVT
+    tCODMVT := S_GEEX8000_CODMVT
+    tMOTMVT := S_GEEX8000_MOTMVT
+    tUVCMVT := build(number(S_GEEX8000_UVCMVT))
+    tDATMVT := S_GEEX8000_DATMVT
+    tHEUMVT := S_GEEX8000_HEUMVT
+    tCODCLI := S_GEEX8000_CODCLI
+endline
+
+line(1:"80.01")
+    tEDIPRO := S_GEEX8001_EDIPRO
+    tCODSAP := S_GEEX8001_CODSAP
+endline
+
+line(1:"80.90")
+    tNUMPAL := S_GEEX8090_NUMPAL
+    tPALIMM := S_GEEX8090_PALIMM
+    if length(S_GEEX8090_MOTIMM) > 0 then
+        tMOTIMM := S_GEEX8090_MOTIMM
+    else
+        tMOTIMM := "Q1"
+    endif 
+
+    ! QUERY tCODSAP1
+        tQuery := build("SELECT CODSAP1", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO", NL," "\
+                        "WHERE MOTIMM = '",tMOTIMM,"'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            tCODSAP1 := peel(taDb2Array["CODSAP1"], " ")
+
+            remove(taDb2Array)
+        endwhile
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    ! FIM QUERY tCODSAP1
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+    tFileOut := build(sHOME,"/mdn/auto/FM",tToInfologPrefixFilename,tCODACT,"_StockAdjustment_",time("now" ,"%Y%m%d%H%M%S"),"_.",build(nMessageID),".xml")
+    tFileOutTemp := build(sHOME,"/mdn/auto/Temp/FM",tToInfologPrefixFilename,tCODACT,"_StockAdjustment_",time("now" ,"%Y%m%d%H%M%S"),"_.",build(nMessageID),".xml")
+    tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_StockAdjustment_",time("now" ,"%Y%m%d%H%M%S"),"_.",build(nMessageID),".xml")
+    
+    if tCODACT = "VEJ" and tMOTMVT <> "LOS" and (tCODMVT = "10" or tCODMVT = "20" or tCODMVT = "40" or tCODMVT = "90") then
+        ! bfCriarHeader(tNUMEXC, tEDIACT, tNUMPAL)
+
+        ! if tSENMV = "-" then
+        !     tQUANTITY := build(tSENMV, tUVCMV)
+        ! else
+        !     tQUANTITY := tUVCMV
+        ! endif
+
+        ! bfCriarBody(tDATMVT, \
+        !             tCODPRO, \
+        !             build(tCODSAP1, substr(tCODCLI, 1, 2)), \
+        !             tQUANTITY, \
+        !             tEDIPRO, \
+        !             "INVADJ")
+
+        ! print(MESSAGE) >> tFileOutTemp
+
+        ! close(tFileOutTemp)
+        ! copy(tFileOutTemp,tFileOut)
+        ! close(tFileOutTemp)
+        ! remove(tFileOutTemp)
+        ! close(tFileOut)
+
+        ! bfMajtrace("Recebida", \
+        !             "0", \
+        !             build(tCODPRO, "-", tCODLOT), \
+        !             time("now","%Y-%m-%d"), \
+        !             tFileOut, \
+        !             "")
+
+        !! Enviar interface para o cliente
+        ! tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+        ! log("executando o comando - ", tCmd, NL)
+        ! system(tCmd)
+    else
+        if tCODACT = "VEJ" and tMOTMVT = "CLI" and tCODMVT = "30" and tSENMVT = "-" then
+            bfCriarHeader(tNUMEXC, tEDIACT, tNUMPAL)
+
+            ! QUERY tCODCLI_Query
+                tQuery := build("SELECT  CODCLI", NL," "\
+                                "FROM FGE50FM",tToInfologPrefixFilename,".GEPAL", NL," "\
+                                "WHERE NUMPAL = '",tNUMPAL,"'")
+
+                log("------------------------------------------------------------", NL)
+                log(tQuery,NL)
+
+                if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                    print("FATAL ", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao", \
+                                "1", \
+                                tREFREC, \
+                                time("now","%Y-%m-%d"), \
+                                tFileOut, \
+                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+
+                if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                    print("FATAL ", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao", \
+                                "1", \
+                                tREFREC, \
+                                time("now","%Y-%m-%d"), \
+                                tFileOut, \
+                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+
+                while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                    tCODCLI_Query := peel(taDb2Array["CODCLI"], " ")
+
+                    remove(taDb2Array)
+                endwhile
+                log("------------------------------------------------------------", NL)
+
+                if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                    print("FATAL", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao", \
+                                "1", \
+                                tREFREC, \
+                                time("now","%Y-%m-%d"), \
+                                tFileOut, \
+                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+            ! FIM QUERY tCODCLI_Query
+
+            bfCriarBody(tDATMVT, \
+                        tCODPRO, \
+                        tCODCLI, \
+                        build("-", tUVCMVT), \
+                        tEDIPRO, \
+                        "CHANGE SLOT")
+
+            bfCriarBody(tDATMVT, \
+                        tCODPRO, \
+                        tCODCLI_Query, \
+                        tUVCMVT, \
+                        tEDIPRO, \
+                        "CHANGE SLOT")
+
+            print(MESSAGE) >> tFileOutTemp
+
+            close(tFileOutTemp)
+            copy(tFileOutTemp,tFileOut)
+            close(tFileOutTemp)
+            remove(tFileOutTemp)
+            close(tFileOut)
+
+            bfMajtrace("Recebida", \
+                        "0", \
+                        build(tCODPRO, "-", tCODLOT), \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        "")
+
+            ! Enviar interface para o cliente
+            tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+            log("executando o comando - ", tCmd, NL)
+            system(tCmd)
+        else
+            if tCODACT = "VEJ" and tCODMVT = "80" then
+                if tSENMVT = "-" then
+                    ! QUERY bGeraInterface
+                        tQuery := build("SELECT", NL," "\
+                                        "       (", NL," "\
+                                        "            SELECT  COUNT(*)", NL," "\
+                                        "            FROM FGE50FM",tToInfologPrefixFilename,".GEJEX EX", NL," "\
+                                        "            WHERE EX.DATEXC = '",tDATMVT,"'", NL," "\
+                                        "            AND EX.HEUEXC BETWEEN '",tHEUMVT,"' AND '",tHEUEXC,"'", NL," "\
+                                        "        ) AS IMMO", NL," "\
+                                        "FROM FGE50FM",tToInfologPrefixFilename,".GEJEX EX2", NL," "\
+                                        "JOIN FGE50FM",tToInfologPrefixFilename,".GECOMAT MT", NL," "\
+                                        "ON EX2.NUMEXC = MT.NUMEXC", NL," "\
+                                        "WHERE EX2.DATEXC = '",tDATMVT,"'", NL," "\
+                                        "AND EX2.HEUEXC BETWEEN '",tHEUMVT,"' AND '",tHEUEXC,"'", NL," "\
+                                        "AND MT.MVTATT LIKE '80.90%'")
+
+                        log("------------------------------------------------------------", NL)
+                        log(tQuery,NL)
+
+                        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                            print("FATAL ", tfSqlErrorStr())
+                            bfMajtrace("Erro de Traducao", \
+                                        "1", \
+                                        tREFREC, \
+                                        time("now","%Y-%m-%d"), \
+                                        tFileOut, \
+                                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                            exit(1)
+                        endif
+
+                        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                            print("FATAL ", tfSqlErrorStr())
+                            bfMajtrace("Erro de Traducao", \
+                                        "1", \
+                                        tREFREC, \
+                                        time("now","%Y-%m-%d"), \
+                                        tFileOut, \
+                                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                            exit(1)
+                        endif
+
+                        bGeraInterface := TRUE
+                        if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+                            if number(peel(taDb2Array["IMMO"], " ")) >= 2 then
+                                bGeraInterface := FALSE
+                            endif
+
+                            remove(taDb2Array)
+                        endif
+                        log("------------------------------------------------------------", NL)
+
+                        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                            print("FATAL", tfSqlErrorStr())
+                            bfMajtrace("Erro de Traducao", \
+                                        "1", \
+                                        tREFREC, \
+                                        time("now","%Y-%m-%d"), \
+                                        tFileOut, \
+                                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                            exit(1)
+                        endif
+                    ! FIM QUERY bGeraInterface
+                
+                    if bGeraInterface = TRUE then
+                        bfCriarHeader(tNUMEXC, tEDIACT, tNUMPAL) 
+
+                        ! QUERY tCODCLI_Query_80, tSLOT_Query_80
+                            tQuery := build("SELECT  PL.CODCLI", NL," "\
+                                            "       ,CONCAT(TRIM(A.CODSAP1),SUBSTRING(PL.CODCLI,1,2)) AS SLOT", NL," "\
+                                            "FROM FGE50FM",tToInfologPrefixFilename,".GEPAL PL,", NL," "\
+                                            "(", NL," "\
+                                            "	SELECT  MOTIMM", NL," "\
+                                            "	       ,CODSAP1", NL," "\
+                                            "	FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO", NL," "\
+                                            ") AS A", NL," "\
+                                            "WHERE PL.NUMPAL = '",tNUMPAL,"'", NL," "\
+                                            "AND A.MOTIMM = 'Q1'")
+
+                            log("------------------------------------------------------------", NL)
+                            log(tQuery,NL)
+
+                            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                tCODCLI_Query_80 := peel(taDb2Array["CODCLI"], " ")
+                                tSLOT_Query_80 := peel(taDb2Array["SLOT"], " ")
+
+                                remove(taDb2Array)
+                            endwhile
+                            log("------------------------------------------------------------", NL)
+
+                            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+                        ! FIM QUERY tCODCLI_Query_80, tSLOT_Query_80
+
+                        bfCriarBody(tDATMVT, \
+                                    tCODPRO, \
+                                    tSLOT_Query_80, \
+                                    build("-", tUVCMVT), \
+                                    tEDIPRO, \
+                                    "RMAADJ")
+
+                        ! QUERY tSENMVT_Query2_80, tSLOT_Query2_80
+                            tQuery := build("SELECT  JN.SENMVT", NL," "\
+                                            "       ,CONCAT(TRIM(IM.CODSAP1),SUBSTRING(JN.CODCLI,1,2)) AS SLOT", NL," "\
+                                            "FROM FGE50FM",tToInfologPrefixFilename,".GEJNL JN", NL," "\
+                                            "JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM", NL," "\
+                                            "ON JN.MOTMVT = IM.MOTIMM", NL," "\
+                                            "WHERE JN.NUMPAL = '",tNUMPAL,"'", NL," "\
+                                            "AND JN.DATMVT = '",tDATMVT,"'", NL," "\
+                                            "AND JN.HEUMVT = '",tHEUMVT,"'")
+
+                            log("------------------------------------------------------------", NL)
+                            log(tQuery,NL)
+
+                            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                tSENMVT_Query2_80 := peel(taDb2Array["SENMVT"], " ")
+                                tSLOT_Query2_80 := peel(taDb2Array["SLOT"], " ")
+
+                                remove(taDb2Array)
+                            endwhile
+                            log("------------------------------------------------------------", NL)
+
+                            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+                        ! FIM tSENMVT_Query2_80, tSLOT_Query2_80
+
+                        bfCriarBody(tDATMVT, \
+                                    tCODPRO, \
+                                    tSLOT_Query2_80, \
+                                    tUVCMVT, \
+                                    tEDIPRO, \
+                                    "RMAADJ")
+
+
+                        if tSLOT_Query_80 = tSLOT_Query2_80 then
+                            log("O valor do primeiro Slot é igual ao segundo, desta forma não gera Trace!", NL)
+                            remove(tFileOut)
+                            remove(tFileOutTemp)
+                        else
+                            print(MESSAGE) >> tFileOutTemp
+
+                            close(tFileOutTemp)
+                            copy(tFileOutTemp,tFileOut)
+                            close(tFileOutTemp)
+                            remove(tFileOutTemp)
+                            close(tFileOut)
+
+                            bfMajtrace("Recebida", \
+                                        "0", \
+                                        build(tCODPRO, "-", tCODLOT), \
+                                        time("now","%Y-%m-%d"), \
+                                        tFileOut, \
+                                        "")
+
+                            ! Enviar interface para o cliente
+                            tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+                            log("executando o comando - ", tCmd, NL)
+                            system(tCmd)           
+                        endif
+                    else
+                            log("M80 criado pela troca de IMO. Interface não atende as regras de envio!", NL)
+                            remove(tFileOut)
+                            remove(tFileOutTemp)
+                            exit(0)
+                    endif
+                else
+                    if tSENMVT = "+" and length(tPALIMM) = 0 then
+                        bfCriarHeader(tNUMEXC, tEDIACT, tNUMPAL)
+
+                        ! QUERY tSENMVT_Query2_80, tSLOT_Query2_80
+                            tQuery := build("SELECT  JN.SENMVT", NL," "\
+                                            "       ,CONCAT(TRIM(IM.CODSAP1),SUBSTRING(JN.CODCLI,1,2)) AS SLOT", NL," "\
+                                            "FROM FGE50FM",tToInfologPrefixFilename,".GEJNL JN", NL," "\
+                                            "JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM", NL," "\
+                                            "ON JN.MOTMVT = IM.MOTIMM", NL," "\
+                                            "WHERE JN.NUMPAL = '",tNUMPAL,"'", NL," "\
+                                            "AND JN.DATMVT = '",tDATMVT,"'", NL," "\
+                                            "AND JN.HEUMVT = '",tHEUMVT,"'")
+
+                            log("------------------------------------------------------------", NL)
+                            log(tQuery,NL)
+
+                            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                tSENMVT_Query2_80 := peel(taDb2Array["SENMVT"], " ")
+                                tSLOT_Query2_80 := peel(taDb2Array["SLOT"], " ")
+
+                                remove(taDb2Array)
+                            endwhile
+                            log("------------------------------------------------------------", NL)
+
+                            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+                        ! FIM tSENMVT_Query2_80, tSLOT_Query2_80
+
+                        bfCriarBody(tDATMVT, \
+                                    tCODPRO, \
+                                    tSLOT_Query2_80, \
+                                    build("-", tUVCMVT), \
+                                    tEDIPRO, \
+                                    "RMAADJ")
+
+                        ! QUERY tCODCLI_Query_80, tSLOT_Query_80
+                            tQuery := build("SELECT  PL.CODCLI", NL," "\
+                                            "       ,CONCAT(TRIM(A.CODSAP1),SUBSTRING(PL.CODCLI,1,2)) AS SLOT", NL," "\
+                                            "FROM FGE50FM",tToInfologPrefixFilename,".GEPAL PL,", NL," "\
+                                            "(", NL," "\
+                                            "	SELECT  MOTIMM", NL," "\
+                                            "	       ,CODSAP1", NL," "\
+                                            "	FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO", NL," "\
+                                            ") AS A", NL," "\
+                                            "WHERE PL.NUMPAL = '",tNUMPAL,"'", NL," "\
+                                            "AND A.MOTIMM = 'Q1'")
+
+                            log("------------------------------------------------------------", NL)
+                            log(tQuery,NL)
+
+                            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                tCODCLI_Query_80 := peel(taDb2Array["CODCLI"], " ")
+                                tSLOT_Query_80 := peel(taDb2Array["SLOT"], " ")
+
+                                remove(taDb2Array)
+                            endwhile
+                            log("------------------------------------------------------------", NL)
+
+                            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL", tfSqlErrorStr())
+                                bfMajtrace("Erro de Traducao", \
+                                            "1", \
+                                            tREFREC, \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+                        ! FIM QUERY tCODCLI_Query_80, tSLOT_Query_80
+
+                        bfCriarBody(tDATMVT, \
+                                    tCODPRO, \
+                                    tSLOT_Query_80, \
+                                    tUVCMVT, \
+                                    tEDIPRO, \
+                                    "RMAADJ")
+
+
+                        if tSLOT_Query2_80 = tSLOT_Query_80 then
+                            log("O valor do primeiro Slot é igual ao segundo, desta forma não gera Trace!", NL)
+                            remove(tFileOut)
+                            remove(tFileOutTemp)
+                        else
+                            print(MESSAGE) >> tFileOutTemp
+
+                            close(tFileOutTemp)
+                            copy(tFileOutTemp,tFileOut)
+                            close(tFileOutTemp)
+                            remove(tFileOutTemp)
+                            close(tFileOut)
+
+                            bfMajtrace("Recebida", \
+                                        "0", \
+                                        build(tCODPRO, "-", tCODLOT), \
+                                        time("now","%Y-%m-%d"), \
+                                        tFileOut, \
+                                        "")
+
+                            ! Enviar interface para o cliente
+                            tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+                            log("executando o comando - ", tCmd, NL)
+                            system(tCmd)            
+                        endif
+                    else
+                        if tSENMVT = "+" and tMOTMVT <> tPALIMM then
+                            bfCriarHeader(tNUMEXC, tEDIACT, tNUMPAL)
+
+                            ! QUERY tSENMVT_Query2_80, tSLOT_Query2_80
+                                tQuery := build("SELECT  CONCAT(TRIM(IM.CODSAP1),SUBSTRING(JN.CODCLI,1,2)) AS SLOT", NL," "\
+                                                "FROM FGE50FM",tToInfologPrefixFilename,".GEJNL JN", NL," "\
+                                                "JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM", NL," "\
+                                                "ON JN.MOTMVT = IM.MOTIMM", NL," "\
+                                                "WHERE JN.NUMPAL = '",tNUMPAL,"'", NL," "\
+                                                "AND JN.DATMVT = '",tDATMVT,"'", NL," "\
+                                                "AND JN.HEUMVT = '",tHEUMVT,"'", NL," "\
+                                                "ORDER BY JN.SENMVT ASC")
+
+                                log("------------------------------------------------------------", NL)
+                                log(tQuery,NL)
+
+                                if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                    print("FATAL ", tfSqlErrorStr())
+                                    bfMajtrace("Erro de Traducao", \
+                                                "1", \
+                                                tREFREC, \
+                                                time("now","%Y-%m-%d"), \
+                                                tFileOut, \
+                                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                    exit(1)
+                                endif
+
+                                if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                    print("FATAL ", tfSqlErrorStr())
+                                    bfMajtrace("Erro de Traducao", \
+                                                "1", \
+                                                tREFREC, \
+                                                time("now","%Y-%m-%d"), \
+                                                tFileOut, \
+                                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                    exit(1)
+                                endif
+
+                                nCount_Query2_Result := 0
+                                while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                    nCount_Query2_Result++
+                                    taSLOT_Query2_80[nCount_Query2_Result] := peel(taDb2Array["SLOT"], " ")
+
+                                    remove(taDb2Array)
+                                endwhile
+                                log("------------------------------------------------------------", NL)
+
+                                if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                    print("FATAL", tfSqlErrorStr())
+                                    bfMajtrace("Erro de Traducao", \
+                                                "1", \
+                                                tREFREC, \
+                                                time("now","%Y-%m-%d"), \
+                                                tFileOut, \
+                                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                    exit(1)
+                                endif
+                            ! FIM tSENMVT_Query2_80, tSLOT_Query2_80
+
+                            bfCriarBody(tDATMVT, \
+                                        tCODPRO, \
+                                        taSLOT_Query2_80[1], \
+                                        build("-", tUVCMVT), \
+                                        tEDIPRO, \
+                                        "RMAADJ")
+
+                            bfCriarBody(tDATMVT, \
+                                        tCODPRO, \
+                                        taSLOT_Query2_80[2], \
+                                        tUVCMVT, \
+                                        tEDIPRO, \
+                                        "RMAADJ")
+
+                            if taSLOT_Query2_80[1] = taSLOT_Query2_80[2] then
+                                log("O valor do primeiro Slot é igual ao segundo, desta forma não gera Trace!", NL)
+                                remove(tFileOut)
+                                remove(tFileOutTemp)
+                            else
+                                print(MESSAGE) >> tFileOutTemp
+
+                                close(tFileOutTemp)
+                                copy(tFileOutTemp,tFileOut)
+                                close(tFileOutTemp)
+                                remove(tFileOutTemp)
+                                close(tFileOut)
+
+                                bfMajtrace("Recebida", \
+                                            "0", \
+                                            build(tCODPRO, "-", tCODLOT), \
+                                            time("now","%Y-%m-%d"), \
+                                            tFileOut, \
+                                            "")
+
+                                ! Enviar interface para o cliente
+                                tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+                                log("executando o comando - ", tCmd, NL)
+                                system(tCmd)
+                            endif
+                        endif
+                    endif
+                endif
+            else
+                log("tCODACT = ", tCODACT, NL)
+                log("tMOTMVT = ", tMOTMVT, NL)
+                log("tCODMVT = ", tCODMVT, NL)
+                log("tSENMVT = ", tSENMVT, NL)
+                log("M80 não atende as regras!", NL)
+                remove(tFileOutTemp)
+                remove(tFileOut)
+                bfSqlClose(tDbBase)
+
+                log("------------------------------------------------------------", NL)
+                log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+                log("------------------------------------------------------------", NL)
+                
+                exit(0)
+            endif
+        endif
+    endif
+
+    bfSqlClose(tDbBase)
+
+    log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+endend
+
+!===========================================================
+
+function bfCriarHeader(tNUMEXC_FUNC, tEDIACT_FUNC, tNUMPAL_FUNC)    
+    segment Sreference gGstock_adjustments,gGadjustment_header    
+        eEreference := build("P", tNUMPAL_FUNC, "X", tNUMEXC_FUNC)
+    endsegment
+
+    segment Swarehouse gGstock_adjustments,gGadjustment_header
+        eEwarehouse := tEDIACT_FUNC
+    endsegment
+endfunction
+
+!===========================================================
+
+function bfCriarBody(tDATMVT_FUNC, tCODPRO_FUNC, tCODLOT_FUNC, tUVCMVT_FUNC, tEDIPRO_FUNC, tReason)    
+    segment Sbarcode_sku gGstock_adjustments,gGadjustment_body,gGadjustment
+        eEbarcode_sku := tCODPRO_FUNC
+    endsegment
+
+    segment Sbarcode_ean gGstock_adjustments,gGadjustment_body,gGadjustment
+        eEbarcode_ean := tEDIPRO_FUNC
+    endsegment
+
+    segment Squantity gGstock_adjustments,gGadjustment_body,gGadjustment
+        eEquantity := tUVCMVT_FUNC
+    endsegment
+
+    segment Sdate gGstock_adjustments,gGadjustment_body,gGadjustment
+        eEdate := tfConvertDate(tDATMVT_FUNC, "YYYYMMDD" , "YYYY-MM-DD")
+    endsegment
+
+    segment Sslot gGstock_adjustments,gGadjustment_body,gGadjustment
+        eEslot := tCODLOT_FUNC
+    endsegment
+
+    segment Sreason gGstock_adjustments,gGadjustment_body,gGadjustment
+        eEreason := tReason
+    endsegment
+endfunction
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "VEJA"
+	TRACE.MENSAGEM := "M80"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endfunction

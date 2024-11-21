@@ -1,0 +1,72 @@
+%@(#)  source_filename.rte     modif:23-11-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 23-11-2017  XX  Creation
+! 23-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#include "include/MATMAS05.inc"
+#include "include/MATMASsegZ.inc"
+#include "include/M30.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+      nPos := 1
+    nRec := 1
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+ 
+
+  ! pXML.INCONVIN := "UTF-8"
+  ! pXML.INCOVIN := "UTF-8"
+  ! pXML.ENCODING := "UTF-8"
+   
+
+  ! pINCONVIN := "ASCII"
+  ! pINCOVIN := "ASCII"
+  ! pENCODING := "ASCII"
+   
+   
+   tFicheiroUTF8 := build(pEDISEND.ORIGINAL.FULLNAME,".UTF8")
+   tFicheiroSemCaracteres := build(pEDISEND.ORIGINAL.FULLNAME,".ascii")
+   
+   close(SYSLOG.a)
+   copy(SYSLOG.a,tFicheiroUTF8)
+   close(tFicheiroUTF8)
+   close(SYSLOG.a)
+   log(NL,build("iconv -c -f UTF-8 -t ASCII//TRANSLIT ",tFicheiroUTF8, " > ",tFicheiroSemCaracteres),NL)
+   system(build("iconv -c -f UTF-8 -t ASCII//TRANSLIT ",tFicheiroUTF8, " > ",tFicheiroSemCaracteres))
+close(tFicheiroUTF8)
+close(tFicheiroSemCaracteres)
+remove(tFicheiroUTF8)
+redirect(INPUT,tFicheiroSemCaracteres)
+
+
+exit(0)
+		
+endbegin
+
+
+

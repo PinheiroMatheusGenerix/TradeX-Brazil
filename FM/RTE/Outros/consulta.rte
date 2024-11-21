@@ -1,0 +1,88 @@
+%@(#) $Id:  M50_HENKEL_CSV_IN.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M50_HENKEL_CSV_IN.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M50_HENKEL_CSV_IN
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M50_HENKEL_CSV_IN
+!
+!===========================================================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../local" BASE
+
+!===========================================================
+
+! Input/output macros file
+
+#define TX_PROG_INFO "M50_HENKEL_CSV_IN"	
+#include "include/generix_func.inc"
+#include "include/consulta.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	! SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	tFileOut := build(sHOME,"/local/Consulta",nMessageID,".txt")
+	tNameOut := build("Consulta",nMessageID,".txt")
+	log("1",NL)
+endbegin
+
+!===========================================================
+
+line(not "")
+	log("2",NL)
+	S_Consulta
+
+	tCodigo := taConsulta[1]
+	tPasta := taConsulta[2]
+
+	switch tCodigo
+		case "QTDARQ" :
+			bfContarArquivos(taConsulta[2])	
+	endswitch
+
+endline
+
+! Default statements section
+default
+	log("3",NL)
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+	log("4",NL)
+	
+	while valid(BASE) do
+		log("DEU CERTO!")
+	endwhile
+endend
+
+!===========================================================
+
+function bfContarArquivos(tPastaFunc)
+	log("5",NL)
+    ! tCmd := build("ls ",tPastaFunc,"/ | wc -l")
+    ! log("tCmd = |", tCmd,"|", NL)
+    ! print("tCmd = |", tCmd,"|", NL) >> tFileOut
+    ! nRet := system(tCmd)
+
+	! print(build("nRet = |", tResult, "|", NL)) >> tFileOut
+	! flush(0,0,NL) >> tFileOut
+	! remove(tFileOut)
+endfunction

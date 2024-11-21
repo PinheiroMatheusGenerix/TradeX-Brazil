@@ -1,0 +1,462 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+
+schema "XML/FMBrasil/SHIPPING_ORDER-SAP-FMLOG-IWAY_OUP_V09.xsd" validating
+message "XML/FMBrasil/SHIPPING_ORDER-SAP-FMLOG-IWAY_OUP.dtd" receiving, passthru
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M40_COTY_SAP_XML_IN"
+#include "include/generix_func.inc"
+#include "include/M40.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+   PROCESS_ERRONEOUS := TRUE
+
+   pXML.INCONVIN := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+   nPos := 1
+   nRec := 1
+   
+   
+    nMessageID := cMessageID
+ 
+if not(valid(MESSAGE_IN)) then
+      bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"ERRO ESQUEMA",build("Schema not matched file IN",NL))
+      exit(1)
+endif
+
+
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+  tFileOut40 := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  tFileOutTemp40 := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  !tFileOut40 := build(sHOME,"/rte/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  tNameOut40 := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  
+  
+  
+  
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    nNumeroLinha := 0
+    nNumeroCabecalho := 0
+	nMainIndex := 0
+   
+endbegin
+
+
+
+!===========================================================
+/*
+
+
+
+
+
+
+
+segment SEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP     ! M 1/1 
+   eAxmlns:xsi   ! C  
+   eAxsi:noNamespaceSchemaLocation   ! C  
+   eAxsi:schemaLocation   ! C  
+
+endsegment
+
+! Group gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG : M 1/1 
+segment STrnNam gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! M 1/1 
+   eETrnNam   ! M  
+
+endsegment
+
+segment STrnVer gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! M 1/1 
+   eETrnVer   ! M  
+
+endsegment
+
+segment SSrcEnv gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+   eESrcEnv   ! C  
+
+endsegment
+
+segment SSrcTransactionId gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+   eESrcTransactionId   ! C  
+
+endsegment
+
+segment STrnTyp gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! M 1/1 
+   eETrnTyp   ! M  
+
+endsegment
+
+segment SSAP_PlantId gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+   eESAP_PlantId   ! C  
+
+endsegment
+
+segment SSAP_StorageLoc gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG     ! C 1/1 
+   eESAP_StorageLoc   ! C  
+
+endsegment
+
+
+*/
+
+! Group gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG : C 1/unbound 
+segment SHostAdrId gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG     ! C 1/1 
+   !taCODFOU[nNumeroCabecalho] := eEHostAdrId   ! C  
+   tHostAdrId := eEHostAdrId
+endsegment
+
+segment SAdrTyp gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG     ! C 1/1 
+
+		tCODFOU := tHostAdrId
+
+
+endsegment
+
+segment SAdrNam1 gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG     ! C 1/1 
+
+		tNOMFOU := eEAdrNam1   ! C 
+
+endsegment
+
+segment SAdrLn1 gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG     ! C 1/1 
+
+	  tAD1FOU := eEAdrLn1   ! C  
+	  
+endsegment
+
+segment SAdrCty gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG     ! C 1/1 
+
+		tVILFOU := eEAdrCty   ! C  
+
+
+endsegment
+
+segment SAdrPsz gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGSUPPLIER_SEG     ! C 1/1 
+
+		tCPIFOU := eEAdrPsz   ! C  
+
+endsegment
+
+
+
+! Group gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG : C 1/unbound 
+segment SDlvNum gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG     ! C 1/1 
+      nNumeroCabecalho++
+   tREFREC := eEDlvNum   ! C  
+
+endsegment
+
+segment SDlvDte gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG     ! C 1/1 
+   tDTIREC := eEDlvDte  ! C  
+	tDTRREC := eEDlvDte  ! C  
+endsegment
+
+
+! Group gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG,gGLINE_SEG : C 1/unbound 
+segment SDlvLin gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG,gGLINE_SEG     ! C 1/1 
+nNumeroLinha++
+taNumeroCabecalho[nNumeroLinha] := build(nNumeroCabecalho)
+taNLIREC[nNumeroLinha] := eEDlvLin   ! C 
+endsegment
+
+
+
+
+
+!segment SLotNum gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG,gGLINE_SEG     ! C 1/1 
+!   taCODLOT[nNumeroLinha] := eELotNum   ! C   
+
+!endsegment
+
+segment SExpQty gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG,gGLINE_SEG     ! C 1/1 
+   
+   taUVCREC[nNumeroLinha] := eEExpQty   ! C  
+endsegment
+
+segment SMaterialNumber gGEXPECTED_RECEIPT-SAP-FMLOG-IWAY_OUP,gGCTRL_SEG,gGHEADER_SEG,gGLINE_SEG     ! C 1/1 
+   taCODPRO[nNumeroLinha] := build(number(eEMaterialNumber))   ! C 
+
+endsegment
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+
+
+end
+
+
+  if nContadorLinhasEscritas = 0 then
+     R_00HEADER_CODEXC("00")
+     R_00HEADER_SEPEXC(".")
+     R_00HEADER_SCOEXC("00")
+     R_00HEADER_TRTEXC("")
+     R_00HEADER_EMTEXC("FM") 
+     R_00HEADER_RCTEXC("")
+     R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_00HEADER_NUMEXC("0000000")
+     R_00HEADER_ACQEXC("0")
+     R_00HEADER_VEREXC("5.00") 
+     R_00HEADER_NOMSYS("")  
+     R_00HEADER_NOMDTQ("M40")
+     R_00HEADER_BIBDTQ("")
+     R_00HEADER_LIBEXC(build(nMessageID:R010))
+     R_00HEADER_BIBDST("")
+     R_00HEADER_PGMDST("")
+     R_00HEADER_PARDST("")
+     R_00HEADER_CODACT("")
+     R_00HEADER_IGLSIT("")
+     R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_00HEADER_IMAEXC("")  
+     R_00HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp40   !ESCRITA DO HEADER M00.00
+     nContadorLinhasEscritas++
+   endif
+
+
+
+   R_40HEADER_CODEXC("40")
+   R_40HEADER_SEPEXC(".")
+   R_40HEADER_SCOEXC("00")
+   
+   R_40HEADER_REFREC(tREFREC)
+   
+   R_40HEADER_EDIFOU(tCODFOU)
+   R_40HEADER_CODFOU(tCODFOU)
+ !  R_40HEADER_CODTRA(tCODTRA )
+   !   R_40HEADER_CODLDR("STD")
+!	  R_40HEADER_CODTRE(taCODLDR[nTempNumeroLinha])
+R_40HEADER_CODACT(tCODACTConst )
+R_40HEADER_DTIREC(tfConvertDate(tDTIREC , "YYYY-MM-DD" , "YYYYMMDD"))
+!R_40HEADER_DTRREC(tfConvertDate(tDTIREC , "YYYY-MM-DD" , "YYYYMMDD"))
+!R_40HEADER_HEIREC(tfConvertDate(tDataHoraProtocoloNFE , "YYYY-MM-DDTHH:MM:SS" , "HHMMSS"))
+!R_40HEADER_MSGREC(taMSGREC[nTempNumeroLinha])
+    flush(0,0,NL) >> tFileOutTemp40 !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+
+
+      nContadorLinhasEncomenda := 1
+      
+      
+         nContador := 8
+         print("ve ",peel(taREGISTO[nContador+1],"\""),NL)
+
+nContadorTmpTOTAL := 1
+
+
+   nTempNumeroLinha2 := 1
+   while nTempNumeroLinha2  <= nNumeroLinha do
+   
+   
+   
+   
+   
+			   
+   
+
+					   ! fazer aqui um while e validar
+					   R_40_20M40_CODEXC("40")
+					   R_40_20M40_SEPEXC(".")
+					   R_40_20M40_SCOEXC("20")
+					   R_40_20M40_CODACT(tCODACTConst )
+
+					   R_40_20M40_REFREC(tREFREC)
+					   R_40_20M40_CODPRO(taCODPRO[nTempNumeroLinha2])
+					   R_40_20M40_UVCREA(build(number(taUVCREC[nTempNumeroLinha2 ]):R09.0))
+					   R_40_20M40_NLIREC(build(nContadorLinhasEncomenda:R05)) 
+					!  R_40_20M40_UNICDE(taUNICDE[nTempNumeroLinha2] )
+					!  R_40_20M40_INDUNI("1")
+					!R_40_20M40_CODCLI("5457")   
+					!R_40_20M40_CODLOT(taCODLOT[nTempNumeroLinha2])
+					
+					!tCont := build(number(taPDBCOL[nTempNumeroLinha2]) * 1000)
+					!R_40_20M40_PDBCOL(build(number(tCont):R07)) 
+					
+					
+					 flush(0,0,NL) >> tFileOutTemp40 !ESCRITA DO HEADER M00.00
+					nContadorLinhasEscritas++
+
+
+
+
+   
+   nContadorLinhasEncomenda++
+   nContadorTmpTOTAL++
+   nTempNumeroLinha2++ 
+    
+   endwhile
+
+
+    
+    
+    
+    R_40_99TRAILLER_CODEXC("40")
+   R_40_99TRAILLER_SEPEXC(".")
+   R_40_99TRAILLER_SCOEXC("99")
+  ! R_40_99TRAILLER_CODACT("ELG")
+
+   R_40_99TRAILLER_REFREC(tREFREC )
+   R_40_99TRAILLER_CUMLIG(build(number(tCUMLIG) :R04.0)) !ver conversao e  por erro!!!!!
+    flush(0,0,NL) >> tFileOutTemp40 !ESCRITA DO HEADER M00.00
+   nContadorLinhasEscritas++
+   
+   
+   
+    R_TRAILLER_CODEXC("99")
+    R_TRAILLER_SEPEXC(".")
+    R_TRAILLER_SCOEXC("00")
+    R_TRAILLER_TRTEXC("")
+    R_TRAILLER_EMTEXC("FM")
+    R_TRAILLER_RCTEXC("")
+    R_TRAILLER_DATEXC(time("now" ,"%Y%m%d"))
+    R_TRAILLER_HEUEXC(time("now" ,"H%M%S"))
+    R_TRAILLER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_TRAILLER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_TRAILLER_NOMSYS("")
+    !R_TRAILLER_NOMDTQ("")
+    !R_TRAILLER_BIBDTQ("")
+    !R_TRAILLER_IDEMSG("")
+    !R_TRAILLER_DISEXC("")
+
+    flush(0,0,NL)  >> tFileOutTemp40
+    close(tFileOutTemp40)
+
+   bfMajtrace("Recebida","0",taREFREC[nTempNumeroLinha],tDataDocumento,tFileInput,tFileOut40,"Produtos","")
+    close(tFileOutTemp40)
+   
+copy(tFileOutTemp40,tFileOut40)
+    close(tFileOutTemp40)
+	remove(tFileOutTemp40)
+	    close(tFileOut40)
+
+   
+exit(0)
+
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut40,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "RECEBIMENTO E DEVOLUCAO"
+   TRACE.NUMDOC := tREFREC
+   TRACE.DATDOC := substr(tDTIREC,1,10)
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+   TRACE.REDE := pGW.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut40
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut40,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.e)
+copy(SYSLOG.e,TRACE.In)
+close(SYSLOG.e)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+if tError="0" then
+close(tFileOutTemp40)
+copy(tFileOutTemp40,TRACE.Out)
+close(tFileOutTemp40)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+

@@ -1,0 +1,158 @@
+%@(#) $Id:  M30_CARREFOUR_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M30_CARREFOUR_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M30_CARREFOUR_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M30_CARREFOUR_OUT
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M30_CARREFOUR_OUT"
+
+#include "include/generix_func.inc"
+#include "include/GEEXM30.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+	! tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCDCJ"]
+
+	taAmbiente[1] := taPARAM["ToInfologPrefixFilenameCDCJ"]
+	taAmbiente[2] := taPARAM["ToInfologPrefixFilenameCDPE"]
+
+	tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= "GNXBR21"
+	tDbUrl		:= taPARAM["WMSDBURL"]
+	
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	bPlataforma := FALSE
+endbegin
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	while tIndex in taAmbiente do
+		tQueryUpdade := build("UPDATE ",taAmbiente[tIndex],".GEPRO ", NL," "\
+							"SET HAUCOL = CASE WHEN (HAUUVC * PCBPRO) < 999 THEN HAUUVC * PCBPRO ELSE 999 END, ", NL," "\
+							"	 LRGCOL = LRGUVC, ", NL," "\
+							"	 LNGCOL = LNGUVC, ", NL," "\
+							"	 PDBCOL = CASE WHEN PDBUVC * PCBPRO < 9999 THEN PDBUVC * PCBPRO ELSE 9999.999 END, ", NL," "\
+							"	 VOLCOL = CASE WHEN VOLUVC < 999 THEN CASE WHEN (VOLUVC * PCBPRO) < 9999 THEN VOLUVC * PCBPRO ELSE 9999 END ELSE 999 END ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQueryUpdade,NL)
+		log("------------------------------------------------------------", NL)
+
+		if not bfSqlSet(tDbBase, "SELECTdb2", tQueryUpdade) then
+			log(tfSqlErrorStr(), NL)
+			bfMajtrace("Erro de Traducao","1",taAmbiente[tIndex],tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+			exit(27)
+		endif
+
+		if not bfSqlExec(tDbBase, "SELECTdb2") then
+			log(tfSqlErrorStr(), NL)
+			bfMajtrace("Erro de Traducao","1",taAmbiente[tIndex],tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+			exit(28)
+		endif
+
+		if not bfSqlCommit(tDbBase, "SELECTdb2") then
+			log(tfSqlErrorStr(), NL)
+			bfMajtrace("Erro de Traducao","1",taAmbiente[tIndex],tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+			exit(29)
+		endif
+
+		if not bfSqlFree(tDbBase, "SELECTdb2") then
+			log(tfSqlErrorStr(), NL)
+			bfMajtrace("Erro de Traducao","1",taAmbiente[tIndex],tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+			exit(30)
+		endif
+
+		bfMajtrace("Recebida","0",taAmbiente[tIndex],tDataDocumento,tFileInput,tFileOut,"","")
+	endwhile
+
+	bfSqlClose(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	switch tNumDoc
+		case taAmbiente[1]:
+			TRACE.PERFIL := "CDCJ"
+		case taAmbiente[2]:
+			TRACE.PERFIL := "CDPE"	
+	endswitch
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M30"
+	TRACE.NUMDOC := "M30 PCB"
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if "GERADO POR HORA" <> build(SYSLOG.INDEX) then
+		TRACE.REDE := "GERADO POR HORA"
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := "GERADO POR HORA"
+
+	SYSLOG.REFERENCE := "M30 PCB"
+	
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Executado com Sucesso",NL,NL) >> TRACE.Detail
+		print(tQueryUpdade,NL,NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	flush(TRACE)
+endfunction
+
+!===========================================================

@@ -1,0 +1,634 @@
+%@(#)  M41_BRAE_TXT.rte     modif:08-12-2017
+!==============================================================================
+% File          : M41_BRAE_TXT.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_confrec_email_divers/fmbrasil_confrec_email_divers.cfg" fmbrasil_confrec_email_divers
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M41_BRAE_TXT"
+#include "include/generix_func.inc"
+#include "include/GEEXM41.inc"
+#include "include/M41_BRAE_TXT.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+    nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    tDataSistemaNomeArquivo := time("now" ,"%Y%m%d%H%M%S")
+
+    load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+    tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+    tDbBase		:= "FMWMS"
+    tDbUsername	:= taPARAM["WMSDBUSER"]
+    tDbPassword	:= taPARAM["WMSDBPASS"]
+    tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+    if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBase)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    nMainIndex := 0
+endbegin
+
+!===========================================================
+
+line(1:"41.00")
+    nContadorRegisto := 0
+    tCODACTLido := S_GEEX4100_CODACT  
+    tCODFOU  := S_GEEX4100_CODFOU  
+    tNumeroDocumento := S_GEEX4100_REFREC
+    tData := S_GEEX4100_DTRREC
+    tDTIREC := S_GEEX4100_DTIREC
+    nConta4120 := 0
+    nConta4130 := 0
+    tCODTRE := S_GEEX4100_CODTRE
+    tNUMREC :=  S_GEEX4100_NUMREC
+
+    tQuery := build("SELECT  MOTIMM", NL," "\
+                    "       ,EDIIMO", NL," "\
+                    "       ,CODSAP1", NL," "\
+                    "       ,STOSAP1", NL," "\
+                    "       ,STASAP1", NL," "\
+                    "FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO")
+
+    log("------------------------------------------------------------", NL)
+    log(tQuery, NL)
+    log("------------------------------------------------------------", NL)
+                        
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+        taDEPOSITO[peel(taDb2Array["MOTIMM"]," ")] := build(substr(peel(taDb2Array["MOTIMM"]," "), 1, 3), substr(peel(taDb2Array["EDIIMO"]," "), 1, 3), substr(peel(taDb2Array["CODSAP1"]," "), 1, 3), substr(peel(taDb2Array["STOSAP1"]," "), 1, 4), substr(peel(taDb2Array["STASAP1"]," "), 1, 1))
+        remove(taDb2Array)
+    endwhile
+
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    ! QUERY tVALRUB_GEACRUB
+        tQuery := build("SELECT VALRUB", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+                        "WHERE CODACT = '",tCODACTLido,"'", NL," "\
+                        "AND CODRUB = 'CNPJ'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery, NL)
+        log("------------------------------------------------------------", NL)
+                            
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            tVALRUB_GEACRUB := build(number(peel(taDb2Array["VALRUB"]," ")):R015)
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    ! FIM QUERY tVALRUB_GEACRUB
+endline
+
+line(1:"41.20")
+	nConta4120++
+	taNUMOPE[nConta4120] := S_GEEX4120_NUMOPE
+	taNLIREC4120[nConta4120] := S_GEEX4120_NLIREC
+	taCODPRO4120[nConta4120] := S_GEEX4120_CODPRO
+	taUNICDE4120[nConta4120] := S_GEEX4120_UNICDE
+	taUVCREA4120[nConta4120] := S_GEEX4120_UVCREA
+	taUVCREC4120[nConta4120] := S_GEEX4120_UVCREC
+	taMOTIMM4120[nConta4120] := S_GEEX4120_MOTIMM
+	taUVCMVT4120[nConta4120] := "0"
+	taUVCMVT4120Avariada[nConta4120] := "0"
+	taUVCMVT4120Bloqueada[nConta4120] := "0"
+endline
+
+line(1:"41.99")
+    remove(taNumSerie)
+    split(tNumeroDocumento,taNumSerie,".")
+
+    TRACE:=new(build(sHOME,"/trace"))
+    flush(TRACE)
+
+    nMessageID := cMessageID
+    tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"BRA_CONFREC_",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+    tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"BRA_CONFREC_",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+    tNameOut := build("FM",tToInfologPrefixFilename,"BRA_CONFREC_",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt") 
+				
+    tQuery := build("SELECT DISTINCT "\
+                    "CASE "\
+                    "WHEN INDARV='3' THEN NUMREC "\
+                    "ELSE 0 "\
+                    "END NUMORI FROM FGE50FM",tToInfologPrefixFilename,".GERECD WHERE NUMREC='",tNUMREC,"'")
+
+    log("------------------------------------------------------------", NL)
+    log(tQuery, NL)
+    log("------------------------------------------------------------", NL)
+                        
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    nContadorQue := 0
+    bFazReplacePorNUmrec := FALSE
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+        if number(peel(taDb2Array["NUMORI"]," ")) = 0 then
+            bFazReplacePorNUmrec := TRUE
+            log("bFazReplacePorNUmrec := TRUE",NL)
+        else
+            bFazReplacePorNUmrec := FALSE
+            log("bFazReplacePorNUmrec := FALSE",NL)
+        endif
+        remove(taDb2Array)
+    endwhile
+
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+	 
+    if bFazReplacePorNUmrec = FALSE then
+
+        tQuery := build("SELECT  TRIM(RE.REFREC) REFREC", NL," "\
+                        "       ,RD.MOTIMM", NL," "\
+                        "       ,RA.DOC_AGR", NL," "\
+                        "       ,TRIM(RE.CODTRA) CODTRA", NL," "\
+                        "       ,TRIM(RE.MSGREC1) MSGREC1", NL," "\
+                        "       ,TRIM(RE.MSGREC2) MSGREC2", NL," "\
+                        "       ,TRIM(RE.NOMTRA) NOMTRA", NL," "\
+                        "       ,TRIM(RA.REF_AGR) REF_AGR", NL," "\
+                        "       ,TRIM(RE.DIPREC) DIPREC", NL," "\
+                        "       ,RE.CODTRE", NL," "\
+                        "       ,RE.DTRREC", NL," "\
+                        "       ,RE.HERREC", NL," "\
+                        "       ,RD.CODACT", NL," "\
+                        "       ,RD.NLIREC", NL," "\
+                        "       ,TRIM(RD.CODPRO) CODPRO", NL," "\
+                        "       ,TRIM(RD.DS1PRO) DS1PRO", NL," "\
+                        "       ,RD.UNICDE", NL," "\
+                        "       ,CASE WHEN RD.NLIREC = 0 THEN 0  ELSE RD.UVCREA END UVCREA", NL," "\
+                        "       ,CASE WHEN RA.QTE = 1 THEN RD.UVCREC", NL," "\
+                        "             WHEN RA.QTE IS NULL THEN RD.UVCREC", NL," "\
+                        "             WHEN RA.QTE > 1 THEN CASE", NL," "\
+                        "             WHEN RD.UVCREC > RD.UVCREA AND NR.ORI <> RD.NUMREC THEN RD.UVCREA", NL," "\
+                        "             WHEN RD.UVCRLQ = RD.UVCREA THEN 0", NL," "\
+                        "             WHEN RD.UVCRLQ <> 0 THEN RD.UVCREA - RD.UVCRLQ", NL," "\
+                        "             WHEN NR.ORI = RD.NUMREC AND RA.UVC_REC > RA.UVC_AGR THEN (RD.UVCREA+RA.DIF) ELSE RD.UVCREA END END UVCREC", NL," "\
+                        "       ,CASE WHEN RA.QTE = 1 THEN RP.QTE_AVA", NL," "\
+                        "             WHEN RA.QTE > 1 THEN CASE", NL," "\
+                        "             WHEN INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR)* RP.QTE_AVA,0)) > RD.UVCREA THEN CASE", NL," "\
+                        "             WHEN RD.NUMREC <> NR.ORI THEN RD.UVCREA", NL," "\
+                        "             WHEN RD.NUMREC = NR.ORI AND RP.QTE_AVA > RA.UVC_AGR THEN RD.UVCREA + (RP.QTE_AVA - RA.UVC_AGR) END  ELSE INTEGER(ROUND((RD.UVCREA / RA.UVC_AGR) * RP.QTE_AVA,0)) END END AVARIA", NL," "\
+                        "       ,CASE WHEN RA.QTE = 1 THEN RP.QTE_QUA", NL," "\
+                        "             WHEN RA.QTE > 1 THEN CASE", NL," "\
+                        "             WHEN INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR) * RP.QTE_QUA,0)) > RD.UVCREA THEN CASE", NL," "\
+                        "             WHEN RD.NUMREC <> NR.ORI THEN RD.UVCREA", NL," "\
+                        "             WHEN RD.NUMREC = NR.ORI AND RP.QTE_QUA > RA.UVC_AGR THEN RD.UVCREA + (RP.QTE_QUA - RA.UVC_AGR) END ELSE INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR) * RP.QTE_QUA,0)) END END QUALIDADE", NL," "\
+                        "       ,CASE WHEN RD.ORICDE = 1 THEN 'N'", NL," "\
+                        "             WHEN RD.ORICDE = 2 THEN 'S'  ELSE '' END ITEM_SURPRESA", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GERECE RE", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECD RD", NL," "\
+                        "ON RE.NUMREC = RD.NUMREC AND RE.CODACT = RD.CODACT", NL," "\
+                        "LEFT JOIN", NL," "\
+                        "(", NL," "\
+                        "	SELECT  TRIM(C.REFREC) REF_AGR", NL," "\
+                        "	       ,B.CODACT ACT_AGR", NL," "\
+                        "	       ,TRIM(B.CODPRO) PRO", NL," "\
+                        "	       ,C.KAIREC DOC_AGR", NL," "\
+                        "	       ,SUM(B.UVCREA) UVC_AGR", NL," "\
+                        "	       ,SUM(B.UVCREC) UVC_REC", NL," "\
+                        "	       ,(SUM(B.UVCREC)-SUM(B.UVCREA)) DIF", NL," "\
+                        "	       ,COUNT (B.CODPRO) QTE", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD B, FGE50FM",tToInfologPrefixFilename,".GERECE C", NL," "\
+                        "	WHERE B.NUMREC = C.NUMREC", NL," "\
+                        "	AND B.NUMREC = (", NL," "\
+                        "	SELECT  DISTINCT A.NUMREC", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD A", NL," "\
+                        "	WHERE A.NUMORI = '",tNUMREC,"')", NL," "\
+                        "	GROUP BY  C.REFREC", NL," "\
+                        "	         ,B.CODACT", NL," "\
+                        "	         ,B.CODPRO", NL," "\
+                        "	         ,C.KAIREC", NL," "\
+                        "	ORDER BY 1", NL," "\
+                        ") RA", NL," "\
+                        "ON RA.ACT_AGR = RE.CODACT AND RA.ACT_AGR = RD.CODACT AND RA.PRO = RD.CODPRO", NL," "\
+                        "LEFT JOIN", NL," "\
+                        "(", NL," "\
+                        "	SELECT  P.CODPRO PRO", NL," "\
+                        "	       ,CODACT ACT", NL," "\
+                        "	       ,SUM(CASE WHEN P.MOTIMM IN ('AC','AM','AT','AV','FT','NB','RG','RT','RW','SB','SK','SL') THEN P.UVCMVT ELSE 0 END) QTE_AVA", NL," "\
+                        "	       ,SUM(CASE WHEN P.MOTIMM IN('CQ') THEN P.UVCMVT ELSE 0 END) QTE_QUA", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECP P", NL," "\
+                        "	WHERE MOTIMM <> ''", NL," "\
+                        "	AND P.NUMREC = (", NL," "\
+                        "	SELECT  DISTINCT X.NUMREC", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD X", NL," "\
+                        "	WHERE X.NUMORI = '",tNUMREC,"')", NL," "\
+                        "	GROUP BY  CODPRO", NL," "\
+                        "	         ,CODACT", NL," "\
+                        "	ORDER BY 1", NL," "\
+                        ") RP", NL," "\
+                        "ON RP.ACT = RD.CODACT AND RP.PRO = RD.CODPRO AND RP.ACT = RE.CODACT AND RA.ACT_AGR = RP.ACT AND RA.PRO = RP.PRO", NL," "\
+                        "LEFT JOIN", NL," "\
+                        "(", NL," "\
+                        "	SELECT  MAX(Z.NUMORI) ORI", NL," "\
+                        "	       ,Z.CODACT ACT", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD Z", NL," "\
+                        "	WHERE Z.NUMREC = (", NL," "\
+                        "	SELECT  DISTINCT W.NUMREC", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD W", NL," "\
+                        "	WHERE W.NUMORI = '",tNUMREC,"')", NL," "\
+                        "	GROUP BY  Z.CODACT", NL," "\
+                        ") NR", NL," "\
+                        "ON RE.CODACT = NR.ACT AND RD.CODACT = NR.ACT AND RP.ACT = NR.ACT AND RA.ACT_AGR = NR.ACT", NL," "\
+                        "WHERE RE.NUMREC = '",tNUMREC,"'", NL," "\
+                        "GROUP BY  RE.REFREC", NL," "\
+                        "         ,RD.MOTIMM", NL," "\
+                        "         ,RA.DOC_AGR", NL," "\
+                        "         ,RE.CODTRA", NL," "\
+                        "         ,RE.MSGREC1", NL," "\
+                        "         ,RE.MSGREC2", NL," "\
+                        "         ,RE.NOMTRA", NL," "\
+                        "         ,RA.REF_AGR", NL," "\
+                        "         ,RE.DIPREC", NL," "\
+                        "         ,RE.CODTRE", NL," "\
+                        "         ,RE.DTRREC", NL," "\
+                        "         ,RE.HERREC", NL," "\
+                        "         ,RD.CODACT", NL," "\
+                        "         ,RD.NLIREC", NL," "\
+                        "         ,RD.CODPRO", NL," "\
+                        "         ,RD.DS1PRO", NL," "\
+                        "         ,RD.UNICDE", NL," "\
+                        "         ,RD.UVCREC", NL," "\
+                        "         ,RD.UVCREA", NL," "\
+                        "         ,RD.UVCRLQ", NL," "\
+                        "         ,RA.DIF", NL," "\
+                        "         ,RA.QTE", NL," "\
+                        "         ,RP.QTE_AVA", NL," "\
+                        "         ,RP.QTE_QUA", NL," "\
+                        "         ,RD.ORICDE", NL," "\
+                        "         ,NR.ORI", NL," "\
+                        "         ,RD.NUMREC", NL," "\
+                        "         ,RA.UVC_REC", NL," "\
+                        "         ,RA.UVC_AGR", NL," "\
+                        "         ,RA.PRO", NL," "\
+                        "ORDER BY 1", NL," "\
+                        "         ,13")
+
+    else 
+
+        tQuery := build("SELECT  TRIM(RE.REFREC) REFREC", NL," "\
+                        "       ,RD.MOTIMM", NL," "\
+                        "       ,RA.DOC_AGR", NL," "\
+                        "       ,TRIM(RE.CODTRA) CODTRA", NL," "\
+                        "       ,TRIM(RE.MSGREC1) MSGREC1", NL," "\
+                        "       ,TRIM(RE.MSGREC2) MSGREC2", NL," "\
+                        "       ,TRIM(RE.NOMTRA) NOMTRA", NL," "\
+                        "       ,TRIM(RA.REF_AGR) REF_AGR", NL," "\
+                        "       ,TRIM(RE.DIPREC) DIPREC", NL," "\
+                        "       ,RE.CODTRE", NL," "\
+                        "       ,RE.DTRREC", NL," "\
+                        "       ,RE.HERREC", NL," "\
+                        "       ,RD.CODACT", NL," "\
+                        "       ,RD.NLIREC", NL," "\
+                        "       ,TRIM(RD.CODPRO) CODPRO", NL," "\
+                        "       ,TRIM(RD.DS1PRO) DS1PRO", NL," "\
+                        "       ,RD.UNICDE", NL," "\
+                        "       ,CASE WHEN RD.NLIREC = 0 THEN 0 ELSE RD.UVCREA END UVCREA", NL," "\
+                        "       ,CASE WHEN RA.QTE = 1 THEN RD.UVCREC", NL," "\
+                        "             WHEN RA.QTE IS NULL THEN RD.UVCREC", NL," "\
+                        "             WHEN RA.QTE > 1 THEN CASE", NL," "\
+                        "             WHEN RD.UVCREC > RD.UVCREA AND NR.ORI <> RD.NUMREC THEN RD.UVCREA", NL," "\
+                        "             WHEN RD.UVCRLQ = RD.UVCREA THEN 0", NL," "\
+                        "             WHEN RD.UVCRLQ <> 0 THEN RD.UVCREA - RD.UVCRLQ", NL," "\
+                        "             WHEN NR.ORI = RD.NUMREC AND RA.UVC_REC > RA.UVC_AGR THEN (RD.UVCREA+RA.DIF) ELSE RD.UVCREA END END UVCREC", NL," "\
+                        "       ,CASE WHEN RA.QTE = 1 THEN RP.QTE_AVA", NL," "\
+                        "             WHEN RA.QTE > 1 THEN CASE", NL," "\
+                        "             WHEN INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR)* RP.QTE_AVA,0)) > RD.UVCREA THEN CASE", NL," "\
+                        "             WHEN RD.NUMREC <> NR.ORI THEN RD.UVCREA", NL," "\
+                        "             WHEN RD.NUMREC = NR.ORI AND RP.QTE_AVA > RA.UVC_AGR THEN RD.UVCREA + (RP.QTE_AVA - RA.UVC_AGR) END  ELSE INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR) * RP.QTE_AVA,0)) END END AVARIA", NL," "\
+                        "       ,CASE WHEN RA.QTE = 1 THEN RP.QTE_QUA", NL," "\
+                        "             WHEN RA.QTE > 1 THEN CASE", NL," "\
+                        "             WHEN INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR) * RP.QTE_QUA,0)) > RD.UVCREA THEN CASE", NL," "\
+                        "             WHEN RD.NUMREC <> NR.ORI THEN RD.UVCREA", NL," "\
+                        "             WHEN RD.NUMREC = NR.ORI AND RP.QTE_QUA > RA.UVC_AGR THEN RD.UVCREA + (RP.QTE_QUA - RA.UVC_AGR) END ELSE INTEGER(ROUND((RD.UVCREA/RA.UVC_AGR) * RP.QTE_QUA,0)) END END QUALIDADE", NL," "\
+                        "       ,CASE WHEN RD.ORICDE = 1 THEN 'N'", NL," "\
+                        "             WHEN RD.ORICDE = 2 THEN 'S' ELSE '' END ITEM_SURPRESA", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GERECE RE", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECD RD", NL," "\
+                        "ON RE.NUMREC = RD.NUMREC AND RE.CODACT = RD.CODACT", NL," "\
+                        "LEFT JOIN", NL," "\
+                        "(", NL," "\
+                        "	SELECT  TRIM(C.REFREC) REF_AGR", NL," "\
+                        "	       ,B.CODACT ACT_AGR", NL," "\
+                        "	       ,TRIM(B.CODPRO) PRO", NL," "\
+                        "	       ,C.KAIREC DOC_AGR", NL," "\
+                        "	       ,SUM(B.UVCREA) UVC_AGR", NL," "\
+                        "	       ,SUM(B.UVCREC) UVC_REC", NL," "\
+                        "	       ,(SUM(B.UVCREC)-SUM(B.UVCREA)) DIF", NL," "\
+                        "	       ,COUNT (B.CODPRO) QTE", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD B, FGE50FM",tToInfologPrefixFilename,".GERECE C", NL," "\
+                        "	WHERE B.NUMREC = C.NUMREC", NL," "\
+                        "	AND B.NUMREC = (", NL," "\
+                        "	SELECT  DISTINCT A.NUMREC", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD A", NL," "\
+                        "	WHERE A.NUMREC = '",tNUMREC,"')", NL," "\
+                        "	GROUP BY  C.REFREC", NL," "\
+                        "	         ,B.CODACT", NL," "\
+                        "	         ,B.CODPRO", NL," "\
+                        "	         ,C.KAIREC", NL," "\
+                        "	ORDER BY 1", NL," "\
+                        ") RA", NL," "\
+                        "ON RA.ACT_AGR = RE.CODACT AND RA.ACT_AGR = RD.CODACT AND RA.PRO = RD.CODPRO", NL," "\
+                        "LEFT JOIN", NL," "\
+                        "(", NL," "\
+                        "	SELECT  P.CODPRO PRO", NL," "\
+                        "	       ,CODACT ACT", NL," "\
+                        "	       ,SUM(CASE WHEN P.MOTIMM IN ('AC','AM','AT','AV','FT','NB','RG','RT','RW','SB','SK','SL') THEN P.UVCMVT ELSE 0 END) QTE_AVA", NL," "\
+                        "	       ,SUM(CASE WHEN P.MOTIMM IN('CQ') THEN P.UVCMVT ELSE 0 END) QTE_QUA", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECP P", NL," "\
+                        "	WHERE MOTIMM <> ''", NL," "\
+                        "	AND P.NUMREC = (", NL," "\
+                        "	SELECT  DISTINCT X.NUMREC", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD X", NL," "\
+                        "	WHERE X.NUMREC = '",tNUMREC,"')", NL," "\
+                        "	GROUP BY  CODPRO", NL," "\
+                        "	         ,CODACT", NL," "\
+                        "	ORDER BY 1", NL," "\
+                        ") RP", NL," "\
+                        "ON RP.ACT = RD.CODACT AND RP.PRO = RD.CODPRO AND RP.ACT = RE.CODACT AND RA.ACT_AGR = RP.ACT AND RA.PRO = RP.PRO", NL," "\
+                        "LEFT JOIN", NL," "\
+                        "(", NL," "\
+                        "	SELECT  MAX(Z.NUMREC) ORI", NL," "\
+                        "	       ,Z.CODACT ACT", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD Z", NL," "\
+                        "	WHERE Z.NUMREC = (", NL," "\
+                        "	SELECT  DISTINCT W.NUMREC", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GERECD W", NL," "\
+                        "	WHERE W.NUMREC = '",tNUMREC,"')", NL," "\
+                        "	GROUP BY  Z.CODACT", NL," "\
+                        ") NR", NL," "\
+                        "ON RE.CODACT = NR.ACT AND RD.CODACT = NR.ACT AND RP.ACT = NR.ACT AND RA.ACT_AGR = NR.ACT", NL," "\
+                        "WHERE RE.NUMREC = '",tNUMREC,"'", NL," "\
+                        "GROUP BY  RE.REFREC", NL," "\
+                        "         ,RD.MOTIMM", NL," "\
+                        "         ,RA.DOC_AGR", NL," "\
+                        "         ,RE.CODTRA", NL," "\
+                        "         ,RE.MSGREC1", NL," "\
+                        "         ,RE.MSGREC2", NL," "\
+                        "         ,RE.NOMTRA", NL," "\
+                        "         ,RA.REF_AGR", NL," "\
+                        "         ,RE.DIPREC", NL," "\
+                        "         ,RE.CODTRE", NL," "\
+                        "         ,RE.DTRREC", NL," "\
+                        "         ,RE.HERREC", NL," "\
+                        "         ,RD.CODACT", NL," "\
+                        "         ,RD.NLIREC", NL," "\
+                        "         ,RD.CODPRO", NL," "\
+                        "         ,RD.DS1PRO", NL," "\
+                        "         ,RD.UNICDE", NL," "\
+                        "         ,RD.UVCREC", NL," "\
+                        "         ,RD.UVCREA", NL," "\
+                        "         ,RD.UVCRLQ", NL," "\
+                        "         ,RA.DIF", NL," "\
+                        "         ,RA.QTE", NL," "\
+                        "         ,RP.QTE_AVA", NL," "\
+                        "         ,RP.QTE_QUA", NL," "\
+                        "         ,RD.ORICDE", NL," "\
+                        "         ,NR.ORI", NL," "\
+                        "         ,RD.NUMREC", NL," "\
+                        "         ,RA.UVC_REC", NL," "\
+                        "         ,RA.UVC_AGR", NL," "\
+                        "         ,RA.PRO ORDER BY 1", NL," "\
+                        "         ,13")
+
+    endif 
+
+    log("------------------------------------------------------------", NL)
+    log(tQuery, NL)
+    log("------------------------------------------------------------", NL)
+				
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    nContadorQue := 0
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+        nContadorQue++
+
+        if nContadorQue = 1 then
+            tSerieDaNF := taNumSerie[2]
+            tNumeroDaNF := taNumSerie[1]
+
+            R_Header_TIPODEREGISTRO("0")
+            R_Header_CNPJORIGEM(tVALRUB_GEACRUB)
+            R_Header_CNPJDESTINATARIO("002462805000778")
+            R_Header_TIPORECEBIMENTO(tCODTRE)
+            R_Header_DATARECEBIMENTO(tfConvertDate(tData, "YYYYMMDD", "DDMMYYYY"))
+            R_Header_NUMEROBL("")
+
+            flush(0,0,NL) >> tFileOutTemp
+
+            R_HeaderNF_Identificacaodoregistro("1")
+            R_HeaderNF_SeriedaNF(taNumSerie[2])
+            R_HeaderNF_NumerodaNotaFiscal(build(number(taNumSerie[1]):R09))
+            R_HeaderNF_NumerodoPedidodeCompra("00000000000000000000")
+            R_HeaderNF_dataemissaonf(tfConvertDate(tDTIREC, "YYYYMMDD", "DDMMYYYY"))
+            R_HeaderNF_cnpjfornecedor(build(number(tCODFOU):R015))
+            R_HeaderNF_CLIENTE_PROPRIETARIO("")
+
+            flush(0,0,NL) >> tFileOutTemp
+        endif
+
+        nContadorRegisto++
+        R_Detalhe_Identificacaodoregistro("2")
+        R_Detalhe_SequenciadoprodutonaNotaFiscal(build(number(peel(taDb2Array["NLIREC"]," ")):R06))
+        R_Detalhe_CodigodoSKU(peel(taDb2Array["CODPRO"]," "))
+        if length(peel(taDb2Array["MOTIMM"]," ")) = 0 then
+            R_Detalhe_Depositooustatusesperadonorecebimento(taDEPOSITO["NM"])
+        else
+            R_Detalhe_Depositooustatusesperadonorecebimento(taDEPOSITO[peel(taDb2Array["MOTIMM"]," ")])
+        endif
+        R_Detalhe_Codigodolotedefabricacaorecebido("")
+        R_Detalhe_Validadedolotedefabricacaodoproduto("")
+        R_Detalhe_UnidadedeMedidadoproduto("EA")
+
+        nAuxCont := number(peel(taDb2Array["UVCREA"]," ")) * 1000
+        R_Detalhe_QuantidadedoprodutonaNF(build("0000000000",nAuxCont:R09))
+
+        nAuxCont := number(peel(taDb2Array["UVCREC"]," ")) * 1000
+        R_Detalhe_Quantidadeefetivamenterecebida(build("0000000000",nAuxCont:R09))
+
+        nAuxCont := number(peel(taDb2Array["AVARIA"]," ")) * 1000
+        R_Detalhe_QuantidadeAvariada(build("0000000000",nAuxCont:R09))
+
+        flush(0,0,NL) >> tFileOutTemp
+			
+        remove(taDb2Array)
+    endwhile
+
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    if nContadorQue >= 1 then
+        R_Trailler_Identificacaodoregistro("9")
+        R_Trailler_Totaldelinhasdodetalhe(build(nContadorRegisto:R03))
+
+        flush(0,0,NL) >> tFileOutTemp
+    endif
+								
+    bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+    close(tFileOutTemp)
+    copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+    remove(tFileOutTemp)
+    close(tFileOut)
+
+    system("sleep 1")
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+    bfSqlClose(tDbBase)
+    exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+    !TRACE:=new(build(sHOME,"/trace"))
+    TRACE.ESTADO := tStatus
+    TRACE.ERRO := tError
+    TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+    TRACE.PERFIL := "BRAE"
+    TRACE.SENTIDO := "O"
+    TRACE.MENSAGEM := "CONFIRMACAO DE RECEBIMENTO"
+    TRACE.NUMDOC := tNumeroDocumento
+    TRACE.DATDOC := time("now","%Y-%m-%d")
+    TRACE.MESSAGEID := build(nMessageID:R010)
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+    TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+    TRACE.FICHEIROSAIDA := tNameOut
+
+    if tStatus = "Recebida" then
+        print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Traduzida com Sucesso",NL) >> TRACE.Detail
+    else
+        if tStatus = "Erro de Traducao" then
+            print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+            print("Erro de Traducao",NL) >> TRACE.Detail
+            print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+    endif
+
+    close(TRACE.Detail)
+    close(SYSLOG.a)
+
+    if nMainIndex = 0 then
+        copy(SYSLOG.a,TRACE.In)
+        close(SYSLOG.a)
+        close(TRACE.In)
+
+        nMainIndex := TRACE.INDEX
+    else
+        tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+        system(tCmd)
+    endif
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+
+	close(tFileOutCSVDIVERS)
+	copy(tFileOutCSVDIVERS,TRACE.CSV_Email)
+	close(tFileOutCSVDIVERS)
+
+    flush(TRACE)
+endfunction

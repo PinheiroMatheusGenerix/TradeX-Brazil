@@ -1,0 +1,410 @@
+%@(#)  NF_MARS_TXT.rte     modif:01-12-2017
+!==============================================================================
+% File          : NF_MARS_TXT.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!==============================================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "NF_MARS_TXT"
+#include "include/generix_func.inc"
+#include "include/NF_MARS_TXT.inc"
+
+!==============================================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA7"]
+
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "MARS"
+		tSentido := "I"
+		tMensagem := "NF"
+		tDataDocumento := time("now","%Y-%m-%d")
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+	!Abertura do banco de dados - WMS
+		tDbBase			:= "FMWMS"
+		tDbUsername		:= taPARAM["WMSDBUSER"]
+		tDbPassword		:= taPARAM["WMSDBPASS"]
+		tDbUrl			:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+
+	!Variaveis Gerais
+        nCountS1 := 0
+        nWhileLine := 0
+        bPrimeiroRegistoCSV := TRUE
+endbegin
+
+!==============================================================================
+
+line(1:"SR")
+
+    tCODACT := "MAR"
+
+endline
+
+!==============================================================================
+
+line(1:"S1")
+
+    nCountS1++
+    taVALRUB_NF01[nCountS1] := S_S1_NUMERO
+    taVALRUB_SE01[nCountS1] := S_S1_SERIE_NF
+    taVALRUB_DT01[nCountS1] := S_S1_DATA_EMISSAO
+    taVALRUB_VL01[nCountS1] := S_S1_TOT_NOTA
+    taVALRUB_PS01[nCountS1] := S_S1_PESO_BRUTO
+    taVALRUB_VO01[nCountS1] := S_S1_VOLUMES
+
+    tQuery := build("SELECT  NUMLIV ", NL," "\
+                    "       ,SNULIV ", NL," "\
+                    "       ,REFLIV ", NL," "\
+                    "FROM FGE50FM",tToInfologPrefixFilename,".GELIVE ", NL," "\
+                    "WHERE REFLIV = '",S_S1_NUMERO_PEDIDO,"' ", NL," "\
+                    "AND CODACT = '",tCODACT,"' ")
+
+    log("***********************************", NL)
+    log(tQuery, NL)
+    log("***********************************", NL)
+
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        bfSqlErro()
+        exit(1)
+    endif
+
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        bfSqlErro()
+        exit(1)
+    endif
+
+    baQueryResult[nCountS1] := FALSE
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do		
+        baQueryResult[nCountS1] := TRUE
+
+        taNUMLIV[nCountS1] := peel(taDb2Array["NUMLIV"]," ")
+        taSNULIV[nCountS1] := peel(taDb2Array["SNULIV"]," ")
+        taREFLIV[nCountS1] := peel(taDb2Array["REFLIV"]," ")
+
+        remove(taDb2Array)
+    endwhile
+                
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        bfSqlErro()
+        exit(1)
+    endif
+endline
+
+!==============================================================================
+
+! Default statements section
+default
+
+enddefault
+
+!==============================================================================
+
+! End statements section
+end
+    while nWhileLine < nCountS1 do
+        nWhileLine++
+
+        if baQueryResult[nWhileLine] = TRUE then
+            ! Criação dos arquivos
+                tNameOut := build("I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_MAR_",build(nMessageID:R010),"_",build(nWhileLine:R02),".DAT")
+                tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tNameOut)
+                tFileOut := build(sHOME,"/ToInfolog/",tNameOut)
+
+            print("NUMLIV;SNULIV;TYPRUB;CODRUB;VALRUB;VALNUM;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTemp
+
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "*A01"
+            tVALRUBCSV := taVALRUB_NF01[nWhileLine]
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "SE01"
+            tVALRUBCSV := taVALRUB_SE01[nWhileLine]
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "NF01"
+            tVALRUBCSV := taVALRUB_NF01[nWhileLine]
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "DT01"
+            tVALRUBCSV := tfConvertDate(peel(taVALRUB_DT01[nWhileLine]," "), "DDMMYYYY" ,"DD/MM/YYYY")
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+                                            
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "VL01"
+            tVALRUBCSV := taVALRUB_VL01[nWhileLine]
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+                                                
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "VO01"
+            tVALRUBCSV := taVALRUB_VO01[nWhileLine]
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+
+            tNUMLIVCSV := taNUMLIV[nWhileLine]
+            tSNULIVCSV := taSNULIV[nWhileLine]
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "PS01"
+            tVALRUBCSV := taVALRUB_PS01[nWhileLine]
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now" ,"%Y%m%d")
+            tMAJDATCSV := time("now" ,"%Y%m%d")
+            tMAJHMSCSV := time("now" ,"%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+                ,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+                ,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+                ,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+                ,tMAJECRCSV,";", NL) >> tFileOutTemp
+
+            ! Tratamento final dos arquivos
+                close(tFileOutTemp)
+                copy(tFileOutTemp,tFileOut)
+                close(tFileOutTemp)
+                remove(tFileOutTemp)
+                close(tFileOut)
+
+            ! Finalizando com TRACE
+                bfMajtrace(	"Recebida" \
+                            ,"0" \
+                            ,taREFLIV[nWhileLine] \
+                            ,taVALRUB_NF01[nWhileLine] \
+                            ,tFileInput \
+                            ,tFileOut \
+                            ,tMensagem \
+                            ,"")
+
+            ! Enviar interface para o cliente
+                bfToInfolog()
+
+        endif
+    endwhile
+
+    close(tDbBase)
+
+    log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	exit(0)
+
+endend
+
+!==============================================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileInput,tFileOut,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := tPerfil
+	TRACE.SENTIDO := tSentido
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.LIBEXC := tLIBEXC
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileInput \
+                ,tFileOut \
+                ,tMensagem \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+
+!==============================================================================
+
+function bfToInfolog()
+
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+
+endfunction

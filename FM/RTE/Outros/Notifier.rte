@@ -1,0 +1,124 @@
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 18-10-2010  XX  Creation
+! 18-10-2010  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE
+
+!===========================================================
+
+! Initialization section
+! End statements section
+begin
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+   if valid(SYSLOG) then
+      fFile := SYSLOG.l
+      if fFile.EXIST then
+         tStringAuxTemp := read(SYSLOG.l)
+         while(tStringAuxTemp) <> EOF do         
+            if substr(tStringAuxTemp,54,8) = "FMBR_AS2" then
+               if substr(tStringAuxTemp,1,19) = "Original input file" then
+                  taInfo["ORIGINAL.NAME"] := substr(tStringAuxTemp,63,length(tStringAuxTemp)-72)
+               endif
+            else
+               if substr(tStringAuxTemp,54,10) = "ToAS2Proxy" then
+                  taInfo["ORIGINAL.NAME"] := substr(tStringAuxTemp,65,length(tStringAuxTemp)-74)
+               endif
+            endif
+            tStringAuxTemp := read(SYSLOG.l)
+         endwhile
+
+         if length(taInfo["ORIGINAL.NAME"]) > 0 then 
+            tReferencia := taInfo["ORIGINAL.NAME"]
+            tIDReference := tReferencia
+            tStatus := SYSLOG.STATUS
+            tInformation := SYSLOG.INFO   
+
+            TRACE := find(build(sHOME,"/trace"),FICHEIROSAIDA=tIDReference)
+            TRACE.ESTADO :="Entregue"
+            print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+            print("Entregue",NL) >> TRACE.Detail
+            print(build("SYSLOG.INDEX=",SYSLOG.INDEX,NL,SYSLOG.INFO,NL)) >> TRACE.Detail
+            close(TRACE.Detail)
+            SYSLOG.USERNUM := 1
+         endif
+      endif
+   endif
+
+   fFile := build(sHOME,"/InfologServer/OUT/*.DAT")
+   while fFile in build(sHOME,"/InfologServer/OUT/*.DAT") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 7d"),"%Y%m%d%H%M")) then
+         remove(fFile)
+      endif
+   endwhile
+
+   fFile := build(sHOME,"/ToInfolog/Temp/*.DAT")
+   while fFile in build(sHOME,"/ToInfolog/Temp/*.DAT") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 1d"),"%Y%m%d%H%M")) then
+         remove(fFile)
+      endif
+   endwhile
+
+   fFile := build(sHOME,"/FromAS2Proxy/*")
+   while fFile in build(sHOME,"/FromAS2Proxy/*") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 1d"),"%Y%m%d%H%M")) then
+         remove(fFile)
+      endif
+   endwhile
+
+   fFile := build(sHOME,"/ToAS2Proxy/*")
+   while fFile in build(sHOME,"/ToAS2Proxy/*") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 1d"),"%Y%m%d%H%M")) then
+         remove(fFile)
+      endif
+   endwhile
+
+   fFile := build(sHOME,"/inbox/*")
+   while fFile in build(sHOME,"/inbox/*") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 1d"),"%Y%m%d%H%M")) then
+         remove(fFile)
+      endif
+   endwhile
+
+   fFile := build(sHOME,"/ToAS2Proxy/Wait/*.xml")
+   while fFile in build(sHOME,"/ToAS2Proxy/Wait/*.xml") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 20M"),"%Y%m%d%H%M")) then
+         close(fFile.FULLNAME)
+         copy(fFile.FULLNAME,build(sHOME,"/ToAS2Proxy/",fFile.NAME))
+         close(fFile.FULLNAME)
+         close(build(sHOME,"/ToAS2Proxy/",fFile.NAME))
+         remove(fFile)
+      endif
+   endwhile
+
+   fFile := build(sHOME,"/ToInfolog/Wait/*.DAT")
+   while fFile in build(sHOME,"/ToInfolog/Wait/*.DAT") do
+      if number(time(fFile.MTIME,"%Y%m%d%H%M")) < number(time(("now - 1M"),"%Y%m%d%H%M")) then
+         close(fFile.FULLNAME)
+         copy(fFile.FULLNAME,build(sHOME,"/ToInfolog/",fFile.NAME))
+         close(fFile.FULLNAME)
+         close(build(sHOME,"/ToInfolog/",fFile.NAME))
+         remove(fFile)
+      endif
+   endwhile
+   exit(0)
+endbegin
+
+!===========================================================

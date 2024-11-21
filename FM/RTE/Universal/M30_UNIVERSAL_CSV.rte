@@ -1,0 +1,482 @@
+%@(#)  M30_UNIVERSAL_CSV.rte     modif:23-11-2017
+!==============================================================================
+% File          : M30_UNIVERSAL_CSV.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 23-11-2017  XX  Creation
+! 23-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE, autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#include "include/M30_UNIVERSAL_CSV.inc"
+#include "include/GEEXM30.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+    nPos := 1
+    nRec := 1
+	nMainIndex := 0
+    nMessageID := cMessageID
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+    ! Ambiente conforme nome do arquivo
+        tAmbiente := substr(pEDISEND.ORIGINAL.NAME, 1, 3)
+
+    ! Criação dos arquivos
+        tNameOut := build(tAmbiente,"30",build(nMessageID:R015),".DAT")
+        tFileOut := build(sHOME,"/ToInfolog/",tNameOut)
+        tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tNameOut)
+
+	! Parametros do TRACE
+		tPerfil := "UNIVERSAL"
+		tSentido := "I"
+		tMensagem := "PRODUTO"
+		tDataDocumento := time("now","%Y-%m-%d")
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+    /* Nao utilizado
+	!Abertura do banco de dados - WMS
+		tDbBase			:= "FMWMS"
+		tDbUsername		:= taPARAM["WMSDBUSER"]
+		tDbPassword		:= taPARAM["WMSDBPASS"]
+		tDbUrl			:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+    */
+
+	!Variaveis Gerais
+        nNumeroLinha := 0
+        nContadorLinhasEscritas  := 0
+endbegin
+
+!===========================================================
+
+line(not "")
+    S_HEADER
+
+    if length(peel(S_HEADER_CODPRO," ")) > 0 and \
+                peel(S_HEADER_CODPRO," ") <> "CARACTERISTICAS SKU/PRODUTO (CODPRO)" and \
+                peel(S_HEADER_CODPRO," ") <> "SKU/PRODUTO (CODPRO)" and \
+                peel(S_HEADER_CODACT," ") <> "CODACT" and \
+                peel(S_HEADER_CODPRO," ") <> "SKU (CODPRO)" then
+
+        nNumeroLinha++
+
+        tCODACT := S_HEADER_CODACT
+        taCODPRO[nNumeroLinha] := S_HEADER_CODPRO
+        taDS1PRO[nNumeroLinha] := S_HEADER_DS1PRO
+        taDS2PRO[nNumeroLinha] := S_HEADER_DS2PRO
+        if S_HEADER_UNIPRO = "CX" then
+            taUNIPRO[nNumeroLinha] := "CAX"
+        else
+            taUNIPRO[nNumeroLinha] := S_HEADER_UNIPRO
+        endif
+        taFAMPRO[nNumeroLinha] := S_HEADER_FAMPRO
+        taABCSTS[nNumeroLinha] := S_HEADER_ABCSTS
+        taNBJFVI[nNumeroLinha] := S_HEADER_NBJFVI
+        taNBJDLV[nNumeroLinha] := S_HEADER_NBJDLV
+        taSECDLV[nNumeroLinha] := S_HEADER_SECDLV
+        taLNGUVC2[nNumeroLinha] := S_HEADER_LNGUVC2
+        taLRGUVC2[nNumeroLinha] := S_HEADER_LRGUVC2
+        taHAUUVC2[nNumeroLinha] := S_HEADER_HAUUVC2
+        taPDBUVC[nNumeroLinha] := S_HEADER_PDBUVC
+        taEDIPRO[nNumeroLinha] := S_HEADER_EDIPRO_UN
+        taEDIPRM[nNumeroLinha] := S_HEADER_EDIPRM_UN
+        taSPCPRO[nNumeroLinha] := S_HEADER_SPCPRO
+        taLNGSPC2[nNumeroLinha] := S_HEADER_LNGSPC2
+        taLRGSPC2[nNumeroLinha] := S_HEADER_LRGSPC2
+        taHAUSPC2[nNumeroLinha] := S_HEADER_HAUSPC2
+        taPDBSPC[nNumeroLinha] := S_HEADER_PDBSPC
+        taEDIPRO4[nNumeroLinha] := S_HEADER_EDIPRO_SC
+        taEDIPRM4[nNumeroLinha] := S_HEADER_EDIPRM_SC
+        taPCBPRO[nNumeroLinha] := S_HEADER_PCBPRO
+        taLNGCOL2[nNumeroLinha] := S_HEADER_LNGCOL2
+        taLRGCOL2[nNumeroLinha] := S_HEADER_LRGCOL2
+        taHAUCOU_HAUCOL2[nNumeroLinha] := S_HEADER_HAUCOL2_HAUCOU
+        taPDBCOL[nNumeroLinha] := S_HEADER_PDBCOL
+        taEDIPRO3[nNumeroLinha] := S_HEADER_EDIPRO_CX
+        taEDIPRM3[nNumeroLinha] := S_HEADER_EDIPRM_CX
+        taCOUPAL[nNumeroLinha] := S_HEADER_COUPAL
+        taCOLCOU[nNumeroLinha] := S_HEADER_COLCOU
+        taCODMDR[nNumeroLinha] := S_HEADER_CODMDR
+        taCODMDS[nNumeroLinha] := S_HEADER_CODMDS
+        taZONPRF[nNumeroLinha] := S_HEADER_ZONPRF
+        taALLPRF[nNumeroLinha] := S_HEADER_ALLPRF
+        taCODMDP[nNumeroLinha] := S_HEADER_CODMDP
+        taCIRDET[nNumeroLinha] := S_HEADER_CIRDET
+        taCIRPAL[nNumeroLinha] := S_HEADER_CIRPAL
+        taCODRSC[nNumeroLinha] := S_HEADER_CODRSC
+        taTOLPOI[nNumeroLinha] := S_HEADER_TOLPOI
+        taINDTOL[nNumeroLinha] := S_HEADER_INDTOL
+        taANAPRO[nNumeroLinha] := S_HEADER_ANAPRO
+        taCODMRQ[nNumeroLinha] := S_HEADER_CODMRQ
+
+        remove(taDb2Array)
+    endif
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+    ! Variavel
+        tPerfil := build(tAmbiente, "-", tCODACT)
+
+    ! 00.00
+        if nContadorLinhasEscritas = 0 then
+            R_GEEX0000_CODEXC("00")
+            R_GEEX0000_SEPEXC(".")
+            R_GEEX0000_SCOEXC("00")
+            R_GEEX0000_EMTEXC("FM") 
+            R_GEEX0000_DATEXC(time("now", "%Y%m%d"))
+            R_GEEX0000_HEUEXC(time("now", "%H%M%S"))
+            R_GEEX0000_NUMEXC("0000000")
+            R_GEEX0000_ACQEXC("0")
+            R_GEEX0000_VEREXC("5.00") 
+            R_GEEX0000_NOMDTQ("M30")
+            R_GEEX0000_BIBDTQ(build("FGE50CA", tAmbiente))
+            R_GEEX0000_LIBEXC(build(nMessageID:R010))
+            R_GEEX0000_EDISIT(build(number(tCentro_De_Custo)))
+            
+            flush(0,0,NL) >> tFileOutTemp
+        endif
+ 
+    nTempNumeroLinha := 1
+    ! log("nNumeroLinha = ", nNumeroLinha, NL)
+    while nTempNumeroLinha <= nNumeroLinha do
+        ! log("nTempNumeroLinha = ", nTempNumeroLinha, NL)
+        
+        ! 30.00
+            R_GEEX3000_CODEXC("30")
+            R_GEEX3000_SEPEXC(".")
+            R_GEEX3000_SCOEXC("00")
+            R_GEEX3000_TRTEXC("2")
+            R_GEEX3000_CODACT(tCODACT)
+            R_GEEX3000_CODPRO(taCODPRO[nTempNumeroLinha])
+            R_GEEX3000_ANAPRO(taANAPRO[nTempNumeroLinha])
+            R_GEEX3000_FAMPRO(taFAMPRO[nTempNumeroLinha])
+            R_GEEX3000_SPCPRO(build(number(taSPCPRO[nTempNumeroLinha]):R04)) 
+            R_GEEX3000_PCBPRO(build(number(taPCBPRO[nTempNumeroLinha]):R05)) 
+            R_GEEX3000_UNIPRO(taUNIPRO[nTempNumeroLinha]) 
+            R_GEEX3000_DS1PRO(taDS1PRO[nTempNumeroLinha])
+            R_GEEX3000_DS2PRO(taDS2PRO[nTempNumeroLinha])
+            R_GEEX3000_ABCSTS(taABCSTS[nTempNumeroLinha])
+            R_GEEX3000_ABCPRO(taABCSTS[nTempNumeroLinha])
+            R_GEEX3000_COLCOU(build(number(taCOLCOU[nTempNumeroLinha]):R08))
+            R_GEEX3000_COUPAL(build(number(taCOUPAL[nTempNumeroLinha]):R08))
+            R_GEEX3000_NBJDLV(build(number(taNBJDLV[nTempNumeroLinha]):R03))
+
+            tCont := build(number(taPDBCOL[nTempNumeroLinha]) * 1000)
+            R_GEEX3000_PDBCOL(build(number(tCont):R07)) 
+
+            tCont1 := build(number(taHAUCOU_HAUCOL2[nTempNumeroLinha]) * 1)
+            R_GEEX3000_HAUCOU(substr(build(number(tCont1):R03.0),1,3))
+
+            tCont := build(number(taPDBUVC[nTempNumeroLinha]) * 1000)
+
+            R_GEEX3000_PDBUVC(build(number(tCont):R07)) 
+            R_GEEX3000_PDNUVC(build(number(tCont):R07))    
+            R_GEEX3000_CODMDR(taCODMDR[nTempNumeroLinha])
+            R_GEEX3000_CODMDS(taCODMDS[nTempNumeroLinha])
+            R_GEEX3000_ZONPRF(taZONPRF[nTempNumeroLinha])
+            R_GEEX3000_ALLPRF(taALLPRF[nTempNumeroLinha])
+            R_GEEX3000_CODMDP(taCODMDP[nTempNumeroLinha])
+
+            nContadorLinhasEscritas++
+            flush(0,0,NL) >> tFileOutTemp
+
+        ! 30.01
+            R_GEEX3001_CODEXC("30")
+            R_GEEX3001_SEPEXC(".")
+            R_GEEX3001_SCOEXC("01") 
+            R_GEEX3001_TRTEXC("2")
+            R_GEEX3001_CODACT(tCODACT)
+            R_GEEX3001_CODPRO(taCODPRO[nTempNumeroLinha])
+            R_GEEX3001_CIRDET(taCIRDET[nTempNumeroLinha])
+            R_GEEX3001_CIRPAL(taCIRPAL[nTempNumeroLinha])
+            R_GEEX3001_CODMRQ(taCODMRQ[nTempNumeroLinha])
+
+            nContadorLinhasEscritas++
+            flush(0,0,NL) >> tFileOutTemp
+
+        ! 30.02
+            R_GEEX3002_CODEXC("30")
+            R_GEEX3002_SEPEXC(".")
+            R_GEEX3002_SCOEXC("02") 
+            R_GEEX3002_TRTEXC("2")
+            R_GEEX3002_CODACT(tCODACT)
+            R_GEEX3002_CODPRO(taCODPRO[nTempNumeroLinha])
+    
+            tConta := build(number(taNBJFVI[nTempNumeroLinha]))
+
+            if number(tConta) >= 10000 then
+                tConta := "9999"
+            endif
+
+            R_GEEX3002_NBJFVI(build(number(tConta):R04))
+
+            tCont1 := build(number(taHAUUVC2[nTempNumeroLinha]) * 100)
+            tCont2 := build(number(taLNGUVC2[nTempNumeroLinha]) * 100)
+            tCont3 := build(number(taLRGUVC2[nTempNumeroLinha]) * 100)
+
+            R_GEEX3002_HAUUVC2(build(number(tCont1):R05))
+            R_GEEX3002_LNGUVC2(build(number(tCont2):R05))
+            R_GEEX3002_LRGUVC2(build(number(tCont3):R05))
+
+            tCont1 := build(number(taHAUCOU_HAUCOL2[nTempNumeroLinha]) * 100)
+            tCont2 := build(number(taLNGCOL2[nTempNumeroLinha]) * 100)
+            tCont3 := build(number(taLRGCOL2[nTempNumeroLinha]) * 100)
+        
+            R_GEEX3002_HAUCOL2(build(number(tCont1):R05))
+            R_GEEX3002_LNGCOL2(build(number(tCont2):R05))
+            R_GEEX3002_LRGCOL2(build(number(tCont3):R05))
+
+            tCont1 := build(number(taHAUSPC2[nTempNumeroLinha]) * 100)
+            tCont2 := build(number(taLNGSPC2[nTempNumeroLinha]) * 100)
+            tCont3 := build(number(taLRGSPC2[nTempNumeroLinha]) * 100)
+            tCont4 := build(number(taPDBCOL[nTempNumeroLinha]) * 1000)
+
+            R_GEEX3002_PDBSPC(build(number(tCont4):R07)) 
+            R_GEEX3002_HAUSPC2(build(number(tCont1):R05))
+            R_GEEX3002_LNGSPC2(build(number(tCont2):R05))
+            R_GEEX3002_LRGSPC2(build(number(tCont3):R05))
+
+            R_GEEX3002_CODRSC(taCODRSC[nTempNumeroLinha])
+            R_GEEX3002_TOLPOI(taTOLPOI[nTempNumeroLinha])
+            R_GEEX3002_INDTOL(taINDTOL[nTempNumeroLinha])
+            R_GEEX3002_SECDLV(build(number(taSECDLV[nTempNumeroLinha]):R03))
+
+            nContadorLinhasEscritas++
+            flush(0,0,NL) >> tFileOutTemp
+
+        ! 30.20
+            if length(taEDIPRO[nTempNumeroLinha]) > 0 then
+                R_GEEX3020_CODEXC("30")
+                R_GEEX3020_SEPEXC(".")
+                R_GEEX3020_SCOEXC("20")
+                R_GEEX3020_TRTEXC("2")
+                R_GEEX3020_CODACT(tCODACT) 
+                R_GEEX3020_CODPRO(taCODPRO[nTempNumeroLinha])
+                R_GEEX3020_EDIPRO(taEDIPRO[nTempNumeroLinha])
+
+                if taEDIPRM[nTempNumeroLinha] = "S" then
+                    R_GEEX3020_EDIPRM("1")
+                endif
+
+                if taEDIPRM[nTempNumeroLinha] = "N" then
+                    R_GEEX3020_EDIPRM("0")
+                endif
+
+                R_GEEX3020_EDIQLF("0")
+                R_GEEX3020_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+                nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp   
+            endif
+    	
+            if length(taEDIPRO3[nTempNumeroLinha]) > 0 then
+                R_GEEX3020_CODEXC("30")
+                R_GEEX3020_SEPEXC(".")
+                R_GEEX3020_SCOEXC("20")
+                R_GEEX3020_TRTEXC("2")
+                R_GEEX3020_CODACT(tCODACT) 
+                R_GEEX3020_CODPRO(taCODPRO[nTempNumeroLinha])
+                R_GEEX3020_EDIPRO(taEDIPRO3[nTempNumeroLinha])
+
+                if taEDIPRM3[nTempNumeroLinha] = "S" then
+                    R_GEEX3020_EDIPRM("1")
+                endif
+
+                if taEDIPRM3[nTempNumeroLinha] = "N" then
+                    R_GEEX3020_EDIPRM("0")
+                endif
+
+                R_GEEX3020_EDIQLF("3")
+                R_GEEX3020_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+                nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp   
+            endif
+
+            if length(taEDIPRO4[nTempNumeroLinha]) > 0 then
+                R_GEEX3020_CODEXC("30")
+                R_GEEX3020_SEPEXC(".")
+                R_GEEX3020_SCOEXC("20")
+                R_GEEX3020_TRTEXC("2")
+                R_GEEX3020_CODACT(tCODACT) 
+                R_GEEX3020_CODPRO(taCODPRO[nTempNumeroLinha])
+                R_GEEX3020_EDIPRO(taEDIPRO4[nTempNumeroLinha])
+
+                if taEDIPRM4[nTempNumeroLinha] = "S" then
+                    R_GEEX3020_EDIPRM("1")
+                endif
+
+                if taEDIPRM4[nTempNumeroLinha] = "N" then
+                    R_GEEX3020_EDIPRM("0")
+                endif
+
+                R_GEEX3020_EDIQLF("2")
+                R_GEEX3020_DS1PRO(taDS1PRO[nTempNumeroLinha])
+
+                nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp   
+            endif
+            nTempNumeroLinha++
+    endwhile
+
+    ! 99.00
+        R_GEEX9900_CODEXC("99")
+        R_GEEX9900_SEPEXC(".")
+        R_GEEX9900_SCOEXC("00")
+        R_GEEX9900_EMTEXC("FM")
+        R_GEEX9900_DATEXC(time("now", "%Y%m%d"))
+        R_GEEX9900_HEUEXC(time("now", "%H%M%S"))
+        tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+        R_GEEX9900_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+        flush(0,0,NL) >> tFileOutTemp
+
+ 	! Tratamento final dos arquivos
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+	! Finalizando com TRACE
+		bfMajtrace(	"Recebida" \
+					,"0" \
+					,tNumeroDocumento \
+					,tDataDocumento \
+					,tFileInput \
+					,tFileOut \
+					,tMensagem \
+					,"")
+	
+	! Enviar interface para o cliente
+		bfToInfolog()
+
+	!bfSqlClose(tDbBase)
+
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	exit(0)
+
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus, tError, tNumDoc, tDataDoc, tInput, tFileOut, tTipoDocumento, tMensagemErro)
+    TRACE:=new(build(sHOME, "/trace"))
+    TRACE.ESTADO := tStatus
+    TRACE.ERRO := tError
+    TRACE.DATATRADUCAO := time("now", "%Y-%m-%dT%H:%M:%S")
+    TRACE.PERFIL := tPerfil
+    TRACE.SENTIDO := tSentido
+    TRACE.MENSAGEM := tMensagem
+    TRACE.NUMDOC := time("now", "%Y-%m-%d %H:%M:%S")
+    TRACE.DATDOC := time("now", "%Y-%m-%d")
+    TRACE.MESSAGEID := build(nMessageID:R010)   
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+    TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+    TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID:R06)
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+    
+endfunction
+
+!===========================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileInput \
+                ,tFileOut \
+                ,tMensagem \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+!========================================================================
+
+function bfToInfolog()
+
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+
+endfunction
+
+!===========================================================

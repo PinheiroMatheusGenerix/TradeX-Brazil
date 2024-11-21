@@ -1,0 +1,358 @@
+%@(#) ASP $Id: $
+!===========================================================================================================
+% Fichier         : $RCSfile: UPDATE_DANA_CRNF_IN.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : UPDATE_DANA_CRNF_IN
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/07/06 GMT 1.3 Creation
+!===========================================================================================================
+!
+! UPDATE_DANA_CRNF_IN
+!
+!===========================================================================================================
+
+! Message definition
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "NFOUT_SEMPARAR_IN"
+
+#include "include/generix_func.inc"
+#include "include/NFOUT_SEMPARAR.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	!PROCESS_ERRONEOUS := TRUE
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameGAMAITALY"]
+
+	tDbBase := "FMWMS"
+	tDbUsernameUPDATES	:= taPARAM["WMSDBUSERUPDATES"]
+	tDbPasswordUPDATES	:= taPARAM["WMSDBPASSUPDATES"]
+	tDbUrlUPDATES		:= taPARAM["WMSDBURLUPDATES"]
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase, tDbUsernameUPDATES, tDbPasswordUPDATES, tDbUrlUPDATES) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+	
+	bPrimeiroRegistoCSV := TRUE
+	bPrimeiroLinhaUM := TRUE
+	nSeqCsv := cSeqCsvSignify
+	nMainIndex := 0
+	nCountLine1 := 0
+	nCurrLine := 0
+	
+	tFileOut := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SEM_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+	tFileOutTemp := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SEM_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+	tNameOut := build("I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SEM_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+endbegin
+
+!===========================================================
+line(1:"1")
+	if bPrimeiroLinhaUM = TRUE then
+		bPrimeiroLinhaUM := FALSE
+	else
+		tfRubricas()
+	endif
+
+	nCountLine1++
+	taREFLIV[nCountLine1] := S_1HEADERNF_PEDIDO
+
+	log(NL, "******************* PEDIDO ", taREFLIV[nCountLine1], NL)
+
+	if S_1HEADERNF_CHAVE_NFE <> EMPTY then
+		log("VALOR DO CAMPO CHAVE NÃO É VAZIO!", NL)
+		taVALRUB["*A01"] := build(number(S_1HEADERNF_NUMERO_NF))
+		taVALRUB["NF01"] := S_1HEADERNF_NUMERO_NF
+		taVALRUB["SE01"] := S_1HEADERNF_SERIE_NF
+	else
+		log("VALOR DO CAMPO CHAVE É VAZIO!", NL)
+		taVALRUB["*A01"] := build(number(S_1HEADERNF_NUMERO_NF))
+		taVALRUB["NF01"] := ""
+		taVALRUB["SE01"] := S_1HEADERNF_SERIE_NF
+	endif
+
+	taVALRUB["DT01"] := build(tfConvertDate(S_1HEADERNF_DATA_EMISSAO, "DDMMYYYY", "DD/MM/YYYY"))
+	taVALRUB["VL01"] := build(number(S_1HEADERNF_VALOR_TOT_NF) / 100)
+	taVALRUB["PS01"] := build(number(S_1HEADERNF_PESO_BRUTO) / 1000)
+	taVALRUB["VO01"] := build(number(S_1HEADERNF_QUANT_VOLUME))
+endline
+
+line(1:"9")
+	tfRubricas()
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	bfSqlClose(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+function tfRubricas()
+	if bPrimeiroRegistoCSV = TRUE then
+		bPrimeiroRegistoCSV := FALSE
+		print("NUMLIV;SNULIV;TYPRUB;CODRUB;VALRUB;VALNUM;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTemp
+	endif
+
+	while nCurrLine < nCountLine1 do
+		nCurrLine++
+
+		! QUERY tNUMLIVQur, tSNULIVQur
+			tQuery := build("SELECT  NUMLIV ", NL," "\
+								"   ,SNULIV ", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GELIVE ", NL," "\
+								"WHERE REFLIV = '",taREFLIV[nCurrLine],"' ")
+			
+			log("QUERY-----------------------------------",NL)
+			log(tQuery,NL)	
+			log("----------------------------------------",NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+				tNUMLIVQur := peel(taDb2Array["NUMLIV"]," ")
+				tSNULIVQur := peel(taDb2Array["SNULIV"]," ")
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY tNUMLIVQur, tSNULIVQur
+
+		bTemNF1 := FALSE
+		bTemNF2 := FALSE
+		bTemNF3 := FALSE
+
+		TRACE := find(build(sHOME,"/trace"),NUMDOC=taREFLIV[nCurrLine],MENSAGEM="NF",PERFIL="SEM PARAR",LIBEXC="NF1")
+
+		if valid(TRACE) then
+			bTemNF1 := TRUE
+			tNF01 := TRACE.DATDOC
+			log("JÁ EXISTE A NF1!", NL)
+		endif
+
+		TRACE := find(build(sHOME,"/trace"),NUMDOC=taREFLIV[nCurrLine],MENSAGEM="NF",PERFIL="SEM PARAR",LIBEXC="NF2")
+		
+		if valid(TRACE) then
+			bTemNF2 := TRUE
+			tNF02 := TRACE.DATDOC
+			log("JÁ EXISTE A NF2!", NL)
+		endif
+		
+		TRACE := find(build(sHOME,"/trace"),NUMDOC=taREFLIV[nCurrLine],MENSAGEM="NF",PERFIL="SEM PARAR",LIBEXC="NF3")
+		
+		if valid(TRACE) then
+			bTemNF3 := TRUE
+			tNF03 := TRACE.DATDOC
+			log("JÁ EXISTE A NF3!", NL)
+		endif
+
+		if bTemNF1 = FALSE then !CADASTRA NF01
+			tLIBEXC := "NF1"
+
+			bfCriaRubricaGELIRUB("*A01", \
+									taVALRUB["*A01"])
+
+			bfCriaRubricaGELIRUB("SE01", \
+									taVALRUB["SE01"])
+
+			bfCriaRubricaGELIRUB("NF01", \
+									taVALRUB["NF01"])
+
+			bfCriaRubricaGELIRUB("DT01", \
+									taVALRUB["DT01"])
+
+			bfCriaRubricaGELIRUB("VL01", \
+									taVALRUB["VL01"])
+
+			bfCriaRubricaGELIRUB("VO01", \
+									taVALRUB["VO01"])
+
+			bfCriaRubricaGELIRUB("PS01", \
+									taVALRUB["PS01"])
+		else
+			if bTemNF1 = TRUE and bTemNF2 = FALSE then !CADASTRA NF02
+				tLIBEXC := "NF2"
+
+				bfCriaRubricaGELIRUB("*A01", \
+										build(tNF01,",",taVALRUB["*A01"]))
+
+				bfCriaRubricaGELIRUB("SE02", \
+										taVALRUB["SE01"])
+
+				bfCriaRubricaGELIRUB("NF02", \
+										taVALRUB["NF01"])
+
+				bfCriaRubricaGELIRUB("DT02", \
+										taVALRUB["DT01"])
+
+				bfCriaRubricaGELIRUB("VL02", \
+										taVALRUB["VL01"])
+
+				bfCriaRubricaGELIRUB("VO02", \
+										taVALRUB["VO01"])
+
+				bfCriaRubricaGELIRUB("PS02", \
+										taVALRUB["PS01"])
+			else 
+				if bTemNF1 = TRUE and bTemNF2 = TRUE then !CADASTRA NF03
+					tLIBEXC := "NF3"
+
+					bfCriaRubricaGELIRUB("*A01", \
+											build(tNF01,",",tNF02,",",taVALRUB["*A01"]))
+
+					bfCriaRubricaGELIRUB("SE03", \
+											taVALRUB["SE01"])
+
+					bfCriaRubricaGELIRUB("NF03", \
+											taVALRUB["NF01"])
+
+					bfCriaRubricaGELIRUB("DT03", \
+											taVALRUB["DT01"])
+
+					bfCriaRubricaGELIRUB("VL03", \
+											taVALRUB["VL01"])
+
+					bfCriaRubricaGELIRUB("VO03", \
+											taVALRUB["VO01"])
+
+					bfCriaRubricaGELIRUB("PS03", \
+											taVALRUB["PS01"])
+				endif
+			endif 
+		endif
+
+		log("*************** FIM PEDIDO ", taREFLIV[nCurrLine], NL)
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida","0",taREFLIV[nCurrLine],taVALRUB["NF01"],tFileInput,tFileOut,"NF","")
+	endwhile
+endfunction
+
+!===========================================================
+
+function bfCriaRubricaGELIRUB(tCODRUB_FUNC, tVALRUB_FUNC)
+	tNUMLIVCSV := tNUMLIVQur
+	tSNULIVCSV := tSNULIVQur
+	tTYPRUBCSV := "2"
+	tCODRUBCSV := tCODRUB_FUNC
+	tVALRUBCSV := tVALRUB_FUNC
+	tVALNUMCSV := ""
+	tDISPOCSV  := ""
+	tMAJCRECSV := time("now" ,"%Y%m%d")
+	tMAJDATCSV := time("now" ,"%Y%m%d")
+	tMAJHMSCSV := time("now" ,"%H%M%S")
+	tMAJPGMCSV := "GEPR1RUB2"
+	tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+	tMAJECRCSV := "QPADEV001"
+
+	print(tNUMLIVCSV,";", \
+			tSNULIVCSV,";", \
+			tTYPRUBCSV,";", \
+			tCODRUBCSV,";", \
+			tVALRUBCSV,";", \
+			tVALNUMCSV,";", \
+			tDISPOCSV,";", \
+			tMAJCRECSV,";", \
+			tMAJDATCSV,";", \
+			tMAJHMSCSV,";", \
+			tMAJPGMCSV,";", \
+			tMAJUTICSV,";", \
+			tMAJECRCSV,";", NL) >> tFileOutTemp
+endfunction
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "SEM PARAR"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.LIBEXC := tLIBEXC
+
+	SYSLOG.REFERENCE := tNumDoc
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+
+	flush(TRACE)
+endfunction

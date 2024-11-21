@@ -1,0 +1,90 @@
+%@(#)  TESTE.rte     modif:01-12-2017
+!==============================================================================
+% File          : TESTE.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../local" LOCAL
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "TESTE"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	tFileOut := build(sHOME, "/EmailsAEnviar/Arquivos",time("now","%Y.%m.%d-%H:%M:%S"),".txt")
+	tNameOut := build("Arquivos",time("now","%Y.%m.%d-%H:%M:%S"),".txt")
+
+    tCommand := build("find ~/inbox/ -cmin -60 > ", tFileOut)
+    system(tCommand)
+
+    tLine := read(tFileOut)
+    nCount := 0
+    while tLine <> EOF do
+        nCount++
+        if nCount > 1 then
+            remove(tLine)
+        endif
+        tLine := read(tFileOut)
+    endwhile
+
+    close(tFileOut)
+
+    remove(tArquivoEmail)
+    tArquivoEmail := build(sHOME,"/EmailsAEnviar/GNX_",tNameOut)
+    copy(tFileOut,tArquivoEmail)
+    close(tFileOut)
+    close(tArquivoEmail)
+
+    tEnviaEmail := build("edisend EMAIL.SUBJECT=Arquivos bloqueados TradeX FM EMAIL.NAME=",tNameOut," DeleteFile ", tArquivoEmail)
+    nRet := system(tEnviaEmail)
+    close(tArquivoEmail)				
+    remove(tFileOut)
+    remove(tArquivoEmail)
+
+    ! tSubjectEmail := build("Arquivos bloqueados TradeX FM")
+    ! tNameEMAIL := build("Arquivos",time("now","%Y.%m.%d-%H:%M:%S"),".txt")
+    ! tCmdEmailErro := build("edisend EMAIL.SUBJECT=",tSubjectEmail," EMAIL.NAME=",tNameEMAIL," Email_Relatorio ", tFile)
+    ! log("executing command ",tCmdEmailErro,NL)
+    ! nRet := system(tCmdEmailErro)
+    ! close(tArquivoEmail)				
+    ! remove(tArquivoEmail)
+
+    exit(0)
+endbegin
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+
+endend
+
+!===========================================================

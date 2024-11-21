@@ -1,0 +1,664 @@
+all:$(HOME)/bin/M30_Loreal_CSV $(HOME)/bin/nfeProc $(HOME)/bin/M10_MAKRO_ASCII_IN $(HOME)/bin/M30_MAKRO_ASCII_IN $(HOME)/bin/M40_MAKRO_ASCII_IN $(HOME)/bin/M40_LOREAL_CSV_IN $(HOME)/bin/M50_LOREAL_CSV_IN $(HOME)/bin/M41_MAKRO_ASCII_OUT $(HOME)/bin/InfologDischarge $(HOME)/bin/teste $(HOME)/bin/Notifier $(HOME)/bin/M50_MAKRO_CSV_IN $(HOME)/bin/M53_MAKRO_ASCII_OUT $(HOME)/bin/M90_MAKRO_ASCII_OUT $(HOME)/bin/M30_BARCOM_MAKRO_ASCII_IN $(HOME)/bin/Querytest $(HOME)/bin/KeepOriginalAs2ProxyFilename $(HOME)/bin/FM_CUBISCAN_ASCII_IN $(HOME)/bin/M62_MAKRO_CSV_IN $(HOME)/bin/M80_MAKRO_ASCII_OUT $(HOME)/bin/M51_LOREAL_PED_CSV $(HOME)/bin/ERROR_X7_MAKRO $(HOME)/bin/M40_CANCELAMENTO_DEV_MAKRO_CSV_IN $(HOME)/bin/AS2ProxyDelFile $(HOME)/bin/FM_BILLING_XML_OUT $(HOME)/bin/M30_LOREAL_IDOC_IN $(HOME)/bin/FM_IDOCS_FROM_LOREAL_PREPROC $(HOME)/bin/M40_LOREAL_IDOC_IN $(HOME)/bin/M41_LOREAL_IDOC_OUT $(HOME)/bin/M90_LOREAL_IDOC_OUT $(HOME)/bin/M30_Coty_CSV $(HOME)/bin/M40_DEV_120_130_MAKRO_CSV_IN $(HOME)/bin/M40_COTY_CSV_IN $(HOME)/bin/M50_COTY_CSV_IN $(HOME)/bin/AS2ProxyDelFileAndCopyToMakro $(HOME)/bin/M50_LOREAL_IDOC_IN $(HOME)/bin/RenvM62Quarentena $(HOME)/bin/EnviaMail62Sucesso $(HOME)/bin/M06_LOREAL_IDOC_IN $(HOME)/bin/M62_MAKRO_CSV_IN_PRE_PROCESSAMENTO $(HOME)/bin/M80_LOREAL_ASCII_OUT $(HOME)/bin/M40_M50_M44_ASCII_IN $(HOME)/bin/KeepOriginalFilenameBypassXMS $(HOME)/bin/M51_LOREAL_PED_CSV_COPACK $(HOME)/bin/M30_Loreal_UNIVERSAL_CSV $(HOME)/bin/M51_preprocessamento $(HOME)/bin/M06_LOREAL_CSV_QUALIDADE_IN $(HOME)/bin/M06_LOREAL_CSV_EXPEDICAO_IN $(HOME)/bin/M80_COTY_SAP_XML_OUT $(HOME)/bin/M41_COTY_SAP_XML_OUT $(HOME)/bin/M30_COTY_SAP_XML_IN $(HOME)/bin/M40_COTY_SAP_XML_IN $(HOME)/bin/M50_COTY_SAP_XML_IN $(HOME)/bin/M06_COTY_SAP_XML_IN $(HOME)/bin/M97_COTY_SAP_XML_OUT $(HOME)/bin/M44_LOREAL_COPACK_TXTABLE_OUT $(HOME)/bin/Purge $(HOME)/bin/PurgeSYSLOG $(HOME)/bin/IMPfmbrasil_copackloreal $(HOME)/bin/M30_GAMAITALY_UNIVERSAL_CSV $(HOME)/bin/M40_GAMAITALY_ASCII_IN  $(HOME)/bin/M50_GAMAITALY_ASCII_IN $(HOME)/bin/M41_GAMAITALY_OUT $(HOME)/bin/M40_M50_NFE_GAMAITALY_XML_IN $(HOME)/bin/M50_GAMAITALY_CSV_IN $(HOME)/bin/M97_GAMAITALY_OUT $(HOME)/bin/M40_GAMAITALY_CSV_CONSOLIDACAO_IN $(HOME)/bin/M30_LOREAL_IDOC_IN_PREPROCESS $(HOME)/bin/SendM97_COTY_ORDER $(HOME)/bin/M51_GAMAITALY_PED_CSV $(HOME)/bin/M80_GAMAITALY_ASCII_OUT $(HOME)/bin/M90_GAMAITALY_ASCII_OUT $(HOME)/bin/ImportaTabelaGamaAjusteEstoque $(HOME)/bin/M97_MAKRO_ASCII_OUT $(HOME)/bin/M40_M50_NFE_DIVERS_XML_IN $(HOME)/bin/M41_DIVERS_OUT $(HOME)/bin/M50_SISLEY_ASCII_IN $(HOME)/bin/M80_DIVERS_ASCII_OUT $(HOME)/bin/M51_DIVERS_PED_CSV $(HOME)/bin/M97_DIVERS_OUT $(HOME)/bin/M90_DIVERS_ASCII_OUT $(HOME)/bin/M30_FGE50FMXTJ_UNIVERSAL_CSV $(HOME)/bin/M40_NFE_FGE50FMXTJ_XML_IN $(HOME)/bin/M50_FGE50FMXTJ_ASCII_IN $(HOME)/bin/M97_FGE50FMXTJ_OUT $(HOME)/bin/M90_FGE50FMXTJ_ASCII_OUT $(HOME)/bin/M41_FGE50FMXTJ_OUT $(HOME)/bin/M30_HASBRO_CRMAT_IN $(HOME)/bin/M40_HASBRO_ASCII_IN $(HOME)/bin/M41_HASBRO_OUT $(HOME)/bin/M40_HASBRO_CSV_CONSOLIDACAO_IN $(HOME)/bin/M50_HASBRO_ASCII_IN $(HOME)/bin/M50_JAMBO_CSV_IN $(HOME)/bin/M97_HASBRO_ASCII_OUT $(HOME)/bin/UPDATE_HASBRO_CRNF_IN $(HOME)/bin/M90_HASBRO_ASCII_OUT $(HOME)/bin/M40_M50_M06_HASBRO_CSV_IN $(HOME)/bin/HASBRO_CSV_M15_CSV_IN $(HOME)/bin/Reprocess_UPDATE_HASBRO_CRNF_IN $(HOME)/bin/M40_SIGNIFY_CSV_IN $(HOME)/bin/M41_SIGNIFY_OUT $(HOME)/bin/KeepOriginalFilenameWMSToSentinel $(HOME)/bin/KeepOriginalFilenameSentinelToWMS $(HOME)/bin/M50_SIGNIFY_CSV_IN $(HOME)/bin/M51_SIGNIFY_ASCII_OUT $(HOME)/bin/M90_SIGNIFY_ASCII_OUT $(HOME)/bin/M97_SIGNIFY_ASCII_OUT $(HOME)/bin/UPDATE_SIGNIFY_CRNF_IN $(HOME)/bin/M40_HABRO_CSV_IN $(HOME)/bin/RoutingMailLoreal $(HOME)/bin/M40_NFE_LOREAL_XML_IN $(HOME)/bin/NFE_ROUTING_XML_IN $(HOME)/bin/M50_CGP_CSV_IN $(HOME)/bin/M40_DIVERS_RECEBFM_CSV_IN $(HOME)/bin/M40_DANA_ASCII_IN $(HOME)/bin/M40_DANA_CSV_IN $(HOME)/bin/M41_DANA_OUT $(HOME)/bin/M50_DANA_ASCII_IN $(HOME)/bin/M50_DANA_CSV_IN $(HOME)/bin/M90_DANA_ASCII_OUT $(HOME)/bin/M97_DANA_ASCII_OUT $(HOME)/bin/M51_DANA_ASCII_OUT $(HOME)/bin/UPDATE_DANA_CRNF_IN $(HOME)/bin/M40_HARMAN_CSV_IN $(HOME)/bin/M50_HARMAN_CSV_IN $(HOME)/bin/M40_HARMAN_ASCII_IN $(HOME)/bin/M50_HARMAN_ASCII_IN $(HOME)/bin/M80_HARMAN_ASCII_OUT $(HOME)/bin/M41_HARMAN_OUT $(HOME)/bin/M51_HARMAN_OUT $(HOME)/bin/M97_HARMAN_OUT $(HOME)/bin/M90_HARMAN_ASCII_OUT $(HOME)/bin/CONF_SERIE_HARMAN_OUT $(HOME)/bin/INFORM_TRANSP_HARMAN_OUT $(HOME)/bin/M30_MAPPED_IN $(HOME)/bin/M40_MAPED_ASCII_IN $(HOME)/bin/M40_MAPED_CSV_IN $(HOME)/bin/M50_MAPED_CSV_IN $(HOME)/bin/M41_MAPED_OUT $(HOME)/bin/M50_MAPED_ASCII_IN $(HOME)/bin/M97_MAPED_ASCII_OUT $(HOME)/bin/M90_MAPED_ASCII_OUT $(HOME)/bin/UPDATE_MAPED_CRNF_IN $(HOME)/bin/M80_MAPED_ASCII_OUT $(HOME)/bin/M41_HENKEL_OUT $(HOME)/bin/M40_HENKEL_CSV_IN $(HOME)/bin/M50_HENKEL_CSV_IN $(HOME)/bin/M80_HENKEL_ASCII_OUT $(HOME)/bin/M90_HENKEL_ASCII_OUT $(HOME)/bin/M30_HENKEL_CSV $(HOME)/bin/M06_HENKEL_CSV_IN $(HOME)/bin/M40_NFE_HENKEL_XML_IN $(HOME)/bin/M97_HENKEL_OUT $(HOME)/webservices/GetFullCommerceFile $(HOME)/bin/M40_M50_HARMAN_XML_IN $(HOME)/bin/M40_TOPCAU_CSV_IN $(HOME)/bin/M40_NFE_TOPCAU_XML_IN $(HOME)/bin/M50_TOPCAU_CSV_IN $(HOME)/bin/M90_TOPCAU_ASCII_OUT	$(HOME)/bin/M93_CDCJ_OUT $(HOME)/bin/M90_CDCJ_OUT
+
+
+
+
+$(HOME)/bin/M30_Loreal_CSV:M30_Loreal_CSV.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_Loreal_CSV M30_Loreal_CSV.rte
+
+
+$(HOME)/bin/nfeProc:nfeProc.rte 
+	mktr -X -Cm32 nfeProc.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/nfeProc
+	
+$(HOME)/bin/Querytest:Querytest.rte 
+	mktr -X -Cm32 Querytest.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/Querytest
+	
+
+$(HOME)/bin/M10_MAKRO_ASCII_IN:M10_MAKRO_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M10_MAKRO_ASCII_IN M10_MAKRO_ASCII_IN.rte
+	
+
+$(HOME)/bin/M30_MAKRO_ASCII_IN:M30_MAKRO_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_MAKRO_ASCII_IN M30_MAKRO_ASCII_IN.rte
+
+	
+	
+$(HOME)/bin/M30_BARCOM_MAKRO_ASCII_IN:M30_BARCOM_MAKRO_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_BARCOM_MAKRO_ASCII_IN M30_BARCOM_MAKRO_ASCII_IN.rte
+
+
+$(HOME)/bin/M40_MAKRO_ASCII_IN:M40_MAKRO_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M40_MAKRO_ASCII_IN M40_MAKRO_ASCII_IN.rte
+
+	
+$(HOME)/bin/M40_LOREAL_CSV_IN:M40_LOREAL_CSV_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M40_LOREAL_CSV_IN M40_LOREAL_CSV_IN.rte
+	
+
+$(HOME)/bin/M40_M50_M44_ASCII_IN:M40_M50_M44_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M40_M50_M44_ASCII_IN M40_M50_M44_ASCII_IN.rte
+	
+
+$(HOME)/bin/M50_LOREAL_CSV_IN:M50_LOREAL_CSV_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M50_LOREAL_CSV_IN M50_LOREAL_CSV_IN.rte
+	
+
+
+	
+$(HOME)/bin/M41_MAKRO_ASCII_OUT:M41_MAKRO_ASCII_OUT.rte 
+	mktr -X -Cm32 M41_MAKRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_MAKRO_ASCII_OUT
+	
+	
+$(HOME)/bin/InfologDischarge:InfologDischarge.rte
+	mktr -Cm32 -o $(HOME)/bin/InfologDischarge InfologDischarge.rte
+	
+	
+	
+$(HOME)/bin/teste:teste.rte
+	mktr -Cm32 -o $(HOME)/bin/teste teste.rte
+	
+	
+$(HOME)/bin/Notifier:Notifier.rte
+	mktr -Cm32 -o $(HOME)/bin/Notifier Notifier.rte
+	
+	
+$(HOME)/bin/M50_MAKRO_CSV_IN:M50_MAKRO_CSV_IN.rte 
+	mktr -X -Cm32 M50_MAKRO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_MAKRO_CSV_IN
+
+	
+	
+	
+	
+	
+
+$(HOME)/bin/M53_MAKRO_ASCII_OUT:M53_MAKRO_ASCII_OUT.rte 
+	mktr -X -Cm32 M53_MAKRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M53_MAKRO_ASCII_OUT	
+	
+	
+	
+$(HOME)/bin/M90_MAKRO_ASCII_OUT:M90_MAKRO_ASCII_OUT.rte 
+	mktr -X -Cm32 M90_MAKRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_MAKRO_ASCII_OUT
+
+	
+	
+$(HOME)/bin/KeepOriginalAs2ProxyFilename:KeepOriginalAs2ProxyFilename.rte
+	mktr -Cm32 -o $(HOME)/bin/KeepOriginalAs2ProxyFilename KeepOriginalAs2ProxyFilename.rte
+
+	
+
+$(HOME)/bin/KeepOriginalFilenameBypassXMS:KeepOriginalFilenameBypassXMS.rte
+	mktr -Cm32 -o $(HOME)/bin/KeepOriginalFilenameBypassXMS KeepOriginalFilenameBypassXMS.rte
+
+	
+$(HOME)/bin/FM_CUBISCAN_ASCII_IN:FM_CUBISCAN_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/FM_CUBISCAN_ASCII_IN FM_CUBISCAN_ASCII_IN.rte
+	
+$(HOME)/bin/M62_MAKRO_CSV_IN:M62_MAKRO_CSV_IN.rte 
+	mktr -X -Cm32 M62_MAKRO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M62_MAKRO_CSV_IN
+
+	
+	
+$(HOME)/bin/M80_MAKRO_ASCII_OUT:M80_MAKRO_ASCII_OUT.rte 
+	mktr -X -Cm32 M80_MAKRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_MAKRO_ASCII_OUT
+
+
+$(HOME)/bin/M51_LOREAL_PED_CSV:M51_LOREAL_PED_CSV.rte 
+	mktr -X -Cm32 M51_LOREAL_PED_CSV.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_LOREAL_PED_CSV
+	
+$(HOME)/bin/M51_GAMAITALY_PED_CSV:M51_GAMAITALY_PED_CSV.rte 
+	mktr -X -Cm32 M51_GAMAITALY_PED_CSV.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_GAMAITALY_PED_CSV		
+	
+	
+	
+$(HOME)/bin/M51_LOREAL_PED_CSV_COPACK:M51_LOREAL_PED_CSV_COPACK.rte 
+	mktr -X -Cm32 M51_LOREAL_PED_CSV_COPACK.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_LOREAL_PED_CSV_COPACK
+	
+	
+	
+$(HOME)/bin/ERROR_X7_MAKRO:ERROR_X7_MAKRO.rte 
+	mktr -X -Cm32 ERROR_X7_MAKRO.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/ERROR_X7_MAKRO
+
+$(HOME)/bin/M40_CANCELAMENTO_DEV_MAKRO_CSV_IN:M40_CANCELAMENTO_DEV_MAKRO_CSV_IN.rte 
+	mktr -X -Cm32 M40_CANCELAMENTO_DEV_MAKRO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_CANCELAMENTO_DEV_MAKRO_CSV_IN	
+	
+$(HOME)/bin/M40_DEV_120_130_MAKRO_CSV_IN:M40_DEV_120_130_MAKRO_CSV_IN.rte 
+	mktr -X -Cm32 M40_DEV_120_130_MAKRO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_DEV_120_130_MAKRO_CSV_IN	
+
+$(HOME)/bin/AS2ProxyDelFile:AS2ProxyDelFile.rte
+	mktr -Cm32 -o $(HOME)/bin/AS2ProxyDelFile AS2ProxyDelFile.rte
+	
+$(HOME)/bin/FM_BILLING_XML_OUT:FM_BILLING_XML_OUT.rte 
+	mktr -X -Cm32 FM_BILLING_XML_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/FM_BILLING_XML_OUT
+	
+	
+$(HOME)/bin/M30_LOREAL_IDOC_IN:M30_LOREAL_IDOC_IN.rte 
+	mktr -Cm32 M30_LOREAL_IDOC_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M30_LOREAL_IDOC_IN
+
+
+
+$(HOME)/bin/M30_LOREAL_IDOC_IN_PREPROCESS:M30_LOREAL_IDOC_IN_PREPROCESS.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_LOREAL_IDOC_IN_PREPROCESS M30_LOREAL_IDOC_IN_PREPROCESS.rte	
+	
+	
+
+$(HOME)/bin/FM_IDOCS_FROM_LOREAL_PREPROC:FM_IDOCS_FROM_LOREAL_PREPROC.rte
+	mktr -Cm32 -o $(HOME)/bin/FM_IDOCS_FROM_LOREAL_PREPROC FM_IDOCS_FROM_LOREAL_PREPROC.rte
+	
+	
+$(HOME)/bin/M40_LOREAL_IDOC_IN:M40_LOREAL_IDOC_IN.rte 
+	mktr -X -Cm32 M40_LOREAL_IDOC_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_LOREAL_IDOC_IN
+
+
+
+	
+
+$(HOME)/bin/M41_LOREAL_IDOC_OUT:M41_LOREAL_IDOC_OUT.rte 
+	mktr -X -Cm32 M41_LOREAL_IDOC_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_LOREAL_IDOC_OUT
+	
+	
+$(HOME)/bin/M90_LOREAL_IDOC_OUT:M90_LOREAL_IDOC_OUT.rte 
+	mktr -X -Cm32 M90_LOREAL_IDOC_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_LOREAL_IDOC_OUT	
+	
+
+$(HOME)/bin/M30_Coty_CSV:M30_Coty_CSV.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_Coty_CSV M30_Coty_CSV.rte	
+	
+	
+
+$(HOME)/bin/M40_COTY_CSV_IN:M40_COTY_CSV_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M40_COTY_CSV_IN M40_COTY_CSV_IN.rte
+	
+
+$(HOME)/bin/M50_COTY_CSV_IN:M50_COTY_CSV_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M50_COTY_CSV_IN M50_COTY_CSV_IN.rte
+
+	
+	
+$(HOME)/bin/AS2ProxyDelFileAndCopyToMakro:AS2ProxyDelFileAndCopyToMakro.rte
+	mktr -Cm32 -o $(HOME)/bin/AS2ProxyDelFileAndCopyToMakro AS2ProxyDelFileAndCopyToMakro.rte
+
+
+
+
+$(HOME)/bin/M50_LOREAL_IDOC_IN:M50_LOREAL_IDOC_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M50_LOREAL_IDOC_IN M50_LOREAL_IDOC_IN.rte
+
+
+	
+$(HOME)/bin/RenvM62Quarentena:RenvM62Quarentena.rte
+	mktr -Cm32 -o $(HOME)/bin/RenvM62Quarentena RenvM62Quarentena.rte
+	
+	
+$(HOME)/bin/EnviaMail62Sucesso:EnviaMail62Sucesso.rte 
+	mktr -X -Cm32 EnviaMail62Sucesso.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/EnviaMail62Sucesso
+
+
+$(HOME)/bin/M06_LOREAL_IDOC_IN:M06_LOREAL_IDOC_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M06_LOREAL_IDOC_IN M06_LOREAL_IDOC_IN.rte
+
+
+
+$(HOME)/bin/M62_MAKRO_CSV_IN_PRE_PROCESSAMENTO:M62_MAKRO_CSV_IN_PRE_PROCESSAMENTO.rte 
+	mktr -X -Cm32 M62_MAKRO_CSV_IN_PRE_PROCESSAMENTO.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M62_MAKRO_CSV_IN_PRE_PROCESSAMENTO
+
+$(HOME)/bin/M80_LOREAL_ASCII_OUT:M80_LOREAL_ASCII_OUT.rte 
+	mktr -X -Cm32 M80_LOREAL_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_LOREAL_ASCII_OUT
+
+	
+
+$(HOME)/bin/M30_Loreal_UNIVERSAL_CSV:M30_Loreal_UNIVERSAL_CSV.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_Loreal_UNIVERSAL_CSV M30_Loreal_UNIVERSAL_CSV.rte
+
+	
+
+
+
+$(HOME)/bin/M51_preprocessamento:M51_preprocessamento.rte
+	mktr -Cm32 -o $(HOME)/bin/M51_preprocessamento M51_preprocessamento.rte
+	
+
+
+$(HOME)/bin/M06_LOREAL_CSV_QUALIDADE_IN:M06_LOREAL_CSV_QUALIDADE_IN.rte 
+	mktr -X -Cm32 M06_LOREAL_CSV_QUALIDADE_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M06_LOREAL_CSV_QUALIDADE_IN
+	
+	
+$(HOME)/bin/M06_LOREAL_CSV_EXPEDICAO_IN:M06_LOREAL_CSV_EXPEDICAO_IN.rte 
+	mktr -X -Cm32 M06_LOREAL_CSV_EXPEDICAO_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M06_LOREAL_CSV_EXPEDICAO_IN
+	
+$(HOME)/bin/M41_COTY_SAP_XML_OUT:M41_COTY_SAP_XML_OUT.rte 
+	mktr -X -Cm32 M41_COTY_SAP_XML_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_COTY_SAP_XML_OUT
+
+
+	
+$(HOME)/bin/M80_COTY_SAP_XML_OUT:M80_COTY_SAP_XML_OUT.rte 
+	mktr -X -Cm32 M80_COTY_SAP_XML_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_COTY_SAP_XML_OUT
+
+	
+	
+	
+$(HOME)/bin/M30_COTY_SAP_XML_IN:M30_COTY_SAP_XML_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M30_COTY_SAP_XML_IN M30_COTY_SAP_XML_IN.rte
+
+	
+$(HOME)/bin/M40_COTY_SAP_XML_IN:M40_COTY_SAP_XML_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M40_COTY_SAP_XML_IN M40_COTY_SAP_XML_IN.rte
+	
+$(HOME)/bin/M50_COTY_SAP_XML_IN:M50_COTY_SAP_XML_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M50_COTY_SAP_XML_IN M50_COTY_SAP_XML_IN.rte
+	
+	
+$(HOME)/bin/M06_COTY_SAP_XML_IN:M06_COTY_SAP_XML_IN.rte 
+	mktr -X -Cm32 M06_COTY_SAP_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M06_COTY_SAP_XML_IN
+	
+	
+
+	
+$(HOME)/bin/M97_COTY_SAP_XML_OUT:M97_COTY_SAP_XML_OUT.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M97_COTY_SAP_XML_OUT M97_COTY_SAP_XML_OUT.rte	
+	
+$(HOME)/bin/SendM97_COTY_ORDER:SendM97_COTY_ORDER.rte
+	mktr -X -Cm32 -o $(HOME)/bin/SendM97_COTY_ORDER SendM97_COTY_ORDER.rte
+
+	
+	
+	
+$(HOME)/bin/M44_LOREAL_COPACK_TXTABLE_OUT:M44_LOREAL_COPACK_TXTABLE_OUT.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M44_LOREAL_COPACK_TXTABLE_OUT M44_LOREAL_COPACK_TXTABLE_OUT.rte
+	
+	
+$(HOME)/bin/Purge:Purge.rte
+	mktr -X -Cm32 -o $(HOME)/bin/Purge Purge.rte
+	
+$(HOME)/bin/PurgeSYSLOG:PurgeSYSLOG.rte
+	mktr -X -Cm32 -o $(HOME)/bin/PurgeSYSLOG PurgeSYSLOG.rte
+	
+	
+	
+$(HOME)/bin/IMPfmbrasil_copackloreal:IMPfmbrasil_copackloreal.rte
+	mktr -X -Cm32 -o $(HOME)/bin/IMPfmbrasil_copackloreal IMPfmbrasil_copackloreal.rte
+
+$(HOME)/bin/M30_GAMAITALY_UNIVERSAL_CSV:M30_GAMAITALY_UNIVERSAL_CSV.rte
+	mktr -Cm32 -o $(HOME)/bin/M30_GAMAITALY_UNIVERSAL_CSV M30_GAMAITALY_UNIVERSAL_CSV.rte
+
+
+	
+$(HOME)/bin/M40_GAMAITALY_ASCII_IN:M40_GAMAITALY_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M40_GAMAITALY_ASCII_IN M40_GAMAITALY_ASCII_IN.rte
+	
+	
+	
+	
+$(HOME)/bin/M50_GAMAITALY_ASCII_IN:M50_GAMAITALY_ASCII_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M50_GAMAITALY_ASCII_IN M50_GAMAITALY_ASCII_IN.rte
+	
+
+	
+$(HOME)/bin/M41_GAMAITALY_OUT:M41_GAMAITALY_OUT.rte 
+	mktr -X -Cm32 M41_GAMAITALY_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_GAMAITALY_OUT
+	
+	
+	
+$(HOME)/bin/M40_M50_NFE_GAMAITALY_XML_IN:M40_M50_NFE_GAMAITALY_XML_IN.rte 
+	mktr -X -Cm32 M40_M50_NFE_GAMAITALY_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_M50_NFE_GAMAITALY_XML_IN
+	
+	
+	
+
+	
+	
+$(HOME)/bin/M50_GAMAITALY_CSV_IN:M50_GAMAITALY_CSV_IN.rte 
+	mktr -X -Cm32 M50_GAMAITALY_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_GAMAITALY_CSV_IN
+	
+	
+$(HOME)/bin/M97_GAMAITALY_OUT:M97_GAMAITALY_OUT.rte 
+	mktr -X -Cm32 M97_GAMAITALY_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_GAMAITALY_OUT
+	
+	
+
+$(HOME)/bin/M40_GAMAITALY_CSV_CONSOLIDACAO_IN:M40_GAMAITALY_CSV_CONSOLIDACAO_IN.rte
+	mktr -Cm32 -o $(HOME)/bin/M40_GAMAITALY_CSV_CONSOLIDACAO_IN M40_GAMAITALY_CSV_CONSOLIDACAO_IN.rte
+	
+	
+$(HOME)/bin/M80_GAMAITALY_ASCII_OUT:M80_GAMAITALY_ASCII_OUT.rte 
+	mktr -X -Cm32 M80_GAMAITALY_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_GAMAITALY_ASCII_OUT
+	
+
+	
+$(HOME)/bin/M90_GAMAITALY_ASCII_OUT:M90_GAMAITALY_ASCII_OUT.rte 
+	mktr -X -Cm32 M90_GAMAITALY_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_GAMAITALY_ASCII_OUT
+	
+	
+	
+$(HOME)/bin/ImportaTabelaGamaAjusteEstoque:ImportaTabelaGamaAjusteEstoque.rte
+	mktr -Cm32 -o $(HOME)/bin/ImportaTabelaGamaAjusteEstoque ImportaTabelaGamaAjusteEstoque.rte
+	
+	
+	
+$(HOME)/bin/M97_MAKRO_ASCII_OUT:M97_MAKRO_ASCII_OUT.rte 
+	mktr -X -Cm32 M97_MAKRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_MAKRO_ASCII_OUT
+	
+		
+
+$(HOME)/bin/M40_M50_NFE_DIVERS_XML_IN:M40_M50_NFE_DIVERS_XML_IN.rte 
+	mktr -X -Cm32 M40_M50_NFE_DIVERS_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_M50_NFE_DIVERS_XML_IN
+	
+
+
+$(HOME)/bin/M41_DIVERS_OUT:M41_DIVERS_OUT.rte 
+	mktr -X -Cm32 M41_DIVERS_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_DIVERS_OUT
+	
+
+$(HOME)/bin/M50_SISLEY_ASCII_IN:M50_SISLEY_ASCII_IN.rte 
+	mktr -Cm32 M50_SISLEY_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_SISLEY_ASCII_IN
+	
+
+$(HOME)/bin/M80_DIVERS_ASCII_OUT:M80_DIVERS_ASCII_OUT.rte 
+	mktr -X -Cm32 M80_DIVERS_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_DIVERS_ASCII_OUT
+	
+
+	
+$(HOME)/bin/M51_DIVERS_PED_CSV:M51_DIVERS_PED_CSV.rte
+	mktr -X -Cm32 M51_DIVERS_PED_CSV.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_DIVERS_PED_CSV
+	
+	
+	
+$(HOME)/bin/M97_DIVERS_OUT:M97_DIVERS_OUT.rte
+	mktr -X -Cm32 M97_DIVERS_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_DIVERS_OUT
+	
+	
+$(HOME)/bin/M90_DIVERS_ASCII_OUT:M90_DIVERS_ASCII_OUT.rte
+	mktr -Cm32 M90_DIVERS_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_DIVERS_ASCII_OUT
+	
+	
+	
+	
+	 
+	 
+$(HOME)/bin/M30_FGE50FMXTJ_UNIVERSAL_CSV:M30_FGE50FMXTJ_UNIVERSAL_CSV.rte
+	mktr -Cm32 M30_FGE50FMXTJ_UNIVERSAL_CSV.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M30_FGE50FMXTJ_UNIVERSAL_CSV
+	
+	
+$(HOME)/bin/M40_NFE_FGE50FMXTJ_XML_IN:M40_NFE_FGE50FMXTJ_XML_IN.rte
+	mktr -X -Cm32 M40_NFE_FGE50FMXTJ_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_NFE_FGE50FMXTJ_XML_IN
+	
+	
+	
+$(HOME)/bin/M50_FGE50FMXTJ_ASCII_IN:M50_FGE50FMXTJ_ASCII_IN.rte
+	mktr -Cm32 M50_FGE50FMXTJ_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_FGE50FMXTJ_ASCII_IN
+	
+	
+$(HOME)/bin/M97_FGE50FMXTJ_OUT:M97_FGE50FMXTJ_OUT.rte
+	mktr -Cm32 M97_FGE50FMXTJ_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_FGE50FMXTJ_OUT
+	
+	
+$(HOME)/bin/M90_FGE50FMXTJ_ASCII_OUT:M90_FGE50FMXTJ_ASCII_OUT.rte
+	mktr -Cm32 M90_FGE50FMXTJ_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_FGE50FMXTJ_ASCII_OUT
+	
+	
+	
+	
+$(HOME)/bin/M41_FGE50FMXTJ_OUT:M41_FGE50FMXTJ_OUT.rte
+	mktr -Cm32 M41_FGE50FMXTJ_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_FGE50FMXTJ_OUT
+	
+	
+$(HOME)/bin/M30_HASBRO_CRMAT_IN:M30_HASBRO_CRMAT_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M30_HASBRO_CRMAT_IN M30_HASBRO_CRMAT_IN.rte
+	
+	
+$(HOME)/bin/M40_HASBRO_ASCII_IN:M40_HASBRO_ASCII_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M40_HASBRO_ASCII_IN M40_HASBRO_ASCII_IN.rte
+	
+	
+	
+
+	
+$(HOME)/bin/M41_HASBRO_OUT:M41_HASBRO_OUT.rte
+	mktr -Cm32 M41_HASBRO_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_HASBRO_OUT
+	
+	
+	
+$(HOME)/bin/M40_HASBRO_CSV_CONSOLIDACAO_IN:M40_HASBRO_CSV_CONSOLIDACAO_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M40_HASBRO_CSV_CONSOLIDACAO_IN M40_HASBRO_CSV_CONSOLIDACAO_IN.rte
+	
+	
+	
+	
+$(HOME)/bin/M50_HASBRO_ASCII_IN:M50_HASBRO_ASCII_IN.rte
+	mktr -Cm32 M50_HASBRO_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_HASBRO_ASCII_IN
+	
+
+$(HOME)/bin/M50_JAMBO_CSV_IN:M50_JAMBO_CSV_IN.rte
+	mktr -Cm32 M50_JAMBO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_JAMBO_CSV_IN
+	
+
+$(HOME)/bin/M97_HASBRO_ASCII_OUT:M97_HASBRO_ASCII_OUT.rte
+	mktr -Cm32 M97_HASBRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_HASBRO_ASCII_OUT
+	
+
+$(HOME)/bin/UPDATE_HASBRO_CRNF_IN:UPDATE_HASBRO_CRNF_IN.rte
+	mktr -Cm32 UPDATE_HASBRO_CRNF_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/UPDATE_HASBRO_CRNF_IN
+	
+	
+$(HOME)/bin/M90_HASBRO_ASCII_OUT:M90_HASBRO_ASCII_OUT.rte
+	mktr -Cm32 M90_HASBRO_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_HASBRO_ASCII_OUT
+	
+	
+$(HOME)/bin/M40_M50_M06_HASBRO_CSV_IN:M40_M50_M06_HASBRO_CSV_IN.rte
+	mktr -Cm32 M40_M50_M06_HASBRO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_M50_M06_HASBRO_CSV_IN
+	
+
+$(HOME)/bin/HASBRO_CSV_M15_CSV_IN:HASBRO_CSV_M15_CSV_IN.rte
+	mktr -Cm32 HASBRO_CSV_M15_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/HASBRO_CSV_M15_CSV_IN
+	
+	
+$(HOME)/bin/Reprocess_UPDATE_HASBRO_CRNF_IN:Reprocess_UPDATE_HASBRO_CRNF_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/Reprocess_UPDATE_HASBRO_CRNF_IN Reprocess_UPDATE_HASBRO_CRNF_IN.rte
+	
+	
+	
+$(HOME)/bin/M40_SIGNIFY_CSV_IN:M40_SIGNIFY_CSV_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M40_SIGNIFY_CSV_IN M40_SIGNIFY_CSV_IN.rte
+	
+
+$(HOME)/bin/M41_SIGNIFY_OUT:M41_SIGNIFY_OUT.rte
+	mktr -Cm32 M41_SIGNIFY_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_SIGNIFY_OUT
+	
+
+
+$(HOME)/bin/KeepOriginalFilenameWMSToSentinel:KeepOriginalFilenameWMSToSentinel.rte
+	mktr -Cm32 -o $(HOME)/bin/KeepOriginalFilenameWMSToSentinel KeepOriginalFilenameWMSToSentinel.rte
+	
+	
+	
+$(HOME)/bin/KeepOriginalFilenameSentinelToWMS:KeepOriginalFilenameSentinelToWMS.rte
+	mktr -Cm32 -o $(HOME)/bin/KeepOriginalFilenameSentinelToWMS KeepOriginalFilenameSentinelToWMS.rte
+	
+
+$(HOME)/bin/M50_SIGNIFY_CSV_IN:M50_SIGNIFY_CSV_IN.rte
+	mktr -Cm32 M50_SIGNIFY_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_SIGNIFY_CSV_IN
+	
+
+$(HOME)/bin/M51_SIGNIFY_ASCII_OUT:M51_SIGNIFY_ASCII_OUT.rte
+	mktr -Cm32 M51_SIGNIFY_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_SIGNIFY_ASCII_OUT
+	
+
+$(HOME)/bin/M90_SIGNIFY_ASCII_OUT:M90_SIGNIFY_ASCII_OUT.rte
+	mktr -Cm32 M90_SIGNIFY_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_SIGNIFY_ASCII_OUT
+	
+	
+$(HOME)/bin/M97_SIGNIFY_ASCII_OUT:M97_SIGNIFY_ASCII_OUT.rte
+	mktr -Cm32 M97_SIGNIFY_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_SIGNIFY_ASCII_OUT
+	
+	
+$(HOME)/bin/UPDATE_SIGNIFY_CRNF_IN:UPDATE_SIGNIFY_CRNF_IN.rte
+	mktr -X -Cm32 UPDATE_SIGNIFY_CRNF_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/UPDATE_SIGNIFY_CRNF_IN
+	
+		
+$(HOME)/bin/M40_HABRO_CSV_IN:M40_HABRO_CSV_IN.rte
+	mktr -Cm32 M40_HABRO_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_HABRO_CSV_IN
+
+$(HOME)/bin/RoutingMailLoreal:RoutingMailLoreal.rte
+	mktr -Cm32 -o $(HOME)/bin/RoutingMailLoreal RoutingMailLoreal.rte
+	
+$(HOME)/bin/M40_NFE_LOREAL_XML_IN:M40_NFE_LOREAL_XML_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/M40_NFE_LOREAL_XML_IN M40_NFE_LOREAL_XML_IN.rte
+
+$(HOME)/bin/NFE_ROUTING_XML_IN:NFE_ROUTING_XML_IN.rte
+	mktr -X -Cm32 -o $(HOME)/bin/NFE_ROUTING_XML_IN NFE_ROUTING_XML_IN.rte	
+
+
+$(HOME)/bin/M50_CGP_CSV_IN:M50_CGP_CSV_IN.rte
+	mktr -Cm32 M50_CGP_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_CGP_CSV_IN
+
+$(HOME)/bin/M40_DIVERS_RECEBFM_CSV_IN:M40_DIVERS_RECEBFM_CSV_IN.rte
+	mktr -Cm32 M40_DIVERS_RECEBFM_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_DIVERS_RECEBFM_CSV_IN
+	
+$(HOME)/bin/M40_DANA_ASCII_IN:M40_DANA_ASCII_IN.rte
+	mktr -Cm32 M40_DANA_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_DANA_ASCII_IN
+	
+$(HOME)/bin/M40_DANA_CSV_IN:M40_DANA_CSV_IN.rte
+	mktr -Cm32 M40_DANA_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_DANA_CSV_IN
+	
+$(HOME)/bin/M41_DANA_OUT:M41_DANA_OUT.rte
+	mktr -Cm32 M41_DANA_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_DANA_OUT
+	
+$(HOME)/bin/M50_DANA_ASCII_IN:M50_DANA_ASCII_IN.rte
+	mktr -Cm32 M50_DANA_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_DANA_ASCII_IN
+	
+$(HOME)/bin/M50_DANA_CSV_IN:M50_DANA_CSV_IN.rte
+	mktr -Cm32 M50_DANA_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_DANA_CSV_IN
+	
+	
+$(HOME)/bin/M90_DANA_ASCII_OUT:M90_DANA_ASCII_OUT.rte
+	mktr -Cm32 M90_DANA_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_DANA_ASCII_OUT
+	
+$(HOME)/bin/M97_DANA_ASCII_OUT:M97_DANA_ASCII_OUT.rte
+	mktr -Cm32 M97_DANA_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_DANA_ASCII_OUT
+
+$(HOME)/bin/M51_DANA_ASCII_OUT:M51_DANA_ASCII_OUT.rte
+	mktr -Cm32 M51_DANA_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_DANA_ASCII_OUT
+	
+$(HOME)/bin/UPDATE_DANA_CRNF_IN:UPDATE_DANA_CRNF_IN.rte
+	mktr -Cm32 UPDATE_DANA_CRNF_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/UPDATE_DANA_CRNF_IN
+	
+$(HOME)/bin/M40_HARMAN_CSV_IN:M40_HARMAN_CSV_IN.rte
+	mktr -Cm32 M40_HARMAN_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_HARMAN_CSV_IN
+	
+	
+$(HOME)/bin/M50_HARMAN_CSV_IN:M50_HARMAN_CSV_IN.rte
+	mktr -Cm32 M50_HARMAN_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_HARMAN_CSV_IN
+	
+$(HOME)/bin/M40_HARMAN_ASCII_IN:M40_HARMAN_ASCII_IN.rte
+	mktr -Cm32 M40_HARMAN_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_HARMAN_ASCII_IN
+	
+
+$(HOME)/bin/M50_HARMAN_ASCII_IN:M50_HARMAN_ASCII_IN.rte
+	mktr -Cm32 M50_HARMAN_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_HARMAN_ASCII_IN
+	
+	
+$(HOME)/bin/M80_HARMAN_ASCII_OUT:M80_HARMAN_ASCII_OUT.rte
+	mktr -Cm32 M80_HARMAN_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_HARMAN_ASCII_OUT
+	
+$(HOME)/bin/M41_HARMAN_OUT:M41_HARMAN_OUT.rte
+	mktr -Cm32 M41_HARMAN_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_HARMAN_OUT
+	
+	
+$(HOME)/bin/M51_HARMAN_OUT:M51_HARMAN_OUT.rte
+	mktr -Cm32 M51_HARMAN_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M51_HARMAN_OUT
+	
+$(HOME)/bin/M97_HARMAN_OUT:M97_HARMAN_OUT.rte
+	mktr -Cm32 M97_HARMAN_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_HARMAN_OUT
+		
+$(HOME)/bin/M90_HARMAN_ASCII_OUT:M90_HARMAN_ASCII_OUT.rte
+	mktr -Cm32 M90_HARMAN_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_HARMAN_ASCII_OUT
+	
+$(HOME)/bin/CONF_SERIE_HARMAN_OUT:CONF_SERIE_HARMAN_OUT.rte
+	mktr -Cm32 CONF_SERIE_HARMAN_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/CONF_SERIE_HARMAN_OUT
+	
+$(HOME)/bin/INFORM_TRANSP_HARMAN_OUT:INFORM_TRANSP_HARMAN_OUT.rte
+	mktr -Cm32 INFORM_TRANSP_HARMAN_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/INFORM_TRANSP_HARMAN_OUT
+
+
+$(HOME)/bin/M30_MAPPED_IN:M30_MAPPED_IN.rte
+	mktr -Cm32 M30_MAPPED_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M30_MAPPED_IN
+
+
+
+$(HOME)/bin/M40_MAPED_ASCII_IN:M40_MAPED_ASCII_IN.rte
+	mktr -Cm32 M40_MAPED_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_MAPED_ASCII_IN
+
+
+$(HOME)/bin/M40_MAPED_CSV_IN:M40_MAPED_CSV_IN.rte
+	mktr -Cm32 M40_MAPED_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_MAPED_CSV_IN
+
+$(HOME)/bin/M50_MAPED_CSV_IN:M50_MAPED_CSV_IN.rte
+	mktr -Cm32 M50_MAPED_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_MAPED_CSV_IN
+
+$(HOME)/bin/M41_MAPED_OUT:M41_MAPED_OUT.rte
+	mktr -Cm32 M41_MAPED_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_MAPED_OUT
+
+$(HOME)/bin/M50_MAPED_ASCII_IN:M50_MAPED_ASCII_IN.rte
+	mktr -Cm32 M50_MAPED_ASCII_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_MAPED_ASCII_IN
+
+$(HOME)/bin/M97_MAPED_ASCII_OUT:M97_MAPED_ASCII_OUT.rte
+	mktr -Cm32 M97_MAPED_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_MAPED_ASCII_OUT
+
+$(HOME)/bin/M90_MAPED_ASCII_OUT:M90_MAPED_ASCII_OUT.rte
+	mktr -Cm32 M90_MAPED_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_MAPED_ASCII_OUT
+
+$(HOME)/bin/UPDATE_MAPED_CRNF_IN:UPDATE_MAPED_CRNF_IN.rte
+	mktr -Cm32 UPDATE_MAPED_CRNF_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/UPDATE_MAPED_CRNF_IN
+
+$(HOME)/bin/M80_MAPED_ASCII_OUT:M80_MAPED_ASCII_OUT.rte
+	mktr -Cm32 M80_MAPED_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_MAPED_ASCII_OUT
+
+$(HOME)/bin/M41_HENKEL_OUT:M41_HENKEL_OUT.rte
+	mktr -Cm32 M41_HENKEL_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M41_HENKEL_OUT
+
+$(HOME)/bin/M40_HENKEL_CSV_IN:M40_HENKEL_CSV_IN.rte
+	mktr -Cm32 M40_HENKEL_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_HENKEL_CSV_IN
+
+$(HOME)/bin/M50_HENKEL_CSV_IN:M50_HENKEL_CSV_IN.rte
+	mktr -Cm32 M50_HENKEL_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_HENKEL_CSV_IN
+	
+$(HOME)/bin/M80_HENKEL_ASCII_OUT:M80_HENKEL_ASCII_OUT.rte
+	mktr -Cm32 M80_HENKEL_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M80_HENKEL_ASCII_OUT
+
+$(HOME)/bin/M90_HENKEL_ASCII_OUT:M90_HENKEL_ASCII_OUT.rte
+	mktr -Cm32 M90_HENKEL_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_HENKEL_ASCII_OUT
+	
+$(HOME)/bin/M30_HENKEL_CSV:M30_HENKEL_CSV.rte
+	mktr -Cm32 M30_HENKEL_CSV.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M30_HENKEL_CSV
+	
+$(HOME)/bin/M06_HENKEL_CSV_IN:M06_HENKEL_CSV_IN.rte
+	mktr -Cm32 M06_HENKEL_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M06_HENKEL_CSV_IN
+	
+$(HOME)/bin/M40_NFE_HENKEL_XML_IN:M40_NFE_HENKEL_XML_IN.rte
+	mktr -X -Cm32 M40_NFE_HENKEL_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_NFE_HENKEL_XML_IN
+
+$(HOME)/bin/M97_HENKEL_OUT:M97_HENKEL_OUT.rte
+	mktr -X -Cm32 M97_HENKEL_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M97_HENKEL_OUT
+
+$(HOME)/webservices/GetFullCommerceFile:GetFullCommerceFile.rte
+	mktr -Cm32 GetFullCommerceFile.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/webservices/GetFullCommerceFile
+	
+$(HOME)/bin/M40_M50_HARMAN_XML_IN:M40_M50_HARMAN_XML_IN.rte
+	mktr -X -Cm32 M40_M50_HARMAN_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_M50_HARMAN_XML_IN
+
+$(HOME)/bin/M40_TOPCAU_CSV_IN:M40_TOPCAU_CSV_IN.rte
+	mktr -X -Cm32 M40_TOPCAU_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_TOPCAU_CSV_IN
+
+$(HOME)/bin/M40_NFE_TOPCAU_XML_IN:M40_NFE_TOPCAU_XML_IN.rte
+	mktr -X -Cm32 M40_NFE_TOPCAU_XML_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M40_NFE_TOPCAU_XML_IN
+
+$(HOME)/bin/M50_TOPCAU_CSV_IN:M50_TOPCAU_CSV_IN.rte
+	mktr -X -Cm32 M50_TOPCAU_CSV_IN.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M50_TOPCAU_CSV_IN
+
+$(HOME)/bin/M90_TOPCAU_ASCII_OUT:M90_TOPCAU_ASCII_OUT.rte
+	mktr -X -Cm32 M90_TOPCAU_ASCII_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_TOPCAU_ASCII_OUT
+
+$(HOME)/bin/M93_CDCJ_OUT:M93_CDCJ_OUT.rte
+	mktr -X -Cm32 M93_CDCJ_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M93_CDCJ_OUT
+
+$(HOME)/bin/M90_CDCJ_OUT:M90_CDCJ_OUT.rte
+	mktr -X -Cm32 M90_CDCJ_OUT.rte -lnetlib -lessqljdbc /usr/local/tx/_jvm/jre/lib/i386/client/libjvm.so  -o $(HOME)/bin/M90_CDCJ_OUT

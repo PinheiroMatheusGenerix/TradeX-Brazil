@@ -1,0 +1,345 @@
+%@(#)  M50_SIGNIFY_ByPass.rte     modif:23-11-2017
+!==============================================================================
+% File          : M50_SIGNIFY_ByPass.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 23-11-2017  XX  Creation
+! 23-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_confrec_email_signify/fmbrasil_confrec_email_signify.cfg" fmbrasil_confrec_email_signify
+
+!===========================================================
+
+! Input/output macros file
+#include "include/M50.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+    nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+
+    load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+    tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSIGNIFY"]
+
+    tDbBase		:= "FMWMS"
+    tDbUsername	:= taPARAM["WMSDBUSER"]
+    tDbPassword	:= taPARAM["WMSDBPASS"]
+    tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+    if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+        print("FATAL ", tfSqlErrorStr())
+        bfSqlClose(tDbBase)
+        bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    tNumeroDocumento, \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+    tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+    tFileOutEmail := build(sHOME,"/EmailsAEnviar/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".txt")
+    tNameOutEmail := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".txt")
+
+    bByPass := TRUE
+    nCont5020 := 0
+    nLineEnd := 0
+    nLinePrint := 0
+    nLooping := 0
+endbegin
+
+!===========================================================
+
+line(1:"50.00")
+    tREFLIV := S_5000ORDERHEADER_REFLIV
+    tCODTLI := S_5000ORDERHEADER_CODTLI
+
+    tQuery := build("SELECT TOPLIV1 ", NL," "\
+                    "FROM FGE50FM",tToInfologPrefixFilename,".GEZTLI ", NL," "\
+                    "WHERE CODTLI = '",tCODTLI,"' ")
+
+    log("------------------------------------------------------------", NL)
+    log(tQuery,NL)
+    log("------------------------------------------------------------", NL)
+
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    tREFLIV, \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    tREFLIV, \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+        tTOPLIV1 := peel(taDb2Array["TOPLIV1"]," ")
+        remove(taDb2Array)
+    endwhile
+
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    tREFLIV, \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+endline
+
+line(1:"50.20")
+    nCont5020++
+    taUVCCDE[nCont5020] := S_5020ORDERLINE_UVCCDE
+    taCODPRO[nCont5020] := S_5020ORDERLINE_CODPRO
+endline
+
+line(1:"50.25")
+    nCont5025++
+    taVALRUB[nCont5025] := S_5025ORDERLINE_VALRUB
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+    while nLineEnd < nCont5020 do
+        log(NL, "LOOPING ********************", NL)
+        nLineEnd++
+
+        tQuery := build("SELECT PCBPRO, CODPRO ", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
+                        "WHERE CODPRO = '",taCODPRO[nLineEnd],"' ")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFLIV, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFLIV, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+            tPCBPRO := peel(taDb2Array["PCBPRO"]," ")
+            remove(taDb2Array)
+        else
+            copy(SYSLOG.a, tFileOut)
+            log("FAZ BYPASS PORQUE O CODPRO NÃO EXITE!", NL)
+            exit(1)
+        endif
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFLIV, \
+                        time("now","%Y-%m-%d"), \
+                        tFileOut, \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        log("DIVISÃO: ", number(taUVCCDE[nLineEnd]), " / ", number(tPCBPRO), NL)
+        tResult := build(number(taUVCCDE[nLineEnd]) / number(tPCBPRO))
+        log("RESULTADO: ", tResult, NL)
+        split(tResult, taResult, ".")
+        if length(taResult[2]) = 0 then
+            log("É MÚLTIPLO!", NL)
+        else
+            if tTOPLIV1 = "0" then
+                log("NÂO É MÚLTIPLO, MAS O TOPLIV = 0!", NL)
+            else
+
+                tQuery := build("SELECT VALRUB ", NL," "\
+                                "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU ", NL," "\
+                                "WHERE CODRUB = '",taVALRUB[nLineEnd * 2],"' ", NL," "\
+                                "AND VALCLE = '",tCODTLI,"' ")
+
+                log("------------------------------------------------------------", NL)
+                log(tQuery,NL)
+                log("------------------------------------------------------------", NL)
+
+                if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                    print("FATAL ", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao", \
+                                "1", \
+                                tREFLIV, \
+                                time("now","%Y-%m-%d"), \
+                                tFileOut, \
+                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+
+                if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                    print("FATAL ", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao", \
+                                "1", \
+                                tREFLIV, \
+                                time("now","%Y-%m-%d"), \
+                                tFileOut, \
+                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+
+                if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+                    if peel(taDb2Array["VALRUB"]," ") = "N" then
+                        bByPass := FALSE
+                        log("BLOQUEIA!", NL)
+
+                        if nLineEnd = nCont5020 then
+                            bfMajtrace("Recebida", "1", tREFLIV, time("now","%Y-%m-%d"), tFileOut, "")
+                        endif
+
+                        nResto := number(taUVCCDE[nLineEnd]) - (number(taResult[1]) * number(tPCBPRO))
+
+                        print("Produto = ", taCODPRO[nLineEnd], NL) >> tFileOutEmail
+                        print("Quantidade = ", number(taUVCCDE[nLineEnd]), NL) >> tFileOutEmail
+                        print("PCBPRO = ", tPCBPRO, NL) >> tFileOutEmail
+                        print("Caixa(s) = ", taResult[1], NL) >> tFileOutEmail
+                        print("Resto = ", nResto, " Unidade(s)", NL, NL) >> tFileOutEmail
+
+                        close(tFileOutEmail)
+
+                        log(NL, "DELIVERY = ",tREFLIV, NL)
+                        log("UVCCDE[",nLineEnd,"] = ", taUVCCDE[nLineEnd], NL)
+                        log("CAIXAS = ", taResult[1], NL)
+                        log("PCBPRO = ", tPCBPRO, NL)
+                        log("RESTO = ", nResto, NL)
+                    endif
+
+                    remove(taDb2Array)
+                else
+                    log("NÃO ACHOU RESULTADO NA QUERY!", NL)
+                endif
+
+                if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                    print("FATAL", tfSqlErrorStr())
+                    bfMajtrace("Erro de Traducao", \
+                                "1", \
+                                tREFLIV, \
+                                time("now","%Y-%m-%d"), \
+                                tFileOut, \
+                                build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                    exit(1)
+                endif
+            endif
+        endif
+        log("FIM LOOPING ****************", NL)
+    endwhile
+
+    if bByPass = TRUE then
+        copy(SYSLOG.a, tFileOut)
+        log("FAZ BYPASS!", NL)
+    else
+        fmbrasil_confrec_email_signify := find(build(sHOME,"/fmbrasil_confrec_email_signify"), BEGINSUBJ="BYPASS")
+        if valid(fmbrasil_confrec_email_signify) then
+            tCmdEmail := build("edisend EMAIL.SUBJECT=\"'Delivery ",tREFLIV," fora do multiplo!'\" EMAIL.NAME=",tNameOutEmail," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline EMAIL.RCPT=",replace(replace(fmbrasil_confrec_email_signify.TOEMAIL," ",""),";",",")," MailM41DIVERS ", tFileOutEmail)
+            log(NL, "EXECUTANDO O COMANDO: ", tCmdEmail, NL)
+            nRet := system(tCmdEmail)
+        endif
+    endif
+
+    
+    close(tFileOut)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus, tError, tNumDoc, tDataDoc, tFileOut, tMensagemErro)
+    TRACE:=new(build(sHOME,"/trace"))
+    TRACE.ESTADO := tStatus
+    TRACE.ERRO := tError
+    TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+    TRACE.MENSAGEM := "M50 BYPASS"
+    TRACE.PERFIL := "SIGNIFY"
+    TRACE.SENTIDO := "I"
+    TRACE.NUMDOC := tNumDoc
+    TRACE.DATDOC := tDataDoc
+    TRACE.MESSAGEID := build(nMessageID)
+    if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+    TRACE.FICHEIROSAIDA := tNameOut
+    TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID:R06)
+
+    if tStatus = "Recebida" then
+        print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Traduzida com Sucesso",NL) >> TRACE.Detail
+    else
+        if tStatus = "Erro de Traducao" then
+            print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+            print("Erro de Traducao",NL) >> TRACE.Detail
+            print(tMensagemErro,NL) >> TRACE.Detail
+        endif
+    endif
+    close(TRACE.Detail)
+    close(SYSLOG.a)
+    copy(SYSLOG.a,TRACE.In)
+    close(SYSLOG.a)
+    close(TRACE.In)
+
+    flush(TRACE)
+endfunction

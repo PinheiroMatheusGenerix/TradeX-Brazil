@@ -1,0 +1,1486 @@
+%@(#)  M07_MARS_BYPASS.rte     modif:24-04-2023
+!==============================================================================
+% File          : M07_MARS_BYPASS.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 24-04-2023  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M07_MARS_BYPASS"
+#include "include/generix_func.inc"
+#include "include/GEEXM07.inc"
+#include "include/GEEXM07_BYPASS.inc"
+#include "include/M07_MARS_CSV.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+    
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameXA7"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if not bfSqlJdbc(tDbBase2, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase2)
+		bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	bCODPAL_GESUPE := FALSE
+	bCODPAL_GEBKLD := FALSE
+	bFistCODPAL := FALSE
+	tCODPAL_AGRUPADO := ""
+	bGeraByPass := FALSE
+	nCount0700 := 0
+
+	tFileOutBP := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"MAR_M07",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+    tFileOutTempBP := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"MAR_M07",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+    tNameOutBP := build("FM",tToInfologPrefixFilename,"MAR_M07",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+
+	tFileOutCSV := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"MAR_SS",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+	tFileOutTempCSV := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"MAR_SS",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+	tNameOutCSV := build("FM",tToInfologPrefixFilename,"MAR_SS",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	! LEITURA CAMPOS
+		tCODEXC_0000 := S_GEEX0000_CODEXC
+		tSEPEXC_0000 := S_GEEX0000_SEPEXC
+		tSCOEXC_0000 := S_GEEX0000_SCOEXC
+		tTRTEXC_0000 := S_GEEX0000_TRTEXC
+		tEMTEXC_0000 := S_GEEX0000_EMTEXC
+		tRCTEXC_0000 := S_GEEX0000_RCTEXC
+		tDATEXC_0000 := S_GEEX0000_DATEXC
+		tHEUEXC_0000 := S_GEEX0000_HEUEXC
+		tNUMEXC_0000 := S_GEEX0000_NUMEXC
+		tACQEXC_0000 := S_GEEX0000_ACQEXC
+		tVEREXC_0000 := S_GEEX0000_VEREXC
+		tNOMSYS_0000 := S_GEEX0000_NOMSYS
+		tNOMDTQ_0000 := S_GEEX0000_NOMDTQ
+		tBIBDTQ_0000 := S_GEEX0000_BIBDTQ
+		tLIBEXC_0000 := S_GEEX0000_LIBEXC
+		tBIBDST_0000 := S_GEEX0000_BIBDST
+		tPGMDST_0000 := S_GEEX0000_PGMDST
+		tPARDST_0000 := S_GEEX0000_PARDST
+		tCODACT_0000 := S_GEEX0000_CODACT
+		tIGLSIT_0000 := S_GEEX0000_IGLSIT
+		tEDISIT_0000 := S_GEEX0000_EDISIT
+		tIMAEXC_0000 := S_GEEX0000_IMAEXC
+		tIDEMSG_0000 := S_GEEX0000_IDEMSG
+		tNATEXC_0000 := S_GEEX0000_NATEXC
+		tEMTORI_0000 := S_GEEX0000_EMTORI
+		tDISEXC_0000 := S_GEEX0000_DISEXC
+	! FIM LEITURA CAMPOS
+
+	! BYPASS INICIO
+		R_GEEX0000_BP_CODEXC(S_GEEX0000_CODEXC)
+		R_GEEX0000_BP_SEPEXC(S_GEEX0000_SEPEXC)
+		R_GEEX0000_BP_SCOEXC(S_GEEX0000_SCOEXC)
+		R_GEEX0000_BP_TRTEXC(S_GEEX0000_TRTEXC)
+		R_GEEX0000_BP_EMTEXC(S_GEEX0000_EMTEXC)
+		R_GEEX0000_BP_RCTEXC(S_GEEX0000_RCTEXC)
+		R_GEEX0000_BP_DATEXC(S_GEEX0000_DATEXC)
+		R_GEEX0000_BP_HEUEXC(S_GEEX0000_HEUEXC)
+		R_GEEX0000_BP_NUMEXC(S_GEEX0000_NUMEXC)
+		R_GEEX0000_BP_ACQEXC(S_GEEX0000_ACQEXC)
+		R_GEEX0000_BP_VEREXC(S_GEEX0000_VEREXC)
+		R_GEEX0000_BP_NOMSYS(S_GEEX0000_NOMSYS)
+		R_GEEX0000_BP_NOMDTQ(S_GEEX0000_NOMDTQ)
+		R_GEEX0000_BP_BIBDTQ(S_GEEX0000_BIBDTQ)
+		R_GEEX0000_BP_LIBEXC(S_GEEX0000_LIBEXC)
+		R_GEEX0000_BP_BIBDST(S_GEEX0000_BIBDST)
+		R_GEEX0000_BP_PGMDST(S_GEEX0000_PGMDST)
+		R_GEEX0000_BP_PARDST(S_GEEX0000_PARDST)
+		R_GEEX0000_BP_CODACT(S_GEEX0000_CODACT)
+		R_GEEX0000_BP_IGLSIT(S_GEEX0000_IGLSIT)
+		R_GEEX0000_BP_EDISIT(S_GEEX0000_EDISIT)
+		R_GEEX0000_BP_IMAEXC(S_GEEX0000_IMAEXC)
+		R_GEEX0000_BP_IDEMSG(S_GEEX0000_IDEMSG)
+		R_GEEX0000_BP_NATEXC(S_GEEX0000_NATEXC)
+		R_GEEX0000_BP_EMTORI(S_GEEX0000_EMTORI)
+		R_GEEX0000_BP_DISEXC(S_GEEX0000_DISEXC)
+
+		flush(0,0,NL) >> tFileOutTempBP
+	! BYPASS FIM
+endline
+
+line(1:"07.00")
+	tIDEMSG := "0"
+	if S_GEEX0700_IDEMSG = "1" then
+		nCount0700++
+		tIDEMSG := "1"
+		! FINALIZAR M07 SE IDEMSG = CSV
+			if S_GEEX0700_IDEMSG = "CSV" then
+				remove(tFileOutBP)
+				remove(tFileOutTempBP)
+				exit(0)
+			endif
+		! FIM FINALIZAR M07 SE IDEMSG = CSV
+
+		! LEITURA CAMPOS
+			tCODEXC_0700 := S_GEEX0700_CODEXC
+			tSEPEXC_0700 := S_GEEX0700_SEPEXC
+			tSCOEXC_0700 := S_GEEX0700_SCOEXC
+			tTRTEXC_0700 := S_GEEX0700_TRTEXC
+			tCODPAL_0700 := S_GEEX0700_CODPAL
+			tMOTIMM_0700 := S_GEEX0700_MOTIMM
+			tCODTRT_0700 := S_GEEX0700_CODTRT
+			tNUMPAL_0700 := S_GEEX0700_NUMPAL
+			tDATTRT_0700 := S_GEEX0700_DATTRT
+			tNUMMSG_0700 := S_GEEX0700_NUMMSG
+			tLIBMSG_0700 := S_GEEX0700_LIBMSG
+			tHEUTRT_0700 := S_GEEX0700_HEUTRT
+			tCODLOT_0700 := S_GEEX0700_CODLOT
+			tCODACT_0700 := S_GEEX0700_CODACT
+			tCODCLI_0700 := S_GEEX0700_CODCLI
+			tCODPRO_0700 := S_GEEX0700_CODPRO
+			tVALPRO_0700 := S_GEEX0700_VALPRO
+			tIDEMSG_0700 := S_GEEX0700_IDEMSG
+			tEDIPRO_0700 := S_GEEX0700_EDIPRO
+			tMLTSIT_0700 := S_GEEX0700_MLTSIT
+			tDATIMM2_0700 := S_GEEX0700_DATIMM2
+			tHEUIMM2_0700 := S_GEEX0700_HEUIMM2
+			tDATFVI_0700 := S_GEEX0700_DATFVI
+			tINDERR_0700 := S_GEEX0700_INDERR
+			tUVCSTO_0700 := S_GEEX0700_UVCSTO
+			tPCBPRO_0700 := S_GEEX0700_PCBPRO
+			tDISEXC_0700 := S_GEEX0700_DISEXC
+		! FIM LEITURA CAMPOS
+
+		tQuery2 := build("SELECT  CODPAL",NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE",NL," "\
+						"WHERE TYPSUP = '1'",NL," "\
+						"AND CODPAL = '",S_GEEX0700_CODPAL,"'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery2,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase2, "SELECTdb2", tQuery2) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen(tDbBase2, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlFetchArray(tDbBase2, "SELECTdb2", taDb2Array2) = FALSE then
+			if S_GEEX0700_CODACT = "MAR" then
+				bGeraByPass := TRUE
+				! LOGS
+					log("************************************************************************", NL)
+					log("peel(taDb2Array[CODPAL], " ") = ", peel(taDb2Array2["CODPAL"], " "), NL)
+					log("************************************************************************", NL)
+				! FIM LOGS
+
+				! BYPASS INICIO
+					tQuery := build("SELECT CODPRO, CODLOT, INT(ROUND(UVCSTO/PCBPRO)) AS COLSTO",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL",NL," "\
+									"WHERE NUMPAL = '",S_GEEX0700_NUMPAL,"'",NL," "\
+									"AND CODACT = '",S_GEEX0700_CODACT,"'")
+
+					log("------------------------------------------------------------", NL)
+					log(tQuery,NL)
+					log("------------------------------------------------------------", NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					bQueryGEPAL0700 := FALSE
+					if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+						bQueryGEPAL0700 := TRUE
+						tCOLSTO_Query0700 := peel(taDb2Array["COLSTO"]," ")
+						tCODPRO_Query0700 := peel(taDb2Array["CODPRO"]," ")
+						tCODLOT_Query0700 := peel(taDb2Array["CODLOT"]," ")
+						! LOGS
+							log("************************************************************************", NL)
+							log("tCOLSTO_Query0700 = ", tCOLSTO_Query0700, NL)
+							log("tCODPRO_Query0700 = ", tCODPRO_Query0700, NL)
+							log("tCODLOT_Query0700 = ", tCODLOT_Query0700, NL)
+							log("************************************************************************", NL)
+						! FIM LOGS
+						remove(taDb2Array)
+					endif
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bQueryGEPAL0700 = FALSE then
+						tQuery := build("SELECT  SD.CODLOT",NL," "\
+										"       ,SD.CODPRO",NL," "\
+										"       ,SD.DATFVI",NL," "\
+										"       ,SUM((SD.UVCLIV/SD.PCBPRO))    AS COLSTO",NL," "\
+										"       ,SD.DS1PRO || ' ' || SD.DS2PRO AS DESCRICAO",NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE SE, FGE50FM",tToInfologPrefixFilename,".GESUPD SD",NL," "\
+										"WHERE SE.NUMSUP = SD.NUMSUP",NL," "\
+										"AND SE.ETASUP NOT IN ('50', '90')",NL," "\
+										"AND SE.TYPSUP = '1'",NL," "\
+										"AND SD.CODPAL = '",S_GEEX0700_CODPAL,"'",NL," "\
+										"GROUP BY  SD.CODLOT",NL," "\
+										"         ,SD.CODPRO",NL," "\
+										"         ,SD.DATFVI",NL," "\
+										"         ,SD.DS1PRO || ' ' || SD.DS2PRO",NL," "\
+										"ORDER BY 1")
+
+						log("------------------------------------------------------------", NL)
+						log(tQuery,NL)
+						log("------------------------------------------------------------", NL)
+
+						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+							tCOLSTO_Query0700 := peel(taDb2Array["COLSTO"]," ")
+							tCODPRO_Query0700 := peel(taDb2Array["CODPRO"]," ")
+							tCODLOT_Query0700 := peel(taDb2Array["CODLOT"]," ")
+							tDESCRICAO_Query0700 := peel(taDb2Array["DESCRICAO"]," ")
+							! LOGS
+								log("************************************************************************", NL)
+								log("tCOLSTO_Query0700 = ", tCOLSTO_Query0700, NL)
+								log("tCODPRO_Query0700 = ", tCODPRO_Query0700, NL)
+								log("tCODLOT_Query0700 = ", tCODLOT_Query0700, NL)
+								log("************************************************************************", NL)
+							! FIM LOGS
+							remove(taDb2Array)
+						endif
+
+						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+					endif
+
+					! QUERY tDATSTO, tHEUSTO
+						tQuery := build("SELECT DATSTO, HEUSTO",NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL",NL," "\
+										"WHERE NUMPAL = '",S_GEEX0700_NUMPAL,"'")
+
+						log("------------------------------------------------------------", NL)
+						log(tQuery,NL)
+						log("------------------------------------------------------------", NL)
+
+						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+							tDATSTO := peel(taDb2Array["DATSTO"]," ")
+							tHEUSTO := peel(taDb2Array["HEUSTO"]," ")
+							! LOGS
+								log("************************************************************************", NL)
+								log("tDATSTO = ", tDATSTO, NL)
+								log("tHEUSTO = ", tHEUSTO, NL)
+								log("************************************************************************", NL)
+							! FIM LOGS
+							remove(taDb2Array)
+						endwhile
+
+						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+					! FIM QUERY tDATSTO, tHEUSTO
+
+					R_GEEX0700_BP_CODEXC(S_GEEX0700_CODEXC)
+					R_GEEX0700_BP_SEPEXC(S_GEEX0700_SEPEXC)
+					R_GEEX0700_BP_SCOEXC(S_GEEX0700_SCOEXC)
+					R_GEEX0700_BP_TRTEXC(S_GEEX0700_TRTEXC)
+					R_GEEX0700_BP_CODPAL(S_GEEX0700_CODPAL)
+					R_GEEX0700_BP_MOTIMM(S_GEEX0700_MOTIMM)
+					R_GEEX0700_BP_CODTRT(S_GEEX0700_CODTRT)
+					R_GEEX0700_BP_NUMPAL(S_GEEX0700_NUMPAL)
+					R_GEEX0700_BP_DATTRT(S_GEEX0700_DATTRT)
+					R_GEEX0700_BP_NUMMSG(S_GEEX0700_NUMMSG)
+					R_GEEX0700_BP_LIBMSG(S_GEEX0700_LIBMSG)
+					R_GEEX0700_BP_HEUTRT(S_GEEX0700_HEUTRT)
+					R_GEEX0700_BP_CODLOT(tCODLOT_Query0700)
+					R_GEEX0700_BP_CODACT(S_GEEX0700_CODACT)
+					R_GEEX0700_BP_CODCLI(S_GEEX0700_CODCLI)
+					R_GEEX0700_BP_CODPRO(tCODPRO_Query0700)
+					R_GEEX0700_BP_VALPRO(S_GEEX0700_VALPRO)
+					R_GEEX0700_BP_IDEMSG(S_GEEX0700_IDEMSG)
+					R_GEEX0700_BP_EDIPRO(S_GEEX0700_EDIPRO)
+					R_GEEX0700_BP_MLTSIT(S_GEEX0700_MLTSIT)
+					R_GEEX0700_BP_DATIMM2(tDATSTO)
+					R_GEEX0700_BP_HEUIMM2(build(number(tHEUSTO):R06))
+					R_GEEX0700_BP_DATFVI(S_GEEX0700_DATFVI)
+					R_GEEX0700_BP_INDERR(S_GEEX0700_INDERR)
+					R_GEEX0700_BP_UVCSTO(S_GEEX0700_UVCSTO)
+					R_GEEX0700_BP_PCBPRO(S_GEEX0700_PCBPRO)
+					R_GEEX0700_BP_DISEXC(S_GEEX0700_DISEXC)
+					R_GEEX0700_BP_COLSTO(tCOLSTO_Query0700)
+
+					flush(0,0,NL) >> tFileOutTempBP
+				! BYPASS FIM
+			endif
+
+			! CSV SS
+				! QUERY tCODPRO_CSV, tCODLOT_CSV
+					tQuery := build("SELECT  CODPRO",NL," "\
+									"       ,CODLOT",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL",NL," "\
+									"WHERE CODPAL = '",S_GEEX0700_CODPAL,"'")
+
+					log("------------------------------------------------------------", NL)
+					log(tQuery,NL)
+					log("------------------------------------------------------------", NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+						tCODPRO_CSV := peel(taDb2Array["CODPRO"]," ")
+						tCODLOT_CSV := peel(taDb2Array["CODLOT"]," ")
+						! LOGS
+							log("************************************************************************", NL)
+							log("tCODPRO_CSV = ", tCODPRO_CSV, NL)
+							log("tCODLOT_CSV = ", tCODLOT_CSV, NL)
+							log("************************************************************************", NL)
+						! FIM LOGS
+
+						remove(taDb2Array)
+					endif
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY tCODPRO_CSV, tCODLOT_CSV
+
+				! QUERY tSTOSAP2_CSV
+					tQuery := build("SELECT STOSAP2",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO",NL," "\
+									"WHERE MOTIMM = '",S_GEEX0700_MOTIMM,"'")
+
+					log("------------------------------------------------------------", NL)
+					log(tQuery,NL)
+					log("------------------------------------------------------------", NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+						tSTOSAP2_CSV := peel(taDb2Array["STOSAP2"]," ")
+						! LOGS
+							log("************************************************************************", NL)
+							log("tSTOSAP2_CSV = ", tSTOSAP2_CSV, NL)
+							log("************************************************************************", NL)
+						! FIM LOGS
+						remove(taDb2Array)
+					endif
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY tSTOSAP2_CSV
+
+				! QUERY tVALRUB_CSV
+					tQuery := build("SELECT VALRUB",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
+									"WHERE VALCLE='",S_GEEX0700_MOTIMM,"'")
+
+					log("------------------------------------------------------------", NL)
+					log(tQuery,NL)
+					log("------------------------------------------------------------", NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+						tVALRUB_CSV := peel(taDb2Array["VALRUB"]," ")
+						! LOGS
+							log("************************************************************************", NL)
+							log("tVALRUB_CSV = ", tVALRUB_CSV, NL)
+							log("************************************************************************", NL)
+						! FIM LOGS
+
+						remove(taDb2Array)
+					endif
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY tVALRUB_CSV
+
+				R_DETALHE_MATERIAL(tCODPRO_CSV)
+				R_DETALHE_BATCH(tCODLOT_CSV)
+				R_DETALHE_SSCC_LPN(S_GEEX0700_CODPAL)
+				R_DETALHE_QUANTITY(build(number(tCOLSTO_Query0700):017.3))
+				R_DETALHE_PLANT("BR22")
+				R_DETALHE_STORAGE_LOC(tSTOSAP2_CSV)
+				if length(S_GEEX0700_MOTIMM) = 0 or (S_GEEX0700_MOTIMM = "HEL" and S_GEEX0700_CODTRT = "2") then
+					R_DETALHE_WMS_STATUS("0")
+				else
+					R_DETALHE_WMS_STATUS(tVALRUB_CSV)
+				endif
+
+				print(taDETALHE[1],";", \
+						taDETALHE[2],";", \
+						taDETALHE[3],";", \
+						taDETALHE[4],";", \
+						taDETALHE[5],";", \
+						taDETALHE[6],";", \
+						taDETALHE[7],";", NL) >> tFileOutTempCSV
+				remove(taDETALHE)
+			! FIM CSV SS
+			remove(taDb2Array)
+		endif
+
+		if bfSqlFree(tDbBase2, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	endif
+endline
+
+line(1:"07.90")
+	if tIDEMSG = "1" then
+		! LEITURA CAMPOS
+			tCODEXC_0790 := S_GEEX0790_CODEXC
+			tSEPEXC_0790 := S_GEEX0790_SEPEXC
+			tSCOEXC_0790 := S_GEEX0790_SCOEXC
+			tTRTEXC_0790 := S_GEEX0790_TRTEXC
+			tCODPAL_0790 := S_GEEX0790_CODPAL
+			tETAPAL_0790 := S_GEEX0790_ETAPAL
+			tCODACT_0790 := S_GEEX0790_CODACT
+			tCODCLI_0790 := S_GEEX0790_CODCLI
+			tCODPRO_0790 := S_GEEX0790_CODPRO
+			tVALPRO_0790 := S_GEEX0790_VALPRO
+			tMOTIMM_0790 := S_GEEX0790_MOTIMM
+			tDATLIB_0790 := S_GEEX0790_DATLIB
+			tHEULIB_0790 := S_GEEX0790_HEULIB
+			tINDLIB_0790 := S_GEEX0790_INDLIB
+			tIDEMSG_0790 := S_GEEX0790_IDEMSG
+			tIMMBKL_0790 := S_GEEX0790_IMMBKL
+			tPALIMM_0790 := S_GEEX0790_PALIMM
+			tDATBKL_0790 := S_GEEX0790_DATBKL
+			tHEUBKL_0790 := S_GEEX0790_HEUBKL
+			tDATIMM_0790 := S_GEEX0790_DATIMM
+			tHEUIMM_0790 := S_GEEX0790_HEUIMM
+			tMOTIMM_0790 := S_GEEX0790_MOTIMM
+			tDISEXC_0790 := S_GEEX0790_DISEXC
+		! FIM LEITURA CAMPOS
+
+		! QUERY taLIBIMO_BP
+			tQuery := build("SELECT DISTINCT VALCLE, TRIM(RUB.LIBVAL) LIBVAL",NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU IMO",NL," "\
+							"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
+							"ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+				taLIBIMO_BP[peel(taDb2Array["VALCLE"]," ")] := peel(taDb2Array["LIBVAL"]," ")
+				if length(tMOTIMM_0700) = 0 or (tMOTIMM_0700 = "HEL" and tCODTRT_0700 = "2") then
+					tLIBIMO_0790 := "Released"
+				else
+					tLIBIMO_0790 := taLIBIMO_BP[tMOTIMM_0700]
+				endif
+				! LOGS
+					log("************************************************************************", NL)
+					log("taLIBIMO_BP[",peel(taDb2Array["VALCLE"]," "),"] = ", taLIBIMO_BP[peel(taDb2Array["VALCLE"]," ")], NL)
+					log("************************************************************************", NL)
+				! FIM LOGS
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY VALCLE, LIBVAL
+
+		tQuery2 := build("SELECT  CODPAL",NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE",NL," "\
+						"WHERE TYPSUP = '1'",NL," "\
+						"AND CODPAL = '",S_GEEX0790_CODPAL,"'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery2,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase2, "SELECTdb2", tQuery2) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen(tDbBase2, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlFetchArray(tDbBase2, "SELECTdb2", taDb2Array2) = FALSE then
+			if bGeraByPass then
+				! BYPASS INICIO
+					! QUERY DS1PRO, DS2PRO, DS3PRO
+						tQuery := build("SELECT  DS1PRO, DS2PRO, DS3PRO",NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO",NL," "\
+										"WHERE CODPRO = (",NL," "\
+										"	SELECT DISTINCT CODPRO",NL," "\
+										"	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL",NL," "\
+										"	WHERE CODPAL = '",S_GEEX0790_CODPAL,"'",NL," "\
+										")",NL," "\
+										"AND CODACT = '",S_GEEX0790_CODACT,"'")
+
+						log("------------------------------------------------------------", NL)
+						log(tQuery,NL)
+						log("------------------------------------------------------------", NL)
+
+						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+							tDS1PRO := peel(taDb2Array["DS1PRO"]," ")
+							tDS2PRO := peel(taDb2Array["DS2PRO"]," ")
+							tDS3PRO := peel(taDb2Array["DS3PRO"]," ")
+							! LOGS
+								log("************************************************************************", NL)
+								log("tDS1PRO = ", tDS1PRO, NL)
+								log("tDS2PRO = ", tDS2PRO, NL)
+								log("tDS3PRO = ", tDS3PRO, NL)
+								log("************************************************************************", NL)
+							! FIM LOGS
+							remove(taDb2Array)
+						endif
+
+						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+					! FIM QUERY DS1PRO, DS2PRO, DS3PRO
+
+					! QUERY tDATSTO_0790, tHEUSTO_0790
+						tQuery := build("SELECT  DATSTO",NL," "\
+										"       ,HEUSTO",NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL",NL," "\
+										"WHERE CODPAL = '",S_GEEX0790_CODPAL,"'")
+
+						log("------------------------------------------------------------", NL)
+						log(tQuery,NL)
+						log("------------------------------------------------------------", NL)
+
+						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+							tDATSTO_0790 := peel(taDb2Array["DATSTO"]," ")
+							tHEUSTO_0790 := peel(taDb2Array["HEUSTO"]," ")
+							remove(taDb2Array)
+						endif
+
+						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+					! FIM QUERY tDATSTO_0790, tHEUSTO_0790
+
+					R_GEEX0790_BP_CODEXC(S_GEEX0790_CODEXC)
+					R_GEEX0790_BP_SEPEXC(S_GEEX0790_SEPEXC)
+					R_GEEX0790_BP_SCOEXC(S_GEEX0790_SCOEXC)
+					R_GEEX0790_BP_TRTEXC(S_GEEX0790_TRTEXC)
+					R_GEEX0790_BP_CODPAL(S_GEEX0790_CODPAL)
+					R_GEEX0790_BP_ETAPAL(S_GEEX0790_ETAPAL)
+					R_GEEX0790_BP_CODACT(S_GEEX0790_CODACT)
+					R_GEEX0790_BP_CODCLI(S_GEEX0790_CODCLI)
+					R_GEEX0790_BP_CODPRO(S_GEEX0790_CODPRO)
+					R_GEEX0790_BP_VALPRO(S_GEEX0790_VALPRO)
+					R_GEEX0790_BP_MOTIMM(S_GEEX0790_MOTIMM)
+					R_GEEX0790_BP_DATLIB(S_GEEX0790_DATLIB)
+					R_GEEX0790_BP_HEULIB(S_GEEX0790_HEULIB)
+					R_GEEX0790_BP_INDLIB(S_GEEX0790_INDLIB)
+					R_GEEX0790_BP_IDEMSG(S_GEEX0790_IDEMSG)
+					R_GEEX0790_BP_IMMBKL(S_GEEX0790_IMMBKL)
+					R_GEEX0790_BP_PALIMM(S_GEEX0790_PALIMM)
+					R_GEEX0790_BP_DATBKL(S_GEEX0790_DATBKL)
+					R_GEEX0790_BP_HEUBKL(S_GEEX0790_HEUBKL)
+					R_GEEX0790_BP_DATIMM(tDATSTO_0790)
+					R_GEEX0790_BP_HEUIMM(tHEUSTO_0790)
+					! LOGS
+						log("************************************************************************", NL)
+						log("length(",S_GEEX0790_MOTIMM,") = ", length(S_GEEX0790_MOTIMM), NL)
+						log("tCODTRT = ", tCODTRT, NL)
+						log("************************************************************************", NL)
+					! FIM LOGS
+					R_GEEX0790_BP_LIBIMO(tLIBIMO_0790)
+					if bQueryGEPAL0700 = FALSE then
+						R_GEEX0790_BP_DS1PRO(substr(tDESCRICAO_Query0700, 1, 35))
+						R_GEEX0790_BP_DS2PRO(substr(tDESCRICAO_Query0700, 36, 35))
+					else
+						R_GEEX0790_BP_DS1PRO(tDS1PRO)
+						R_GEEX0790_BP_DS2PRO(tDS2PRO)
+						R_GEEX0790_BP_DS3PRO(tDS3PRO)
+					endif
+					R_GEEX0790_BP_DISEXC(S_GEEX0790_DISEXC)
+
+					flush(0,0,NL) >> tFileOutTempBP
+				! BYPASS FIM
+			endif
+			remove(taDb2Array)
+		endif
+
+		if bfSqlFree(tDbBase2, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - BYPASS PALETE PAI",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bFistCODPAL = FALSE then
+			bFistCODPAL := TRUE
+			tCODPAL_AGRUPADO := build("'",S_GEEX0790_CODPAL,"'")
+		else
+			tCODPAL_AGRUPADO := build(tCODPAL_AGRUPADO, ",'", S_GEEX0790_CODPAL, "'")
+		endif
+	endif
+endline
+
+line(1:"99.00")
+	! LEITURA CAMPOS
+		tCODEXC_9900 := S_GEEX9900_CODEXC
+		tSEPEXC_9900 := S_GEEX9900_SEPEXC
+		tSCOEXC_9900 := S_GEEX9900_SCOEXC
+		tTRTEXC_9900 := S_GEEX9900_TRTEXC
+		tEMTEXC_9900 := S_GEEX9900_EMTEXC
+		tRCTEXC_9900 := S_GEEX9900_RCTEXC
+		tDATEXC_9900 := S_GEEX9900_DATEXC
+		tHEUEXC_9900 := S_GEEX9900_HEUEXC
+		tNUMEXC_9900 := S_GEEX9900_NUMEXC
+		tCPTEXC_9900 := S_GEEX9900_CPTEXC
+		tNOMSYS_9900 := S_GEEX9900_NOMSYS
+		tNOMDTQ_9900 := S_GEEX9900_NOMDTQ
+		tBIBDTQ_9900 := S_GEEX9900_BIBDTQ
+		tIDEMSG_9900 := S_GEEX9900_IDEMSG
+		tDISEXC_9900 := S_GEEX9900_DISEXC
+	! FIM LEITURA CAMPOS
+
+	if bGeraByPass then
+		! BYPASS INICIO
+			R_GEEX9900_BP_CODEXC(S_GEEX9900_CODEXC)
+			R_GEEX9900_BP_SEPEXC(S_GEEX9900_SEPEXC)
+			R_GEEX9900_BP_SCOEXC(S_GEEX9900_SCOEXC)
+			R_GEEX9900_BP_TRTEXC(S_GEEX9900_TRTEXC)
+			R_GEEX9900_BP_EMTEXC(S_GEEX9900_EMTEXC)
+			R_GEEX9900_BP_RCTEXC(S_GEEX9900_RCTEXC)
+			R_GEEX9900_BP_DATEXC(S_GEEX9900_DATEXC)
+			R_GEEX9900_BP_HEUEXC(S_GEEX9900_HEUEXC)
+			R_GEEX9900_BP_NUMEXC(S_GEEX9900_NUMEXC)
+			R_GEEX9900_BP_CPTEXC(S_GEEX9900_CPTEXC)
+			R_GEEX9900_BP_NOMSYS(S_GEEX9900_NOMSYS)
+			R_GEEX9900_BP_NOMDTQ(S_GEEX9900_NOMDTQ)
+			R_GEEX9900_BP_BIBDTQ(S_GEEX9900_BIBDTQ)
+			R_GEEX9900_BP_IDEMSG(S_GEEX9900_IDEMSG)
+			R_GEEX9900_BP_DISEXC(S_GEEX9900_DISEXC)
+
+			flush(0,0,NL) >> tFileOutTempBP
+		! BYPASS FIM
+	endif
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	if nCount0700 = 0 then
+		bfMajtraceBP("Erro de Traducao", \
+					"1", \
+					tCODPAL, \
+					time("now","%Y-%m-%dT%H:%M:%S"), \
+					tFileOut, \
+					"M07 - BYPASS", \
+					"IDEMSG = 0 - Não enviar para Agnostic")
+		remove(tFileOutBP)
+		remove(tFileOutTempBP)
+		exit(0)
+	endif
+
+	if bGeraByPass = TRUE then
+		close(tFileOutTempBP)
+		copy(tFileOutTempBP,tFileOutBP)
+		remove(tFileOutTempBP)
+		close(tFileOutBP)
+
+		bfMajtraceBP("Recebida", \
+					"0", \
+					tCODPAL_0700, \
+					time("now","%Y-%m-%dT%H:%M:%S"), \
+					tFileOut, \
+					"M07 - BYPASS PALETE PAI", \
+					"")
+
+		close(tFileOutTempCSV)
+		copy(tFileOutTempCSV,tFileOutCSV)
+		remove(tFileOutTempCSV)
+		close(tFileOutCSV)
+
+		bfMajtraceCSV("Recebida", \
+					"0", \
+					tCODPAL_0700, \
+					time("now","%Y-%m-%dT%H:%M:%S"), \
+					tFileOutCSV, \
+					"M07 - SS PALETE PAI", \
+					"")
+	else
+		log("Não gera BYPASS!", NL)
+		remove(tFileOutTempBP)
+		remove(tFileOutBP)
+	endif
+
+	bfEscrevePaleteFilho(tCODPAL_AGRUPADO, tCODPAL_0790)
+endend
+
+!===========================================================
+
+function bfMajtraceBP(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	if bPaleteGESUPE = TRUE then
+		TRACE.FICHEIROSAIDA := tNameOutBP_2
+	else
+		TRACE.FICHEIROSAIDA := tNameOutBP
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutBP,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOutBP)
+		copy(tFileOutBP,TRACE.Out)
+		close(tFileOutBP)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtraceCSV(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOutCSV
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutCSV,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOutCSV)
+		copy(tFileOutCSV,TRACE.Out)
+		close(tFileOutCSV)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtraceCSVPaleteFilho(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOutCSV_FILHO
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutCSV_FILHO,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOutCSV_FILHO)
+		copy(tFileOutCSV_FILHO,TRACE.Out)
+		close(tFileOutCSV_FILHO)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtracePaleteFilho(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOutPaleteFilho
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutPaleteFilho,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOutPaleteFilho)
+		copy(tFileOutPaleteFilho,TRACE.Out)
+		close(tFileOutPaleteFilho)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfEscrevePaleteFilho(tCODPAL_FUNC_PALETE_FILHO, tCODPAL_MAJTRACE)
+
+    ! Criação do arquivo
+		tNameOutPaleteFilho := build("FM",tToInfologPrefixFilename,"MAR_M07",time("now","%Y%m%d%H%M%S") \
+			,substr(build(nMessageID), length(build(nMessageID)) - 1, 2),"2.txt")
+		tFileOutPaleteFilho := build(sHOME,"/FMBR_AS2/",tNameOutPaleteFilho)
+		tFileOutTempPaleteFilho := build(sHOME,"/FMBR_AS2/Temp/",tNameOutPaleteFilho)
+
+		tNameOutCSV_FILHO := build("FM",tToInfologPrefixFilename,"MAR_SS",time("now","%Y%m%d%H%M%S") \
+			,substr(build(nMessageID), length(build(nMessageID)) - 1, 2),"1.txt")
+		tFileOutCSV_FILHO := build(sHOME,"/FMBR_AS2/",tNameOutCSV_FILHO)
+		tFileOutTempCSV_FILHO := build(sHOME,"/FMBR_AS2/Temp/",tNameOutCSV_FILHO)
+
+
+	log("------------------------------------------------------------", NL)
+	log("------------------------------------------------------------", NL)
+	log("------------------  M07 - PALETE FILHO  --------------------",NL)
+	log("------------------------------------------------------------", NL)
+
+	tMensagem := "M07 - PALETE FILHO"
+
+	! QUERY PAL_SE, CODLOT, CODPRO, DATFVI, COLSTO, DESCRICAO. ESCRITA PALETE FILHO
+		tQuery := build("SELECT  SE.CODPAL                        AS PAL_SE",NL," "\
+						"		,SD.CODLOT",NL," "\
+						"		,SD.CODPRO",NL," "\
+						"		,SD.DATFVI",NL," "\
+						"		,INT(SUM((SD.UVCLIV/SD.PCBPRO))) AS COLSTO",NL," "\
+						"		,SD.DS1PRO || ' ' || SD.DS2PRO   AS DESCRICAO",NL," "\
+						"		,SE.NUMSUP",NL," "\
+						"		,SE.DATSUP2",NL," "\
+						"		,SE.HEUSUP2",NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD AS SD",NL," "\
+						"	ON SE.NUMSUP = SD.NUMSUP",NL," "\
+						"WHERE 1 = 1",NL," "\
+						"	AND SE.ETASUP NOT IN ('50', '90')",NL," "\
+						"	AND SE.TYPSUP = '1'",NL," "\
+						"	AND (SE.NUMSUP IN (	SELECT NUMSUP",NL," "\
+						"						FROM FGE50FM",tToInfologPrefixFilename,".GESUPD",NL," "\
+						"						WHERE CODPAL IN (",tCODPAL_FUNC_PALETE_FILHO,"))",NL," "\
+						"		OR SE.CODPAL IN (",tCODPAL_FUNC_PALETE_FILHO,"))",NL," "\
+						"GROUP BY SE.CODPAL",NL," "\
+						"		,SD.CODLOT",NL," "\
+						"		,SD.CODPRO",NL," "\
+						"		,SD.DATFVI",NL," "\
+						"		,SD.DS1PRO",NL," "\
+						"		,SD.DS2PRO",NL," "\
+						"		,SE.NUMSUP",NL," "\
+						"		,SE.DATSUP2",NL," "\
+						"		,SE.HEUSUP2",NL," "\
+						"ORDER BY 1")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		nCountQueryResultPaleteFilho := 0
+		bPALETE_FILHO_GESUPE := FALSE
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			bPALETE_FILHO_GESUPE := TRUE
+			! LOGS
+				log("************************************************************************", NL)
+				log("PAL_SE.: ", peel(taDb2Array["PAL_SE"], " "), NL)
+				log("CODLOT.: ", peel(taDb2Array["CODLOT"], " "), NL)
+				log("CODPRO.: ", peel(taDb2Array["CODPRO"], " "), NL)
+				log("DATFVI.: ", peel(taDb2Array["DATFVI"], " "), NL)
+				log("COLSTO.: ", peel(taDb2Array["COLSTO"], " "), NL)
+				log("DESCRIC: ", peel(taDb2Array["DESCRICAO"], " "), NL)
+				log("NUMSUP.: ", peel(taDb2Array["NUMSUP"], " "), NL)
+				log("DATSUP2: ", peel(taDb2Array["DATSUP2"], " "), NL)
+				log("HEUSUP2: ", peel(taDb2Array["HEUSUP2"], " "), NL)
+				log("************************************************************************", NL)
+			! FIM LOGS
+			nCountQueryResultPaleteFilho++
+			taQuery_Palete_PAL_SE[nCountQueryResultPaleteFilho] := peel(taDb2Array["PAL_SE"], " ")
+			taQuery_Palete_CODLOT[nCountQueryResultPaleteFilho] := peel(taDb2Array["CODLOT"], " ")
+			taQuery_Palete_CODPRO[nCountQueryResultPaleteFilho] := peel(taDb2Array["CODPRO"], " ")
+			taQuery_Palete_DATFVI[nCountQueryResultPaleteFilho] := peel(taDb2Array["DATFVI"], " ")
+			taQuery_Palete_COLSTO[nCountQueryResultPaleteFilho] := peel(taDb2Array["COLSTO"], " ")
+			taQuery_Palete_DESCRICAO[nCountQueryResultPaleteFilho] := peel(taDb2Array["DESCRICAO"], " ")
+			taQuery_Palete_NUMSUP[nCountQueryResultPaleteFilho] := peel(taDb2Array["NUMSUP"], " ")
+			taQuery_Palete_DATSUP2[nCountQueryResultPaleteFilho] := peel(taDb2Array["DATSUP2"], " ")
+			taQuery_Palete_HEUSUP2[nCountQueryResultPaleteFilho] := peel(taDb2Array["HEUSUP2"], " ")
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		if bPALETE_FILHO_GESUPE = FALSE then
+			log("A query de palete filho não retornou resultado! FIM", NL)
+			remove(tFileOutPaleteFilho)
+			remove(tFileOutTempPaleteFilho)
+		else
+			R_GEEX0000_BP_CODEXC(tCODEXC_0000)
+			R_GEEX0000_BP_SEPEXC(tSEPEXC_0000)
+			R_GEEX0000_BP_SCOEXC(tSCOEXC_0000)
+			R_GEEX0000_BP_TRTEXC(tTRTEXC_0000)
+			R_GEEX0000_BP_EMTEXC(tEMTEXC_0000)
+			R_GEEX0000_BP_RCTEXC(tRCTEXC_0000)
+			R_GEEX0000_BP_DATEXC(tDATEXC_0000)
+			R_GEEX0000_BP_HEUEXC(tHEUEXC_0000)
+			R_GEEX0000_BP_NUMEXC(tNUMEXC_0000)
+			R_GEEX0000_BP_ACQEXC(tACQEXC_0000)
+			R_GEEX0000_BP_VEREXC(tVEREXC_0000)
+			R_GEEX0000_BP_NOMSYS(tNOMSYS_0000)
+			R_GEEX0000_BP_NOMDTQ(tNOMDTQ_0000)
+			R_GEEX0000_BP_BIBDTQ(tBIBDTQ_0000)
+			R_GEEX0000_BP_LIBEXC(tLIBEXC_0000)
+			R_GEEX0000_BP_BIBDST(tBIBDST_0000)
+			R_GEEX0000_BP_PGMDST(tPGMDST_0000)
+			R_GEEX0000_BP_PARDST(tPARDST_0000)
+			R_GEEX0000_BP_CODACT(tCODACT_0000)
+			R_GEEX0000_BP_IGLSIT(tIGLSIT_0000)
+			R_GEEX0000_BP_EDISIT(tEDISIT_0000)
+			R_GEEX0000_BP_IMAEXC(tIMAEXC_0000)
+			R_GEEX0000_BP_IDEMSG(tIDEMSG_0000)
+			R_GEEX0000_BP_NATEXC(tNATEXC_0000)
+			R_GEEX0000_BP_EMTORI(tEMTORI_0000)
+			R_GEEX0000_BP_DISEXC(tDISEXC_0000)
+
+			flush(0,0,NL) >> tFileOutTempPaleteFilho
+
+			while tIndex in taQuery_Palete_PAL_SE do
+				R_GEEX0700_BP_CODEXC(tCODEXC_0700)
+				R_GEEX0700_BP_SEPEXC(tSEPEXC_0700)
+				R_GEEX0700_BP_SCOEXC(tSCOEXC_0700)
+				R_GEEX0700_BP_TRTEXC(tTRTEXC_0700)
+				R_GEEX0700_BP_CODPAL(taQuery_Palete_PAL_SE[tIndex])
+				R_GEEX0700_BP_MOTIMM(tMOTIMM_0700)
+				R_GEEX0700_BP_CODTRT(tCODTRT_0700)
+				R_GEEX0700_BP_NUMPAL(tNUMPAL_0700)
+				R_GEEX0700_BP_DATTRT(tDATTRT_0700)
+				R_GEEX0700_BP_NUMMSG(tNUMMSG_0700)
+				R_GEEX0700_BP_LIBMSG(tLIBMSG_0700)
+				R_GEEX0700_BP_HEUTRT(tHEUTRT_0700)
+				R_GEEX0700_BP_CODLOT(taQuery_Palete_CODLOT[tIndex])
+				R_GEEX0700_BP_CODACT(tCODACT_0700)
+				R_GEEX0700_BP_CODCLI(tCODCLI_0700)
+				R_GEEX0700_BP_CODPRO(taQuery_Palete_CODPRO[tIndex])
+				R_GEEX0700_BP_VALPRO(tVALPRO_0700)
+				R_GEEX0700_BP_IDEMSG(tIDEMSG_0700)
+				R_GEEX0700_BP_EDIPRO(tEDIPRO_0700)
+				R_GEEX0700_BP_MLTSIT(tMLTSIT_0700)
+				R_GEEX0700_BP_DATIMM2(tDATIMM2_0700)
+				R_GEEX0700_BP_HEUIMM2(tHEUIMM2_0700)
+				R_GEEX0700_BP_DATFVI(taQuery_Palete_DATFVI[tIndex])
+				R_GEEX0700_BP_INDERR(tINDERR_0700)
+				R_GEEX0700_BP_UVCSTO(tUVCSTO_0700)
+				R_GEEX0700_BP_PCBPRO(tPCBPRO_0700)
+				R_GEEX0700_BP_DISEXC(tDISEXC_0700)
+				R_GEEX0700_BP_COLSTO(taQuery_Palete_COLSTO[tIndex])
+
+				flush(0,0,NL) >> tFileOutTempPaleteFilho
+
+				R_GEEX0790_BP_CODEXC(tCODEXC_0790)
+				R_GEEX0790_BP_SEPEXC(tSEPEXC_0790)
+				R_GEEX0790_BP_SCOEXC(tSCOEXC_0790)
+				R_GEEX0790_BP_TRTEXC(tTRTEXC_0790)
+				R_GEEX0790_BP_CODPAL(taQuery_Palete_PAL_SE[tIndex])
+				R_GEEX0790_BP_ETAPAL(tETAPAL_0790)
+				R_GEEX0790_BP_CODACT(tCODACT_0790)
+				R_GEEX0790_BP_CODCLI(tCODCLI_0790)
+				R_GEEX0790_BP_CODPRO(taQuery_Palete_CODPRO[tIndex])
+				R_GEEX0790_BP_VALPRO(tVALPRO_0790)
+				R_GEEX0790_BP_MOTIMM(tMOTIMM_0790)
+				R_GEEX0790_BP_DATLIB(tDATLIB_0790)
+				R_GEEX0790_BP_HEULIB(tHEULIB_0790)
+				R_GEEX0790_BP_INDLIB(tINDLIB_0790)
+				R_GEEX0790_BP_IDEMSG(tIDEMSG_0790)
+				R_GEEX0790_BP_IMMBKL(tIMMBKL_0790)
+				R_GEEX0790_BP_PALIMM(tPALIMM_0790)
+				R_GEEX0790_BP_DATBKL(tDATBKL_0790)
+				R_GEEX0790_BP_HEUBKL(tHEUBKL_0790)
+				R_GEEX0790_BP_DATIMM(taQuery_Palete_DATSUP2[tIndex])
+				R_GEEX0790_BP_HEUIMM(taQuery_Palete_HEUSUP2[tIndex])
+				R_GEEX0790_BP_LIBIMO(tLIBIMO_0790)
+				R_GEEX0790_BP_DS1PRO(substr(taQuery_Palete_DESCRICAO[tIndex], 1, 35))
+				R_GEEX0790_BP_DS2PRO(substr(taQuery_Palete_DESCRICAO[tIndex], 36, 35))
+				R_GEEX0790_BP_DS3PRO(substr(taQuery_Palete_DESCRICAO[tIndex], 71, 35))
+				R_GEEX0790_BP_DISEXC(tDISEXC_0790)
+
+				flush(0,0,NL) >> tFileOutTempPaleteFilho
+
+				bfEscreveCSVPaleteFilho(taQuery_Palete_PAL_SE[tIndex]  \
+										,tMOTIMM_0700 \
+										,taQuery_Palete_COLSTO[tIndex] \
+										,taQuery_Palete_CODPRO[tIndex] \
+										,taQuery_Palete_CODLOT[tIndex])
+			endwhile
+
+			R_GEEX9900_BP_CODEXC(tCODEXC_9900)
+			R_GEEX9900_BP_SEPEXC(tSEPEXC_9900)
+			R_GEEX9900_BP_SCOEXC(tSCOEXC_9900)
+			R_GEEX9900_BP_TRTEXC(tTRTEXC_9900)
+			R_GEEX9900_BP_EMTEXC(tEMTEXC_9900)
+			R_GEEX9900_BP_RCTEXC(tRCTEXC_9900)
+			R_GEEX9900_BP_DATEXC(tDATEXC_9900)
+			R_GEEX9900_BP_HEUEXC(tHEUEXC_9900)
+			R_GEEX9900_BP_NUMEXC(tNUMEXC_9900)
+			R_GEEX9900_BP_CPTEXC(tCPTEXC_9900)
+			R_GEEX9900_BP_NOMSYS(tNOMSYS_9900)
+			R_GEEX9900_BP_NOMDTQ(tNOMDTQ_9900)
+			R_GEEX9900_BP_BIBDTQ(tBIBDTQ_9900)
+			R_GEEX9900_BP_IDEMSG(tIDEMSG_9900)
+			R_GEEX9900_BP_DISEXC(tDISEXC_9900)
+
+			flush(0,0,NL) >> tFileOutTempPaleteFilho
+
+			close(tFileOutTempCSV_FILHO)
+			copy(tFileOutTempCSV_FILHO,tFileOutCSV_FILHO)
+			close(tFileOutTempCSV_FILHO)
+
+			bfMajtraceCSVPaleteFilho("Recebida", \
+									"0", \
+									tCODPAL_MAJTRACE, \
+									time("now","%Y-%m-%dT%H:%M:%S"), \
+									tFileOutCSV, \
+									"M07 - SS PALETE FILHO", \
+									"")
+
+			remove(tFileOutTempCSV_FILHO)
+			close(tFileOutCSV_FILHO)
+
+			close(tFileOutTempPaleteFilho)
+			copy(tFileOutTempPaleteFilho,tFileOutPaleteFilho)
+			remove(tFileOutTempPaleteFilho)
+			close(tFileOutPaleteFilho)
+
+			bfMajtracePaleteFilho("Recebida", \
+									"0", \
+									tCODPAL_MAJTRACE, \
+									time("now","%Y-%m-%dT%H:%M:%S"), \
+									tFileOut, \
+									tMensagem, \
+									"")
+		endif
+	! FIM QUERY PAL_SE, CODLOT, CODPRO, DATFVI, COLSTO, DESCRICAO
+endfunction
+
+!===========================================================
+
+function bfEscreveCSVPaleteFilho(tCSV_CODPAL, tCSV_MOTIMM0700, tCSV_COLSTO, tCSV_CODPRO, tCSV_CODLOT)
+	! CSV SS
+		! QUERY STOSAP2
+			tQuery := build("SELECT STOSAP2",NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO",NL," "\
+							"WHERE MOTIMM = '",tCSV_MOTIMM0700,"'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+				tSTOSAP2_CSV_PaleteFilho := peel(taDb2Array["STOSAP2"]," ")
+				! LOGS
+					log("************************************************************************", NL)
+					log("tSTOSAP2_CSV_PaleteFilho = ", tSTOSAP2_CSV_PaleteFilho, NL)
+					log("************************************************************************", NL)
+				! FIM LOGS
+				remove(taDb2Array)
+			endif
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY STOSAP2
+
+		! QUERY VALRUB
+			tQuery := build("SELECT VALRUB",NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
+							"WHERE VALCLE='",tCSV_MOTIMM0700,"'")
+
+			log("------------------------------------------------------------", NL)
+			log(tQuery,NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+				tVALRUB_CSV := peel(taDb2Array["VALRUB"]," ")
+				! LOGS
+					log("************************************************************************", NL)
+					log("tVALRUB_CSV = ", tVALRUB_CSV, NL)
+					log("************************************************************************", NL)
+				! FIM LOGS
+
+				remove(taDb2Array)
+			endif
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M07 - SS",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+		! FIM QUERY VALRUB
+
+		R_DETALHE_MATERIAL(tCSV_CODPRO)
+		R_DETALHE_BATCH(tCSV_CODLOT)
+		R_DETALHE_SSCC_LPN(tCSV_CODPAL)
+		R_DETALHE_QUANTITY(build(number(tCSV_COLSTO):017.3))
+		R_DETALHE_PLANT("BR22")
+		R_DETALHE_STORAGE_LOC(tSTOSAP2_CSV_PaleteFilho)
+		if length(tCSV_MOTIMM0700) = 0 or (tCSV_MOTIMM0700 = "HEL" and S_GEEX0700_CODTRT = "2") then
+			R_DETALHE_WMS_STATUS("0")
+		else
+			R_DETALHE_WMS_STATUS(tVALRUB_CSV)
+		endif
+
+		print(build(taDETALHE[1],";", \
+				taDETALHE[2],";", \
+				taDETALHE[3],";", \
+				taDETALHE[4],";", \
+				taDETALHE[5],";", \
+				taDETALHE[6],";", \
+				taDETALHE[7]), NL) >> tFileOutTempCSV_FILHO
+		remove(taDETALHE)
+	! FIM CSV SS
+endfunction
+
+!===========================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtracePaleteFilho(	"Erro de Traducao" \
+							,"1" \
+							,tNumeroDocumento \
+							,tDataDocumento \
+							,tFileOut \
+							,tMensagem \
+							,build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+endfunction

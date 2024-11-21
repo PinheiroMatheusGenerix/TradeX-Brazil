@@ -1,0 +1,24 @@
+base "syslog.cfg" SYSLOG
+
+begin
+
+SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+close(SYSLOG.a)
+close(SYSLOG.l)
+load(SYSLOG.l,taInfo)
+close(SYSLOG.l)
+if length(pEDISEND.ORIGINAL.NAME) > 0 then
+	tFileOut := build(sHOME,"/FMBR_AS2/",pEDISEND.ORIGINAL.NAME)
+else
+	log(NL,"could not find pEDISEND.ORIGINAL.NAME on SYSLOG.l",NL)
+exit(1)
+endif
+log("copying file to ",tFileOut,NL)
+copy(SYSLOG.a,tFileOut)
+close(SYSLOG.a)
+close(tFileOut)
+ 
+
+exit(0)
+
+endbegin

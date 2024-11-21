@@ -1,0 +1,43 @@
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 18-10-2010  XX  Creation
+! 18-10-2010  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+
+base "../trace/trace.cfg" TRACE
+
+
+
+
+begin
+	
+TRACE := find(build(sHOME,"/trace"),ESTADO="Em Quarentena",MENSAGEM = "ROTEIRIZACAO",MODIFIED >build("now-7d"))
+while valid(TRACE) do
+	close(TRACE.In)
+	tFile := build(sHOME,"/FromAS2Proxy/",TRACE.REDE)
+	close(tFile)
+	copy(TRACE.In,tFile)
+	close(TRACE.In)
+	close(tFile)
+	TRACE := find()
+endwhile
+
+
+exit(0)
+endbegin

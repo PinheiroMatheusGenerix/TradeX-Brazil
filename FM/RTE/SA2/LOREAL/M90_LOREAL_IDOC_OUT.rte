@@ -1,0 +1,1025 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../trace/trace.cfg" TRACE2,autoflush off
+base "../fmbrasil_batimento_p5/fmbrasil_batimento_p5.cfg" fmbrasil_batimento_p5_p5
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M90_LOREAL_IDOC_OUT"
+#include "include/generix_func.inc"
+#include "include/510INVENTORYLOREAL.inc"
+#include "include/M90.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameLOREAL"]
+
+	nMainIndex := 0
+	nLinha := 0
+	nLinha2 := 0
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	tData := S_0000_DATEXC
+	tHora := S_0000_HEUEXC   
+	bPrimeiro9900 := TRUE
+endline
+
+line("90.00")
+	tCODACTLido := S_9000STOCKS_CODACT
+endline
+
+line("99.00")
+	if tCODACTLido = "JAR" then
+		! P5
+			! CONSULTA DE HORARIOS P5
+				fmbrasil_batimento_p5_p5 := find(build(sHOME,"/fmbrasil_batimento_p5"),CODACT=tCODACTLido,TIPO="P5")
+				if valid(fmbrasil_batimento_p5_p5) then
+					tTOEMAILp5 := fmbrasil_batimento_p5_p5.TOEMAIL
+					tCCEMAILp5 := fmbrasil_batimento_p5_p5.CCEMAIL
+					tBEGINSUBJp5 := fmbrasil_batimento_p5_p5.BEGINSUBJ
+					tHORARIOSPERMITIDOSp5 := fmbrasil_batimento_p5_p5.HORARIOSPERMITIDOS
+					tToInfologPrefixFilename :=  fmbrasil_batimento_p5_p5.AMBIENTE
+					tHORARIOSPERMITIDOS := replace(replace(tHORARIOSPERMITIDOSp5," ",""),",",";")
+					nHorariosPermitidosAux := split(tHORARIOSPERMITIDOS,taArrayAuxApaga,";")
+					if nHorariosPermitidosAux <= 1 then
+						taArrayHORARIOSPERMITIDOS[1] := tHORARIOSPERMITIDOS
+						nHorariosPermitidosAux := 1
+					else
+						taArrayHORARIOSPERMITIDOS := taArrayAuxApaga
+					endif
+				
+					remove(taArrayAuxApaga)
+					
+					nTempPesquisaArray := 1
+					while nTempPesquisaArray <= nHorariosPermitidosAux do
+						log("Horario Permitidos P5: ",taArrayHORARIOSPERMITIDOS[nTempPesquisaArray],NL)
+						if taArrayHORARIOSPERMITIDOS[nTempPesquisaArray] = substr(tHora,1,2) then
+							bFazP5 := TRUE
+						endif
+						nTempPesquisaArray++
+					endwhile
+					remove(taArrayHORARIOSPERMITIDOS)
+				else
+					bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+				endif
+			! FIM CONSULTA DE HORARIOS P5
+
+			if bFazP5 = TRUE then
+				TRACE2:=new(build(sHOME,"/trace"))
+
+				! P5_EST_OFICIAL_WMS
+					tQuery := build("SELECT   CODPRO SKU",NL," "\
+									"        ,DS1PRO SKU_DESC1_35",NL," "\
+									"        ,CODPAL LP",NL," "\
+									"        ,'' LPN",NL," "\
+									"        ,MOTIMM SP",NL," "\
+									"        ,'NM' SL",NL," "\
+									"        ,CASE",NL," "\
+									"         WHEN CODLOT = ''",NL," "\
+									"			THEN 'NOLOT'",NL," "\
+									"         	ELSE CODLOT",NL," "\
+									"         END LOT",NL," "\
+									"        ,'' NOTE1",NL," "\
+									"        ,DATFVI EXPR_DATE",NL," "\
+									"        ,UVCSTO QTY",NL," "\
+									"        ,UNIPRO UOM_ABREV",NL," "\
+									"        ,ZONSTS ||'-'|| RIGHT('000' || ALLSTS,3) ||'-'|| RIGHT('0000' || DPLSTS,4) ||'-'|| RIGHT('00' || NIVSTS,2) LOCACAO",NL," "\
+									"        ,CASE",NL," "\
+									"         WHEN ETAPAL = '50'",NL," "\
+									"			THEN 'PUT'",NL," "\
+									"         	ELSE 'LOC'",NL," "\
+									"		  END TIPO",NL," "\
+									"        ,REFREC BL",NL," "\
+									"        ,'' PKG_NO",NL," "\
+									"        ,FAMPRO FAMI",NL," "\
+									"        ,DATREC DREC",NL," "\
+									"        ,'' PERC_VIDA_PROD",NL," "\
+									"        ,ANAPRO DIVISAO",NL," "\
+									"        ,'' COD_ONU",NL," "\
+									"        ,'' CLASSE_RISCO",NL," "\
+									"        ,REFREC NF",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL",NL," "\
+									"WHERE CODACT='",tCODACTLido,"'",NL," "\
+									"AND   ETAPAL <> '60'",NL," "\
+									"ORDER BY 1")
+
+					log(tQuery,NL)
+					
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if bQueryTemResul = FALSE then
+							bQueryTemResul := TRUE
+							print("SKU;SKU_DESC1_35;LP;LPN;SP;SL;LOT;NOTE1;EXPR_DATE;QTY;UOM_ABREV;LOCACAO;TIPO;BL;PKG_NO;FAMI;DREC;PERC_VIDA_PROD;DIVISAO;COD_ONU;CLASSE_RISCO;NF",NL) >>  TRACE2.P5_EST_OFICIAL_WMS
+						endif
+						
+						! PRINT
+							print(peel(taDb2Array["SKU"]," "),";", \
+									peel(taDb2Array["SKU_DESC1_35"]," "),";", \
+									peel(taDb2Array["LP"]," "),";", \
+									peel(taDb2Array["LPN"]," "),";", \
+									peel(taDb2Array["SP"]," "),";", \
+									peel(taDb2Array["SL"]," "),";", \
+									peel(taDb2Array["LOT"]," "),";", \
+									peel(taDb2Array["NOTE1"]," "),";", \
+									peel(taDb2Array["EXPR_DATE"]," "),";", \
+									peel(taDb2Array["QTY"]," "),";", \
+									peel(taDb2Array["UOM_ABREV"]," "),";", \
+									peel(taDb2Array["LOCACAO"]," "),";", \
+									peel(taDb2Array["TIPO"]," "),";", \
+									peel(taDb2Array["BL"]," "),";", \
+									peel(taDb2Array["PKG_NO"]," "),";", \
+									peel(taDb2Array["FAMI"]," "),";", \
+									peel(taDb2Array["DREC"]," "),";", \
+									peel(taDb2Array["PERC_VIDA_PROD"]," "),";", \
+									peel(taDb2Array["DIVISAO"]," "),";", \
+									peel(taDb2Array["COD_ONU"]," "),";", \
+									peel(taDb2Array["CLASSE_RISCO"]," "),";", \
+									peel(taDb2Array["NF"]," "),";",NL) >> TRACE2.P5_EST_OFICIAL_WMS
+						! FIM PRINT
+							
+						remove(taDb2Array)
+					endwhile
+						
+					if bQueryTemResul = FALSE then
+						print("Consulta não retornou resultados",NL) >> TRACE2.P5_EST_OFICIAL_WMS
+					endif
+					
+					close(TRACE2.P5_EST_OFICIAL_WMS)
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					tPrefixoSubjectEmail := tBEGINSUBJp5
+					
+					if bQueryTemResul = TRUE then
+						remove(tArquivoEmailErro)
+						tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".csv")
+						copy(TRACE2.P5_EST_OFICIAL_WMS,tArquivoEmailErro)
+						close(TRACE2.P5_EST_OFICIAL_WMS)
+						close(tArquivoEmailErro)
+						tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_EST_OFICIAL_WMS")
+						tNameEMAIL := build("P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".csv")
+						tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+						log("executing command ",tCmdEmailErro,NL)
+						nRet := system(tCmdEmailErro)
+						close(tArquivoEmailErro)				
+						remove(tArquivoEmailErro)
+					else
+						remove(tArquivoEmailErro)
+						tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".txt")
+						
+						print("***Informações de P5 EST OFICIAL WMS no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+						close(tArquivoEmailErro)
+						
+						tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_EST_OFICIAL_WMS")
+						tNameEMAIL := build("P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".txt")
+						tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+						log("executing command ",tCmdEmailErro,NL)
+						nRet := system(tCmdEmailErro)
+						close(tArquivoEmailErro)				
+						remove(tArquivoEmailErro)
+					endif
+				! FIM P5_EST_OFICIAL_WMS	
+
+				! P5_INF_SEP_EXP_DIA
+					tQuery := build("SELECT  SD.CODACT COMP_CODE",NL," "\
+									"		,SD.CODPRO SKU",NL," "\
+									"		,SD.NUMSUP UMA",NL," "\
+									"		,SD.UVCLIV QTD",NL," "\
+									"		,'EA' UNID",NL," "\
+									"		,LEFT (ROUND (SUM((SD.PDBCOL/SD.PCBPRO)*SD.UVCLIV),3),7) PESO",NL," "\
+									"		,LEFT ((ROUND (SUM((SD.VOLCOL/SD.PCBPRO)*SD.UVCLIV),3)/1000),7) CUBAGEM",NL," "\
+									"		,'' COD_ONU",NL," "\
+									"		,'' CLASSE_RISCO",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GESUPD SD",NL," "\
+									"INNER JOIN FGE50FM",tToInfologPrefixFilename,".GEHSUP HS",NL," "\
+									"	ON   SD.NUMSUP=HS.NUMSUP",NL," "\
+									"WHERE INDEXP = 1",NL," "\
+									"	AND    HS.ETASUP = 50",NL," "\
+									"	AND    HS.DATHIS = VARCHAR_FORMAT((CURRENT DATE - 1 DAYS), 'YYYYMMDD') ",NL," "\
+									"	AND CODACT = '",tCODACTLido,"'",NL," "\
+									"GROUP BY  SD.CODACT ",NL," "\
+									"         ,SD.CODPRO ",NL," "\
+									"         ,SD.NUMSUP ",NL," "\
+									"         ,SD.UVCLIV ",NL," "\
+									"ORDER BY 1,3,2")
+
+					log(tQuery,NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if bQueryTemResul = FALSE then
+							bQueryTemResul := TRUE
+							print("COMP_CODE;SKU;UMA;QTD;UNID;PESO;CUBAGEM;COD_ONU;CLASSE_RISCO;",NL) >>  TRACE2.P5_INF_SEP_EXP_DIA
+						endif
+
+						! PRINT
+							print(peel(taDb2Array["COMP_CODE"]," "),";", \
+									peel(taDb2Array["SKU"]," "),";", \
+									peel(taDb2Array["UMA"]," "),";", \
+									peel(taDb2Array["QTD"]," "),";", \
+									peel(taDb2Array["UNID"]," "),";", \
+									peel(taDb2Array["PESO"]," "),";", \
+									peel(taDb2Array["CUBAGEM"]," "),";", \
+									peel(taDb2Array["COD_ONU"]," "),";", \
+									peel(taDb2Array["CLASSE_RISCO"]," "),";",NL) >>  TRACE2.P5_INF_SEP_EXP_DIA
+						! FIM PRINT
+						remove(taDb2Array)
+					endwhile
+					
+					if bQueryTemResul = FALSE then
+						print("Consulta não retornou resultados",NL) >> TRACE2.P5_INF_SEP_EXP_DIA
+					endif
+					
+					close(TRACE2.P5_INF_SEP_EXP_DIA)
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+					
+					tPrefixoSubjectEmail := tBEGINSUBJp5
+			
+					if bQueryTemResul = TRUE then
+						remove(tArquivoEmailErro)
+						tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".csv")
+						copy(TRACE2.P5_INF_SEP_EXP_DIA,tArquivoEmailErro)
+						close(TRACE2.P5_INF_SEP_EXP_DIA)
+						close(tArquivoEmailErro)
+						tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_EXP_DIA")
+						tNameEMAIL := build("P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".csv")
+						tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+						log("executing command ",tCmdEmailErro,NL)
+						nRet := system(tCmdEmailErro)
+						close(tArquivoEmailErro)				
+						remove(tArquivoEmailErro)
+					else
+						remove(tArquivoEmailErro)
+						tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".txt")
+						
+						print("***Informações de P5 INF SEP EXP no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+						close(tArquivoEmailErro)
+						
+						tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_EXP_DIA")
+						tNameEMAIL := build("P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".txt")
+						tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+						log("executing command ",tCmdEmailErro,NL)
+						nRet := system(tCmdEmailErro)
+						close(tArquivoEmailErro)				
+						remove(tArquivoEmailErro)
+					endif
+				! FIM P5_INF_SEP_EXP_DIA
+
+				! P5_INF_SEP_NAO_EXP
+					tQuery := build("SELECT  SD.CODACT COMP_CODE",NL," "\
+									"		,SD.CODPRO SKU",NL," "\
+									"		,SD.NUMSUP UMA",NL," "\
+									"		,SD.UVCLIV QTD",NL," "\
+									"		,'EA' UNID",NL," "\
+									"		,LEFT (ROUND (SUM((SD.PDBCOL/SD.PCBPRO)*SD.UVCLIV),3),7) PESO",NL," "\
+									"		,LEFT ((ROUND (SUM((SD.VOLCOL/SD.PCBPRO)*SD.UVCLIV),3)/1000),7) CUBAGEM",NL," "\
+									"		,'' COD_ONU",NL," "\
+									"		,'' CLASSE_RISCO",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GESUPD SD",NL," "\
+									"INNER JOIN FGE50FM",tToInfologPrefixFilename,".GEHSUP HS",NL," "\
+									"	ON SD.NUMSUP = HS.NUMSUP",NL," "\
+									"WHERE INDEXP = 0",NL," "\
+									"	AND HS.ETASUP = 30",NL," "\
+									"	AND HS.DATHIS = VARCHAR_FORMAT((CURRENT DATE - 1 DAYS), 'YYYYMMDD') ",NL," "\
+									"	AND CODACT = '",tCODACTLido,"'",NL," "\
+									"GROUP BY  SD.CODACT ",NL," "\
+									"         ,SD.CODPRO ",NL," "\
+									"         ,SD.NUMSUP ",NL," "\
+									"         ,SD.UVCLIV ",NL," "\
+									"ORDER BY 1,3,2")
+
+					log(tQuery,NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if bQueryTemResul = FALSE then
+							bQueryTemResul := TRUE
+							print("COMP_CODE;SKU;UMA;QTD;UNID;PESO;CUBAGEM;COD_ONU;CLASSE_RISCO;",NL) >>  TRACE2.P5_INF_SEP_NAO_EXP
+						endif
+
+						! PRINT
+							print(peel(taDb2Array["COMP_CODE"]," "),";", \
+									peel(taDb2Array["SKU"]," "),";", \
+									peel(taDb2Array["UMA"]," "),";", \
+									peel(taDb2Array["QTD"]," "),";", \
+									peel(taDb2Array["UNID"]," "),";", \
+									peel(taDb2Array["PESO"]," "),";", \
+									peel(taDb2Array["CUBAGEM"]," "),";", \
+									peel(taDb2Array["COD_ONU"]," "),";", \
+									peel(taDb2Array["CLASSE_RISCO"]," "),";",NL) >> TRACE2.P5_INF_SEP_NAO_EXP						
+						! FIM PRINT
+						remove(taDb2Array)
+					endwhile
+					
+					if bQueryTemResul = FALSE then
+						print("Consulta não retornou resultados",NL) >> TRACE2.P5_INF_SEP_NAO_EXP
+					endif
+						
+					close(TRACE2.P5_INF_SEP_NAO_EXP)
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceP5("Erro de Traducao","1",tNumeroDocumento,tDataDocumento)
+						exit(1)
+					endif
+					
+					tPrefixoSubjectEmail := tBEGINSUBJp5
+					
+					if bQueryTemResul = TRUE then
+						remove(tArquivoEmailErro)
+						tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".csv")
+						copy(TRACE2.P5_INF_SEP_NAO_EXP,tArquivoEmailErro)
+						close(TRACE2.P5_INF_SEP_NAO_EXP)
+						close(tArquivoEmailErro)
+						tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_NAO_EXP")
+						tNameEMAIL := build("P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".csv")
+						tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+						log("executing command ",tCmdEmailErro,NL)
+						nRet := system(tCmdEmailErro)
+						close(tArquivoEmailErro)				
+						remove(tArquivoEmailErro)
+					else
+						remove(tArquivoEmailErro)
+						tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".txt")
+						
+						print("***Informações de P5 INF SEP NAO EXP no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+						close(tArquivoEmailErro)
+						
+						tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_NAO_EXP")
+						tNameEMAIL := build("P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".txt")
+						tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+						log("executing command ",tCmdEmailErro,NL)
+						nRet := system(tCmdEmailErro)
+						close(tArquivoEmailErro)				
+						remove(tArquivoEmailErro)
+					endif	
+				! FIM P5_INF_SEP_NAO_EXP
+
+				bfMajtraceP5("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento)
+			endif
+		! FIM P5
+	endif
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+		if tCODACTLido = "581" or tCODACTLido = "583" or tCODACTLido = "602" then
+		! FOTO ESTOQUE
+			tTempoLidoInicial := time("now" ,"%Y_%m_%d_%H_%M_%S")
+			bEscreveuNomeArquivo602 := FALSE
+			bEscreveuNomeArquivo581 := FALSE
+			bEscreveuNomeArquivo583 := FALSE
+			nMessageID := cMessageID
+			if bPrimeiro9900 = TRUE then
+				bPrimeiro9900 := FALSE
+			endif
+
+			if tCODACTLido = "581" then
+				! QUERY bQueryTemResul, nLinha, taCODPRO[nLinha], taUVCSTO[nLinha], taCODLOT[nLinha], taANAPRO[nLinha], taMOTIMM[nLinha]
+					tQuery := build("SELECT  DISTINCT A.CODPRO", NL," "\
+									"       ,SUM(A.UVCSTO) UVCSTO", NL," "\
+									"       ,A.CODLOT", NL," "\
+									"       ,B.ANAPRO", NL," "\
+									"       ,A.MOTIMM", NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"    ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"WHERE A.CODPRO = B.CODPRO", NL," "\
+									"    AND A.CODACT = B.CODACT", NL," "\
+									"    AND A.MOTIMM <> ''", NL," "\
+									"    AND A.CODACT = '",tCODACTLido,"'", NL," "\
+									"GROUP BY  A.CODPRO", NL," "\
+									"         ,A.CODLOT", NL," "\
+									"         ,B.ANAPRO", NL," "\
+									"         ,A.MOTIMM", NL," "\
+									"ORDER BY  A.CODPRO", NL," "\
+									"         ,B.ANAPRO")
+
+					log(tQuery,NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if substr(peel(taDb2Array["ANAPRO"]," "),1,3) = "581" then
+							bQueryTemResul := TRUE	
+							nLinha++
+							taCODPRO[nLinha] := peel(taDb2Array["CODPRO"]," ")
+							taUVCSTO[nLinha] := peel(taDb2Array["UVCSTO"]," ")
+							taCODLOT[nLinha] := peel(taDb2Array["CODLOT"]," ")
+							taANAPRO[nLinha] := peel(taDb2Array["ANAPRO"]," ")
+							taMOTIMM[nLinha] := peel(taDb2Array["MOTIMM"]," ")
+						endif
+						remove(taDb2Array)
+					endwhile
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY bQueryTemResul, nLinha, taCODPRO[nLinha], taUVCSTO[nLinha], taCODLOT[nLinha], taANAPRO[nLinha], taMOTIMM[nLinha]
+
+				! QUERY bQueryTemResul, nLinha2++, taCODPRO_2[nLinha2], taUVCSTO_2[nLinha2], taCODLOT_2[nLinha2], taANAPRO_2[nLinha2], taMOTIMM_2[nLinha2]		
+					tQuery := build("SELECT  DISTINCT A.CODPRO", NL," "\
+									"       ,SUM(A.UVCSTO) UVCSTO", NL," "\
+									"       ,A.CODLOT", NL," "\
+									"       ,B.ANAPRO", NL," "\
+									"       ,A.MOTIMM", NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"    ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"WHERE A.CODPRO = B.CODPRO", NL," "\
+									"AND A.CODACT = B.CODACT", NL," "\
+									"AND A.MOTIMM = ''", NL," "\
+									"AND A.CODACT = '",tCODACTLido,"'", NL," "\
+									"GROUP BY  A.CODPRO", NL," "\
+									"         ,A.CODLOT", NL," "\
+									"         ,B.ANAPRO", NL," "\
+									"         ,A.MOTIMM", NL," "\
+									"ORDER BY  A.CODPRO", NL," "\
+									"         ,B.ANAPRO")
+
+					log(tQuery,NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if substr(peel(taDb2Array["ANAPRO"]," "),1,3) = "581" then
+							bQueryTemResul := TRUE	
+							nLinha2++
+							taCODPRO_2[nLinha2] := peel(taDb2Array["CODPRO"]," ")
+							taUVCSTO_2[nLinha2] := peel(taDb2Array["UVCSTO"]," ")
+							taCODLOT_2[nLinha2] := peel(taDb2Array["CODLOT"]," ")
+							taANAPRO_2[nLinha2] := peel(taDb2Array["ANAPRO"]," ")
+							taMOTIMM_2[nLinha2] := peel(taDb2Array["MOTIMM"]," ")
+						endif
+						remove(taDb2Array)
+					endwhile
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY bQueryTemResul, nLinha2++, taCODPRO_2[nLinha2], taUVCSTO_2[nLinha2], taCODLOT_2[nLinha2], taANAPRO_2[nLinha2], taMOTIMM_2[nLinha2]
+			endif
+					
+			if tCODACTLido = "583" or tCODACTLido = "602" then
+				! QUERY bQueryTemResul, nLinha++, taCODPRO[nLinha], taUVCSTO[nLinha], taCODLOT[nLinha], taANAPRO[nLinha], taMOTIMM[nLinha]
+					tQuery := build("SELECT  CODPRO", NL," "\
+									"       ,SUM(UVCSTO) UVCSTO", NL," "\
+									"       ,CODLOT", NL," "\
+									"       ,ANAPRO", NL," "\
+									"       ,TYPE_STOCK", NL," "\
+									"       ,CODACT", NL," "\
+									"FROM", NL," "\
+									"((", NL," "\
+									"	SELECT  DISTINCT A.CODPRO CODPRO", NL," "\
+									"	       ,SUM (A.UVCSTO) UVCSTO", NL," "\
+									"	       ,TRIM(A.CODLOT) CODLOT", NL," "\
+									"	       ,B.ANAPRO ANAPRO", NL," "\
+									"	       ,'S' AS TYPE_STOCK", NL," "\
+									"	       ,A.CODACT CODACT", NL," "\
+									"	       ,A.MOTIMM", NL," "\
+									"	       ,A.CODPAL", NL," "\
+									"	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"        ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"	WHERE A.CODPRO = B.CODPRO", NL," "\
+									"	AND A.CODACT = B.CODACT", NL," "\
+									"	AND A.ZONSTS NOT IN ('Q', 'E')", NL," "\
+									"	AND A.CODACT IN ('",tCODACTLido,"')", NL," "\
+									"	GROUP BY  A.CODPRO", NL," "\
+									"	         ,A.CODLOT", NL," "\
+									"	         ,B.ANAPRO", NL," "\
+									"	         ,A.CODACT", NL," "\
+									"	         ,A.MOTIMM", NL," "\
+									"	         ,A.CODPAL ORDER BY A.CODPRO", NL," "\
+									"	         ,B.ANAPRO)", NL," "\
+									"	UNION ALL(", NL," "\
+									"	SELECT  DISTINCT A.CODPRO CODPRO", NL," "\
+									"	       ,SUM(A.UVCSTO) UVCSTO", NL," "\
+									"	       ,TRIM(A.CODLOT) CODLOT", NL," "\
+									"	       ,B.ANAPRO ANAPRO", NL," "\
+									"	       ,'S' AS TYPE_STOCK", NL," "\
+									"	       ,A.CODACT CODACT", NL," "\
+									"	       ,A.MOTIMM", NL," "\
+									"	       ,A.CODPAL", NL," "\
+									"	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"        ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"	WHERE A.CODPRO = B.CODPRO", NL," "\
+									"	AND A.CODACT = B.CODACT", NL," "\
+									"	AND A.ZONSTS IN ('Q')", NL," "\
+									"	AND A.MOTIMM NOT LIKE 'E%'", NL," "\
+									"	AND A.CODACT IN ('",tCODACTLido,"')", NL," "\
+									"	GROUP BY  A.CODPRO", NL," "\
+									"	         ,A.CODLOT", NL," "\
+									"	         ,B.ANAPRO", NL," "\
+									"	         ,A.CODACT", NL," "\
+									"	         ,A.MOTIMM", NL," "\
+									"	         ,A.CODPAL ORDER BY A.CODPRO", NL," "\
+									"	         ,B.ANAPRO)", NL," "\
+									"	UNION ALL(", NL," "\
+									"	SELECT  DISTINCT A.CODPRO CODPRO", NL," "\
+									"	       ,SUM(A.UVCSTO) UVCSTO", NL," "\
+									"	       ,TRIM(A.CODLOT) CODLOT", NL," "\
+									"	       ,B.ANAPRO ANAPRO", NL," "\
+									"	       ,'S' AS TYPE_STOCK", NL," "\
+									"	       ,A.CODACT CODACT", NL," "\
+									"	       ,A.MOTIMM", NL," "\
+									"	       ,A.CODPAL", NL," "\
+									"	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"        ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"	WHERE A.CODPRO = B.CODPRO", NL," "\
+									"	AND A.CODACT = B.CODACT", NL," "\
+									"	AND A.ZONSTS IN ('Q', 'E')", NL," "\
+									"	AND A.MOTIMM = 'EX'", NL," "\
+									"	AND A.CODACT IN ('",tCODACTLido,"')", NL," "\
+									"	GROUP BY  A.CODPRO", NL," "\
+									"	         ,A.CODLOT", NL," "\
+									"	         ,B.ANAPRO", NL," "\
+									"	         ,A.CODACT", NL," "\
+									"	         ,A.MOTIMM", NL," "\
+									"	         ,A.CODPAL ORDER BY A.CODPRO", NL," "\
+									"	         ,B.ANAPRO)", NL," "\
+									") A", NL," "\
+									"WHERE CODACT = '",tCODACTLido,"'", NL," "\
+									"GROUP BY  CODPRO", NL," "\
+									"         ,CODLOT", NL," "\
+									"         ,ANAPRO", NL," "\
+									"         ,TYPE_STOCK", NL," "\
+									"         ,CODACT", NL," "\
+									"ORDER BY  CODPRO", NL," "\
+									"         ,CODLOT", NL," "\
+									"         ,ANAPRO")
+
+					log(tQuery,NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if substr(peel(taDb2Array["ANAPRO"]," "),1,3) = "583" or substr(peel(taDb2Array["ANAPRO"]," "),1,3) = "602" and substr(peel(taDb2Array["ANAPRO"]," "),1,3) = tCODACTLido then
+							bQueryTemResul := TRUE	
+							nLinha++
+							taCODPRO[nLinha] := peel(taDb2Array["CODPRO"]," ")
+							taUVCSTO[nLinha] := peel(taDb2Array["UVCSTO"]," ")
+							taCODLOT[nLinha] := peel(taDb2Array["CODLOT"]," ")
+							taANAPRO[nLinha] := peel(taDb2Array["ANAPRO"]," ")
+							taMOTIMM[nLinha] := peel(taDb2Array["MOTIMM"]," ")
+						endif
+						remove(taDb2Array)
+					endwhile
+						
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY bQueryTemResul, nLinha++, taCODPRO[nLinha], taUVCSTO[nLinha], taCODLOT[nLinha], taANAPRO[nLinha], taMOTIMM[nLinha]
+
+				! QUERY bQueryTemResul, nLinha2++, taCODPRO_2[nLinha2], taUVCSTO_2[nLinha2], taCODLOT_2[nLinha2], taANAPRO_2[nLinha2], taMOTIMM_2[nLinha2]
+					tQuery := build("SELECT  CODPRO", NL," "\
+									"       ,SUM(UVCSTO) UVCSTO", NL," "\
+									"       ,CODLOT", NL," "\
+									"       ,ANAPRO", NL," "\
+									"       ,TYPE_STOCK", NL," "\
+									"       ,CODACT", NL," "\
+									"FROM", NL," "\
+									"((", NL," "\
+									"	SELECT  DISTINCT A.CODPRO CODPRO", NL," "\
+									"	       ,SUM(A.UVCSTO) UVCSTO", NL," "\
+									"	       ,TRIM(A.CODLOT) CODLOT", NL," "\
+									"	       ,B.ANAPRO ANAPRO", NL," "\
+									"	       ,A.MOTIMM MOTIMM", NL," "\
+									"	       ,'' AS TYPE_STOCK", NL," "\
+									"	       ,A.CODPAL", NL," "\
+									"	       ,A.CODACT CODACT", NL," "\
+									"	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"        ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"	WHERE A.CODPRO = B.CODPRO", NL," "\
+									"        AND A.CODACT = B.CODACT", NL," "\
+									"        AND A.ZONSTS = 'Q'", NL," "\
+									"        AND A.MOTIMM LIKE 'E%'", NL," "\
+									"        AND A.MOTIMM <> 'EX'", NL," "\
+									"        AND A.CODACT = '",tCODACTLido,"'", NL," "\
+									"	GROUP BY  A.CODPRO", NL," "\
+									"	         ,A.CODLOT", NL," "\
+									"	         ,B.ANAPRO", NL," "\
+									"	         ,A.MOTIMM", NL," "\
+									"	         ,A.CODPAL", NL," "\
+									"	         ,A.CODACT ORDER BY A.CODPRO", NL," "\
+									"	         ,B.ANAPRO)", NL," "\
+									"	UNION ALL(", NL," "\
+									"	SELECT  DISTINCT A.CODPRO CODPRO", NL," "\
+									"	       ,SUM(A.UVCSTO) UVCSTO", NL," "\
+									"	       ,TRIM(A.CODLOT) CODLOT", NL," "\
+									"	       ,B.ANAPRO ANAPRO", NL," "\
+									"	       ,A.MOTIMM MOTIMM", NL," "\
+									"	       ,'' AS TYPE_STOCK", NL," "\
+									"	       ,A.CODPAL", NL," "\
+									"	       ,A.CODACT CODACT", NL," "\
+									"	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL A", NL," "\
+									"        ,FGE50FM",tToInfologPrefixFilename,".GEPRO B", NL," "\
+									"	WHERE A.CODPRO = B.CODPRO", NL," "\
+									"        AND A.CODACT = B.CODACT", NL," "\
+									"        AND A.ZONSTS = 'E'", NL," "\
+									"        AND A.CODACT = '",tCODACTLido,"'", NL," "\
+									"	GROUP BY  A.CODPRO", NL," "\
+									"	         ,A.CODLOT", NL," "\
+									"	         ,B.ANAPRO", NL," "\
+									"	         ,A.MOTIMM", NL," "\
+									"	         ,A.CODPAL", NL," "\
+									"	         ,A.CODACT ORDER BY A.CODPRO", NL," "\
+									"	         ,B.ANAPRO)", NL," "\
+									") A", NL," "\
+									"WHERE CODACT = '",tCODACTLido,"'", NL," "\
+									"GROUP BY  CODPRO", NL," "\
+									"         ,CODLOT", NL," "\
+									"         ,ANAPRO", NL," "\
+									"         ,TYPE_STOCK", NL," "\
+									"         ,CODACT", NL," "\
+									"ORDER BY  CODPRO", NL," "\
+									"         ,ANAPRO")
+
+					log(tQuery,NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					bQueryTemResul := FALSE
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						if substr(peel(taDb2Array["ANAPRO"]," "),1,3) = "583" or substr(peel(taDb2Array["ANAPRO"]," "),1,3) = "602" and substr(peel(taDb2Array["ANAPRO"]," "),1,3) = tCODACTLido then
+							bQueryTemResul := TRUE	
+							nLinha2++
+							taCODPRO_2[nLinha2] := peel(taDb2Array["CODPRO"]," ")
+							taUVCSTO_2[nLinha2] := peel(taDb2Array["UVCSTO"]," ")
+							taCODLOT_2[nLinha2] := peel(taDb2Array["CODLOT"]," ")
+							taANAPRO_2[nLinha2] := peel(taDb2Array["ANAPRO"]," ")
+							taMOTIMM_2[nLinha2] := peel(taDb2Array["MOTIMM"]," ")
+						endif
+						remove(taDb2Array)
+					endwhile
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceFotoEstoque("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY bQueryTemResul, nLinha2++, taCODPRO_2[nLinha2], taUVCSTO_2[nLinha2], taCODLOT_2[nLinha2], taANAPRO_2[nLinha2], taMOTIMM_2[nLinha2]
+			endif					
+
+			nContaTemp := 1
+			while nContaTemp <= nLinha do
+				switch substr(taANAPRO[nContaTemp],1,3)
+					case "581":
+						tFileOut581 := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FIS2FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp581 := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FIS2FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tNameOut581 := build("FM",tToInfologPrefixFilename,"FIS2FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp := tFileOutTemp581
+						bNaoEscreveProduto := FALSE
+						tEscreveuNomeArquivo := "581"
+					case "583":
+						tFileOut583 := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FIS3FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp583 := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FIS3FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tNameOut583 := build("FM",tToInfologPrefixFilename,"FIS3FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp := tFileOutTemp583
+						bNaoEscreveProduto := FALSE
+						tEscreveuNomeArquivo := "583"
+					case "602":
+						tFileOut602 := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FIS1FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp602 := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FIS1FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tNameOut602 := build("FM",tToInfologPrefixFilename,"FIS1FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp := tFileOutTemp602
+						bNaoEscreveProduto := FALSE
+						tEscreveuNomeArquivo := "602"
+					default:
+						bNaoEscreveProduto := TRUE
+				endswitch
+			
+				if bNaoEscreveProduto = FALSE then
+					R_RECORD_PLANT(substr(taANAPRO[nContaTemp],1,3))
+					R_RECORD_STORAGELOCATION(substr(taANAPRO[nContaTemp],4,4))
+					R_RECORD_MATERIAL(taCODPRO[nContaTemp])
+					R_RECORD_UOM("")
+					R_RECORD_BATCHNUMBER(taCODLOT[nContaTemp])
+					R_RECORD_TYPEOFSTOCK("S")
+					R_RECORD_RESTRICTEDSTOCKQTY("")
+					R_RECORD_AVAILABLESTOCKQTY(build(number(taUVCSTO[nContaTemp]):R015))
+						
+					flush(0,0,NL) >> tFileOutTemp
+					close(tFileOutTemp)
+				endif
+				nContaTemp++
+			endwhile
+		
+			nContaTemp := 1
+			while nContaTemp <= nLinha2 do
+				switch substr(taANAPRO_2[nContaTemp],1,3)
+					case "581":
+						tFileOut581 := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FIS2FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp581 := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FIS2FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tNameOut581 := build("FM",tToInfologPrefixFilename,"FIS2FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp := tFileOutTemp581
+						bNaoEscreveProduto := FALSE
+						tEscreveuNomeArquivo := "581"
+					case "583":
+						tFileOut583 := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FIS3FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp583 := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FIS3FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tNameOut583 := build("FM",tToInfologPrefixFilename,"FIS3FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp := tFileOutTemp583
+						bNaoEscreveProduto := FALSE
+						tEscreveuNomeArquivo := "583"
+					case "602":
+						tFileOut602 := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FIS1FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp602 := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FIS1FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tNameOut602 := build("FM",tToInfologPrefixFilename,"FIS1FMLO_",nMessageID:R010,"_",tTempoLidoInicial)
+						tFileOutTemp := tFileOutTemp602
+						bNaoEscreveProduto := FALSE
+						tEscreveuNomeArquivo := "602"
+					default:
+						bNaoEscreveProduto := TRUE				
+				endswitch
+					
+				if bNaoEscreveProduto = FALSE then
+					R_RECORD_PLANT(substr(taANAPRO_2[nContaTemp],1,3))
+					R_RECORD_STORAGELOCATION(substr(taANAPRO_2[nContaTemp],4,4))
+					R_RECORD_MATERIAL(taCODPRO_2[nContaTemp])
+					R_RECORD_UOM("")
+					R_RECORD_BATCHNUMBER(taCODLOT_2[nContaTemp])
+					R_RECORD_TYPEOFSTOCK("")
+					R_RECORD_RESTRICTEDSTOCKQTY("")
+					R_RECORD_AVAILABLESTOCKQTY(build(number(taUVCSTO_2[nContaTemp]):R015))
+						
+					flush(0,0,NL) >> tFileOutTemp
+					close(tFileOutTemp)
+				endif
+				nContaTemp++
+			endwhile
+			
+			switch tEscreveuNomeArquivo
+				case "581":
+					bfMajtraceFotoEstoque("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,"")
+
+					close(tFileOutTemp581)
+					copy(tFileOutTemp581,tFileOut581)
+					close(tFileOutTemp581)
+					remove(tFileOutTemp581)
+					close(tFileOut581)
+				case "583":
+					bfMajtraceFotoEstoque("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,"")
+
+					close(tFileOutTemp583)
+					copy(tFileOutTemp583,tFileOut583)
+					close(tFileOutTemp583)
+					remove(tFileOutTemp583)
+					close(tFileOut583)
+				case "602":
+					bfMajtraceFotoEstoque("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,"")
+
+					close(tFileOutTemp602)
+					copy(tFileOutTemp602,tFileOut602)
+					close(tFileOutTemp602)
+					remove(tFileOutTemp602)
+					close(tFileOut602)
+			endswitch
+		! FIM FOTO ESTOQUE
+	endif
+
+	bfSqlClose(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtraceFotoEstoque(tStatus,tError,tNumDoc,tDataDoc,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "LOREAL"
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "FOTO DE ESTOQUE"
+	TRACE.NUMDOC := build("ESTOQUE",tData,tHora)
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R010)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	switch tEscreveuNomeArquivo
+		case "581":
+			TRACE.FICHEIROSAIDA := tNameOut581
+		case "583":
+			TRACE.FICHEIROSAIDA := tNameOut583
+		case "602":
+			TRACE.FICHEIROSAIDA := tNameOut602
+	endswitch
+
+	if tStatus = "Recebida" then
+		switch tEscreveuNomeArquivo
+			case "581":
+				print(build("Ficheiro de Saida: "),tFileOut581,NL,NL) >> TRACE.Detail
+			case "583":
+				print(build("Ficheiro de Saida: "),tFileOut583,NL,NL) >> TRACE.Detail
+			case "602":
+				print(build("Ficheiro de Saida: "),tFileOut602,NL,NL) >> TRACE.Detail
+		endswitch
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	if nMainIndex = 0 then
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	flush(TRACE)
+
+	switch tEscreveuNomeArquivo
+		case "581":
+			close(tFileOutTemp581)
+			copy(tFileOutTemp581,TRACE.Out)
+			close(tFileOutTemp581)
+		case "583":
+			close(tFileOutTemp583)
+			copy(tFileOutTemp583,TRACE.Out)
+			close(tFileOutTemp583)
+		case "602":
+			close(tFileOutTemp602)
+			copy(tFileOutTemp602,TRACE.Out)
+			close(tFileOutTemp602)
+	endswitch
+	close(TRACE.Out)
+endfunction
+
+!===========================================================
+
+function bfMajtraceP5(tStatus,tError,tNumDoc,tDataDoc)
+	TRACE2.ESTADO := tStatus
+	TRACE2.ERRO := tError
+	TRACE2.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE2.PERFIL := tBEGINSUBJp5
+	TRACE2.SENTIDO := "O"
+	TRACE2.MENSAGEM := build("P5 – ESTOQUE OFICIAL WMS - ",tCODACTLido)
+	TRACE2.NUMDOC := build("P5 – ESTOQUE OFICIAL WMS - ",tCODACTLido)
+	TRACE2.DATDOC := time("now","%Y-%m-%d")
+	TRACE2.MESSAGEID := build(nMessageID:R010)
+	TRACE2.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+	TRACE2.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	close(TRACE2.Detail)
+	close(SYSLOG.a)
+
+	flush(TRACE2)
+endfunction

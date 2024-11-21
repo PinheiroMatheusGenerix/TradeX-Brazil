@@ -1,0 +1,305 @@
+%@(#) $Id:  M59_CARREFOUR_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M59_CARREFOUR_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M59_CARREFOUR_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M59_CARREFOUR_OUT
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M59_CARREFOUR_OUT"
+
+#include "include/generix_func.inc"
+#include "include/GEEXM59.inc"
+#include "include/DADOS.inc" 
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+	tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]	
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	bEcommerce := FALSE
+endbegin
+
+!===========================================================
+
+line(not "")
+	tAmbiente := S_GEEX0000_EMTEXC
+	tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",substr(S_GEEX0000_EMTEXC, length(S_GEEX0000_EMTEXC) - 3, length(S_GEEX0000_EMTEXC)),"")]
+	tCODACT := substr(S_GEEX0000_EMTEXC,length(S_GEEX0000_EMTEXC) - 3, length(S_GEEX0000_EMTEXC))
+	if tAmbiente <> "FGE50CDCJ" then
+		bEcommerce := FALSE
+	else
+		bEcommerce := TRUE
+	endif
+
+	tFileOut := build(sHOME,"/Tibco/",substr(tAmbiente,6,2),tAmbiente,"90",build(nMessageID:R015),".DAT")
+	tFileOutTemp := build(sHOME,"/Tibco/Temp/",substr(tAmbiente,6,2),tAmbiente,"90",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"90",build(nMessageID:R015),".DAT")
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	if bEcommerce = FALSE then
+		
+        tQuery := build("SELECT  '1' || SPACE(1) || RIGHT(REPEAT('0',8) || TRIM(NUMSUP),8) || RIGHT(REPEAT('0',2) || TRIM(MAX(ETASUP)),2) || RIGHT(REPEAT('0',3) || TRIM(MIN(PRIORIDADE)),3) || RIGHT(REPEAT('0',8) || TRIM(MIN(DATLIV)),8) || RIGHT(REPEAT('0',8) || TRIM(MIN(NUMLIV)),8) || RIGHT(REPEAT('0',14)|| TRIM(CLILIV),14) || RIGHT(REPEAT('0',3) || TRIM(CIRPIC),3) || RIGHT(REPEAT('0',14)|| REPLACE(DECIMAL(TRIM(SUM(UVCLIV/ CASE PCBPRO WHEN 0 THEN 1 ELSE PCBPRO END )),12,2),'.',''),14) || RIGHT(REPEAT('0',21)|| REPLACE(DECIMAL(TRIM(SUM((UVCLIV/ CASE PCBPRO WHEN 0 THEN 1 ELSE PCBPRO END )*PDBCOL)),16,5),'.',''),21) ||RIGHT(REPEAT('0',21)|| REPLACE(DECIMAL(TRIM(SUM((UVCLIV/ CASE PCBPRO WHEN 0 THEN 1 ELSE PCBPRO END )*VOLCOL)),16,5),'.',''),21) || RIGHT(REPEAT('0',1) || TRIM(MIN(TYPSUP)),1) || RIGHT(REPEAT('0',3) || TRIM(MIN(KAILIV)),3) || RIGHT(REPEAT(' ',30) || TRIM(MAX(REFTMS)),30) || RIGHT(REPEAT('0',8) || TRIM(MIN(NUMTOU)),8) || RIGHT(REPEAT('0',3) || TRIM(MAX(TRTCLS)),3) AS DADOS ", NL," "\
+                        "FROM ", NL," "\
+                        "( ", NL," "\
+                        "	SELECT  T01.NUMSUP                                                AS NUMSUP ", NL," "\
+                        "	       ,T01.SNUSUP                                                AS SNUSUP ", NL," "\
+                        "	       ,T01.ETASUP                                                AS ETASUP ", NL," "\
+                        "	       ,T03.CODTLI                                                AS CODTLI ", NL," "\
+                        "	       ,99999999                                                  AS DATLIV ", NL," "\
+                        "	       ,T01.NUMLIV                                                AS NUMLIV ", NL," "\
+                        "	       ,T03.CLILIV                                                AS CLILIV ", NL," "\
+                        "	       ,T01.CIRPIC                                                AS CIRPIC ", NL," "\
+                        "	       ,T02.UVCLIV                                                AS UVCLIV ", NL," "\
+                        "	       ,T02.PCBPRO                                                AS PCBPRO ", NL," "\
+                        "	       ,T02.PDBCOL                                                AS PDBCOL ", NL," "\
+                        "	       ,T02.VOLCOL                                                AS VOLCOL ", NL," "\
+                        "	       ,T01.TYPSUP                                                AS TYPSUP ", NL," "\
+                        "	       ,T01.KAILIV                                                AS KAILIV ", NL," "\
+                        "	       ,CASE WHEN T05.REFTMS IS NULL THEN ''  ELSE T05.REFTMS END AS REFTMS ", NL," "\
+                        "	       ,T01.NUMTOU                                                AS NUMTOU ", NL," "\
+                        "	       ,T06.TRTCLS                                                AS TRTCLS ", NL," "\
+                        "	       ,'999'                                                     AS PRIORIDADE ", NL," "\
+                        "	FROM GESUPE T01 ", NL," "\
+                        "	INNER JOIN GESUPD T02 ", NL," "\
+                        "	ON T01.NUMSUP = T02.NUMSUP AND T01.SNUSUP = T02.SNUSUP ", NL," "\
+                        "	INNER JOIN GELIVE T03 ", NL," "\
+                        "	ON T02.NUMLIV = T03.NUMLIV AND T02.SNULIV = T03.SNULIV ", NL," "\
+                        "	INNER JOIN GECLI T04 ", NL," "\
+                        "	ON T01.CLILIV = T04.CLILIV ", NL," "\
+                        "	LEFT JOIN GEMITS T05 ", NL," "\
+                        "	ON T01.NUMTOU = T05.NUMTOU ", NL," "\
+                        "	LEFT JOIN GEZCIR AS T06 ", NL," "\
+                        "	ON T06.CIRPIC = T01.CIRPIC ", NL," "\
+                        "	INNER JOIN GEZTLI AS T07 ", NL," "\
+                        "	ON T03.CODTLI = T07.CODTLI ", NL," "\
+                        "	WHERE T01.ETASUP IN ('10', '20', '30', '40', '60') ", NL," "\
+                        "	AND T01.TYPSUP IN ('1', '2') ", NL," "\
+                        "	AND T02.REFLIV <> ' ' ", NL," "\
+                        "	AND T01.CLILIV <> '0' ", NL," "\
+                        "	AND T01.SNUSUP = 0 ", NL," "\
+                        "	AND T02.CODPRO <> ' ' ", NL," "\
+                        "	AND T03.DATLIV <> 0 ", NL," "\
+                        "	AND T02.PCBPRO <> 0 ", NL," "\
+                        "	UNION ALL ", NL," "\
+                        "	SELECT  T01.NUMSUP                                                AS NUMSUP ", NL," "\
+                        "	       ,T01.SNUSUP                                                AS SNUSUP ", NL," "\
+                        "	       ,T01.ETASUP                                                AS ETASUP ", NL," "\
+                        "	       ,T03.CODTLI                                                AS CODTLI ", NL," "\
+                        "	       ,T03.DATLIV                                                AS DATLIV ", NL," "\
+                        "	       ,T01.NUMLIV                                                AS NUMLIV ", NL," "\
+                        "	       ,T03.CLILIV                                                AS CLILIV ", NL," "\
+                        "	       ,T01.CIRPIC                                                AS CIRPIC ", NL," "\
+                        "	       ,0                                                         AS UVCLIV ", NL," "\
+                        "	       ,1                                                         AS PCBPRO ", NL," "\
+                        "	       ,1                                                         AS PDBCOL ", NL," "\
+                        "	       ,0                                                         AS VOLCOL ", NL," "\
+                        "	       ,T01.TYPSUP                                                AS TYPSUP ", NL," "\
+                        "	       ,T01.KAILIV                                                AS KAILIV ", NL," "\
+                        "	       ,CASE WHEN T05.REFTMS IS NULL THEN ''  ELSE T05.REFTMS END AS REFTMS ", NL," "\
+                        "	       ,T01.NUMTOU                                                AS NUMTOU ", NL," "\
+                        "	       ,T01.TRTUOP                                                AS TRTUOP ", NL," "\
+                        "	       ,T07.TOPLIV1                                               AS PRIORIDADE ", NL," "\
+                        "	FROM GESUPE T01 ", NL," "\
+                        "	INNER JOIN GESUPD T02 ", NL," "\
+                        "	ON T01.NUMSUP = T02.NUMSUP AND T01.SNUSUP = T02.SNUSUP ", NL," "\
+                        "	INNER JOIN GELIVE T03 ", NL," "\
+                        "	ON T02.NUMORI = T03.NUMLIV ", NL," "\
+                        "	INNER JOIN GECLI T04 ", NL," "\
+                        "	ON T01.CLILIV = T04.CLILIV ", NL," "\
+                        "	LEFT JOIN GEMITS T05 ", NL," "\
+                        "	ON T01.NUMTOU = T05.NUMTOU ", NL," "\
+                        "	LEFT JOIN GEZCIR AS T06 ", NL," "\
+                        "	ON T06.CIRPIC = T01.CIRPIC ", NL," "\
+                        "	INNER JOIN GEZTLI AS T07 ", NL," "\
+                        "	ON T03.CODTLI = T07.CODTLI ", NL," "\
+                        "	WHERE T01.ETASUP IN ('10', '20', '30', '40', '60') ", NL," "\
+                        "	AND T01.TYPSUP IN ('1', '2') ", NL," "\
+                        "	AND T02.REFLIV <> ' ' ", NL," "\
+                        "	AND T01.CLILIV <> '0' ", NL," "\
+                        "	AND T01.SNUSUP = 0 ", NL," "\
+                        "	AND T02.CODPRO <> ' ' ", NL," "\
+                        "	AND T03.DATLIV <> 0 ", NL," "\
+                        "	AND T02.PCBPRO <> 0 ", NL," "\
+                        ") AS TABTEMP ", NL," "\
+                        "GROUP BY  NUMSUP ", NL," "\
+                        "         ,SNUSUP ", NL," "\
+                        "         ,CLILIV ", NL," "\
+                        "         ,CIRPIC ", NL," "\
+                        "ORDER BY NUMSUP ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		nContQuery := 0
+
+		while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			nContQuery++
+
+			taDADOS[nContQuery] := peel(taDb2Array["DADOS"]," ")
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		nContLinhasEscritas := 0
+		nCountProd := 0
+
+		! ESCRITA 00.00
+		R_GEEX0000_CODEXC("00")
+		R_GEEX0000_SEPEXC(".")
+		R_GEEX0000_SCOEXC("00")
+		R_GEEX0000_TRTEXC("2")
+		R_GEEX0000_EMTEXC("bib Infolog FGE50CDCJ")
+		R_GEEX0000_RCTEXC("TIBCO")
+		R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX0000_NUMEXC("0000000")
+		R_GEEX0000_ACQEXC("0")
+		R_GEEX0000_VEREXC("5.00")
+		R_GEEX0000_NOMDTQ("M93")
+		R_GEEX0000_BIBDTQ("bib Infolog FGE50CDCJ")
+		R_GEEX0000_IGLSIT("000")
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContLinhasEscritas++
+
+		while nCountProd < nContQuery do
+			nCountProd++
+
+			R_DADOS(taDADOS[nCountProd])
+
+			flush(0,0,NL) >> tFileOutTemp
+			nContLinhasEscritas++
+		endwhile
+
+		!ESCRITA 9900
+		R_GEEX9900_CODEXC("99")
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC("00")
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_NUMEXC("0000000")
+		R_GEEX9900_CPTEXC(build(nContLinhasEscritas))
+
+		flush(0,0,NL) >> tFileOutTemp
+		close(tFileOutTemp)
+
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"","")
+
+		bfSqlClose(tDbBase)
+		exit(0)
+	endif
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := tCODACT
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M59"
+	TRACE.NUMDOC := "M59"
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+	flush(TRACE)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+	system("sleep 1")
+endfunction
+
+!===========================================================

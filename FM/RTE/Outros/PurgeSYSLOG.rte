@@ -1,0 +1,53 @@
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 18-10-2010  XX  Creation
+! 18-10-2010  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+base "syslog.cfg" SYSLOG
+
+
+!===========================================================
+
+! Initialization section
+
+
+! End statements section
+begin
+
+
+
+SYSLOG := find(build(sHOME,"/syslog"),MODIFIED < build("now-60d"))
+while  valid(SYSLOG) do
+	remove(SYSLOG)
+	SYSLOG := find()
+endwhile
+
+
+exit(0)
+
+
+
+
+
+
+endbegin
+
+!===========================================================
+
+

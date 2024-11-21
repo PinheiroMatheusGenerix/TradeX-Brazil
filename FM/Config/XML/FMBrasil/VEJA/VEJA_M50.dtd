@@ -1,0 +1,49 @@
+<!ELEMENT pickticket (pickticket_header)>
+    
+	<!ELEMENT pickticket_header (warehouse, pon, po_date, picking_reference, requested_ship_date, priority, pick_type, shipping_via, service_level, dc_code, department, notes, terms_type, terms_net_days, lock_type, channel, delivery_type, store, ship_to, sold_to, pickticket_body)>
+
+		<!ELEMENT warehouse (#PCDATA)>
+		<!ELEMENT pon (#PCDATA)>
+		<!ELEMENT po_date (#PCDATA)>
+		<!ELEMENT picking_reference (#PCDATA)>
+		<!ELEMENT requested_ship_date (#PCDATA)>
+		<!ELEMENT priority (#PCDATA)>
+		<!ELEMENT pick_type (#PCDATA)>
+		<!ELEMENT shipping_via (#PCDATA)>
+		<!ELEMENT service_level (#PCDATA)>
+		<!ELEMENT dc_code (#PCDATA)>
+		<!ELEMENT department (#PCDATA)>
+		<!ELEMENT notes (#PCDATA)>
+		<!ELEMENT terms_type (#PCDATA)>
+		<!ELEMENT terms_net_days (#PCDATA)>
+		<!ELEMENT lock_type (#PCDATA)>
+		<!ELEMENT channel (#PCDATA)>
+		<!ELEMENT delivery_type (#PCDATA)>
+		<!ELEMENT store (#PCDATA|name)>
+
+		<!ELEMENT ship_to (client_code, contact_phone, name, name1, address, number, adress2, additional_address, city, country, state, zip)>
+		<!ELEMENT sold_to (client_code, contact_phone, name, name1, address, adress1, city, country, state, zip)>
+
+		<!ELEMENT client_code (#PCDATA)>
+		<!ELEMENT contact_phone (#PCDATA)>
+		<!ELEMENT name (#PCDATA)>
+		<!ELEMENT name1 (#PCDATA)>
+		<!ELEMENT address (#PCDATA)>
+		<!ELEMENT address1 (#PCDATA)>
+		<!ELEMENT number (#PCDATA)>
+		<!ELEMENT address2 (#PCDATA)>
+		<!ELEMENT city (#PCDATA)>
+		<!ELEMENT country (#PCDATA)>
+		<!ELEMENT state (#PCDATA)>
+		<!ELEMENT zip (#PCDATA)>
+
+		<!ELEMENT pickticket_body (boxes?, pieces)>
+		<!ELEMENT boxes EMPTY>
+		<!ELEMENT pieces (sku+)>
+		<!ELEMENT sku (barcode_sku, qty, slot, order_line)>
+		<!ELEMENT barcode_sku (#PCDATA)>
+		<!ELEMENT qty (#PCDATA)>
+		<!ELEMENT slot (#PCDATA)>
+		<!ELEMENT order_line (primary_reference, quantity)>
+		<!ELEMENT primary_reference (#PCDATA)>
+		<!ELEMENT quantity (#PCDATA)>

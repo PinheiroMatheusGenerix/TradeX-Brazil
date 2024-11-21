@@ -1,0 +1,122 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_copackloreal/fmbrasil_copackloreal.cfg" fmbrasil_copackloreal,autoflush off
+base "../fmbrasil_copackloreal/fmbrasil_copackloreal.cfg" fmbrasil_copackloreal2, readonly
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M41_LOREAL_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M44.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameLOREAL"]
+
+    
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+
+
+
+		
+
+   
+   
+endbegin
+
+!===========================================================
+
+
+
+
+!line(1:"00.00")
+!nContadorHEADERCPK := 0
+!endline
+
+line(1:"44.60")
+
+	tCODPRN4460 := S_M4460_CODPRN
+	tCODLOT4460 := S_M4460_CODLOT
+endline
+
+line(1:"44.80")
+	tPALPRN4480 := S_M4480_PALPRN
+	tCODPRO4480 := S_M4480_CODPRO
+	tUVCUTI4480 := S_M4480_UVCUTI
+	tCODLOT4480 := S_M4480_CODLOT
+	tCODPAL4480 := S_M4480_CODPAL
+	
+	
+	fmbrasil_copackloreal2 := find(build(sHOME,"/fmbrasil_copackloreal"),PALETE_COMPOSTO = tPALPRN4480,COMPONENTE = tCODPRO4480, QUANTIDADE = tUVCUTI4480,LOTE_COMPONENTE = tCODLOT4480,COMPOSTO = tCODPRN4460,LOTE_COMPOSTO = tCODLOT4460,PALETE_COMPONENTE = tCODPAL4480,PROCESSED = "0")
+	if valid(fmbrasil_copackloreal2) then
+		!ja existe esta entrada e nao faz nada
+	else
+		fmbrasil_copackloreal := new(build(sHOME,"/fmbrasil_copackloreal"))
+		fmbrasil_copackloreal.PALETE_COMPOSTO := tPALPRN4480
+		fmbrasil_copackloreal.COMPONENTE := tCODPRO4480
+		fmbrasil_copackloreal.QUANTIDADE := tUVCUTI4480
+		fmbrasil_copackloreal.LOTE_COMPONENTE := tCODLOT4480
+		fmbrasil_copackloreal.COMPOSTO := tCODPRN4460
+		fmbrasil_copackloreal.LOTE_COMPOSTO := tCODLOT4460
+		fmbrasil_copackloreal.PALETE_COMPONENTE := tCODPAL4480
+		fmbrasil_copackloreal.PROCESSED := "0"
+		fmbrasil_copackloreal.INDEX_TRACE := ""
+		flush(fmbrasil_copackloreal)	
+	endif
+						  
+endline
+
+end
+
+		
+
+
+
+
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+

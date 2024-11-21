@@ -1,0 +1,360 @@
+%@(#)  source_filename.rte     modif:23-11-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 23-11-2017  XX  Creation
+! 23-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M06_HENKEL_CSV_IN"
+#include "include/M06_CSV_QUALIDADE.inc"
+#include "include/M06.inc"
+#include "include/generix_func.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	!PROCESS_ERRONEOUS := TRUE
+	nPos := 1
+	nRec := 1
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+	tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"06",build(nMessageID:R015),".DAT")
+	tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"06",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"06",build(nMessageID:R015),".DAT")
+
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+
+		exit(1)
+	endif
+  
+    nNumeroLinha := 0
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nNumeroAux := 0
+	nLinhaArrayAux := 0
+	nLinhaArrayAuxInsert := 0
+	tTextoEmailGlobal := ""
+endbegin
+
+!===========================================================
+
+line(not "")
+   S_REGISTRO
+   
+   nNumeroAux++
+	log("------------------------------------------------------------", NL)
+	log("nContadorLinhasEscritas(LINE) = ", nContadorLinhasEscritas, NL)
+	log("S_REGISTRO_CodPalete = ", S_REGISTRO_CodPalete, NL)
+	log("nNumeroAux = ", nNumeroAux, NL)
+	log("S_REGISTRO_Qualidade = ", S_REGISTRO_Qualidade, NL)
+	log("tZONSTS = ", tZONSTS, NL)
+	log("tMOTIMMAntigo = ", tMOTIMMAntigo, NL)
+	log("------------------------------------------------------------", NL)
+	if length(peel(S_REGISTRO_CodPalete," ")) > 0 and nNumeroAux > 1 then
+		if nContadorLinhasEscritas = 0 then
+			R_00HEADER_CODEXC("00")
+			R_00HEADER_SEPEXC(".")
+			R_00HEADER_SCOEXC("00")
+			R_00HEADER_TRTEXC("")
+			R_00HEADER_EMTEXC("FM") 
+			R_00HEADER_RCTEXC("")
+			R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+			R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+			R_00HEADER_NUMEXC("0000000")
+			R_00HEADER_ACQEXC("0")
+			R_00HEADER_VEREXC("5.00") 
+			R_00HEADER_NOMSYS("")  
+			R_00HEADER_NOMDTQ("M06")
+			R_00HEADER_BIBDTQ("")
+			R_00HEADER_LIBEXC(build(nMessageID:R010))
+			R_00HEADER_BIBDST("")
+			R_00HEADER_PGMDST("")
+			R_00HEADER_PARDST("")
+			R_00HEADER_CODACT("")
+			R_00HEADER_IGLSIT("")
+			R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+			R_00HEADER_IMAEXC("")  
+			R_00HEADER_DISEXC("")
+
+			flush(0,0,NL) >> tFileOutTemp
+		endif
+			
+		bFaz06VerificaQuery := TRUE
+		bTeveResultados := FALSE
+
+		tQuery := 	build("SELECT ZONSTS, ALLSTS, DPLSTS, NIVSTS, MOTIMM, NUMPAL,CODACT ", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL ", NL," "\
+						"WHERE CODPAL = '",S_REGISTRO_CodPalete,"'")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		bFaz06VerificaQueryUmaVEZ := FALSE
+		tTextoEmailComCODACTActErrado := ""
+				
+		while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			bTeveResultados := TRUE
+			bTeveResultadoPositivoPrimVez := FALSE
+
+			if bFaz06VerificaQueryUmaVEZ = FALSE then !senao ignora as restantes linhas
+				tZONSTS := peel(taDb2Array["ZONSTS"]," ")
+				log("ZONSTS ",tZONSTS,NL)
+				tMOTIMMAntigo := peel(taDb2Array["MOTIMM"]," ")
+				tNUMPAL := peel(taDb2Array["NUMPAL"]," ")
+				tCODACTQuery := peel(taDb2Array["CODACT"]," ")
+
+				log("MOTIMM ",tMOTIMMAntigo,NL)
+
+				if substr(tMOTIMMAntigo,1,3) <> "RTB" then
+					bFaz06VerificaQuery := FALSE
+				endif
+			
+				if bFaz06VerificaQuery = TRUE then
+					log("------------------------------------------------------------", NL)
+					log("bFaz06VerificaQuery(1) = TRUE", NL)
+					log("------------------------------------------------------------", NL)
+				else
+					log("------------------------------------------------------------", NL)
+					log("bFaz06VerificaQuery(1) = FALSE", NL)
+					log("------------------------------------------------------------", NL)
+				endif
+				if bFaz06VerificaQuery = TRUE then
+					if tZONSTS <> "G" then
+						bFaz06VerificaQuery := TRUE
+						bFaz06VerificaQueryUmaVEZ := TRUE
+						bTeveResultadoPositivoPrimVez := TRUE
+					else
+						bFaz06VerificaQuery := FALSE
+					endif
+				endif
+			endif
+
+			if bTeveResultadoPositivoPrimVez = TRUE then
+				log("------------------------------------------------------------", NL)
+				log("bTeveResultadoPositivoPrimVez(1) = TRUE", NL)
+				log("------------------------------------------------------------", NL)
+			else
+				log("------------------------------------------------------------", NL)
+				log("bTeveResultadoPositivoPrimVez(1) = FALSE", NL)
+				log("------------------------------------------------------------", NL)
+			endif
+			if bTeveResultadoPositivoPrimVez = FALSE then
+				tTextoEmailComCODACTActErrado := build(tTextoEmailComCODACTActErrado,S_REGISTRO_CodPalete,NL)
+			endif
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bFaz06VerificaQueryUmaVEZ = TRUE then
+			log("------------------------------------------------------------", NL)
+			log("bFaz06VerificaQueryUmaVEZ(1) = TRUE", NL)
+			log("------------------------------------------------------------", NL)
+		else
+			log("------------------------------------------------------------", NL)
+			log("bFaz06VerificaQueryUmaVEZ(1) = FALSE", NL)
+			log("------------------------------------------------------------", NL)
+		endif
+		if bFaz06VerificaQueryUmaVEZ = TRUE then
+			if length(tTextoEmailComCODACTActErrado) > 0 then
+				if length(tTextoEmailGlobal) = 0 then
+					tTextoEmailGlobal := build(NL,"Os seguintes SSCC estão duplicados no WMS e tiveram os Motivos de Imobilização alterados:",NL,NL,tTextoEmailComCODACTActErrado,NL)
+				else
+					tTextoEmailGlobal := build(tTextoEmailGlobal,tTextoEmailComCODACTActErrado)
+				endif
+			endif
+			R_M06_CODEXC("06")
+			R_M06_SEPEXC(".")
+			R_M06_SCOEXC("00")
+			R_M06_TRTEXC("2")
+			R_M06_CODACT(S_REGISTRO_Atividade)
+			R_M06_CODPAL(S_REGISTRO_CodPalete)
+			R_M06_MOTIMM("  ")
+			if length(S_REGISTRO_Qualidade) = 0 then 
+				R_M06_CODTRT("2")
+			else
+				R_M06_CODTRT("1")
+			endif
+			R_M06_NUMPAL(tNUMPAL)
+			R_M06_CODPRO(S_REGISTRO_CodProduto)
+			R_M06_CODLOT(S_REGISTRO_Lote)
+			R_M06_DATFVI(tfConvertDate(S_REGISTRO_DataValidade, "DD/MM/YYYY" , "YYYYMMDD"))
+			
+			flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+			nContadorLinhasEscritas++
+
+			log("nContadorLinhasEscritas(FAZ M06) = ", nContadorLinhasEscritas, NL)
+			
+			nLinhaArrayAux++
+			taStringDetails[nLinhaArrayAux] := build(S_REGISTRO_CodPalete, " - SUCESSO - MOTIMM ",tMOTIMMAntigo," ZONSTS ",tZONSTS," e CODACT ",tCODACTQuery,NL)			   
+		else
+			nLinhaArrayAux++
+			taStringDetails[nLinhaArrayAux] := build(S_REGISTRO_CodPalete, " - ERRO - MOTIMM ",tMOTIMMAntigo," ZONSTS ",tZONSTS," e CODACT ",tCODACTQuery,NL)
+		endif
+   endif
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end 
+	log("nContadorLinhasEscritas(END) = ", nContadorLinhasEscritas, NL)
+	if nContadorLinhasEscritas > 0 then
+		bfSqlClose(tDbBase)
+
+		R_99FILEFOOTER_CODEXC("99")
+		R_99FILEFOOTER_SEPEXC(".")
+		R_99FILEFOOTER_SCOEXC("00")
+		R_99FILEFOOTER_TRTEXC("")
+		R_99FILEFOOTER_EMTEXC("FM")
+		R_99FILEFOOTER_RCTEXC("")
+		R_99FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+		R_99FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+		R_99FILEFOOTER_NUMEXC("")
+		tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+		R_99FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+		flush(0,0,NL)  >> tFileOutTemp
+		close(tFileOutTemp)
+
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")										
+	else
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Nao foi gerado arquivo de output"))
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+	endif
+
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "HENKEL"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "MOV QUALIDADE PALETE"
+	TRACE.NUMDOC := time("now","%Y-%m-%d")
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID)   
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	nTempLinhaArrayAux := 1
+
+	while nTempLinhaArrayAux  <= nLinhaArrayAux do
+		print(taStringDetails[nTempLinhaArrayAux]) >> TRACE.Detail
+		nTempLinhaArrayAux++
+	endwhile
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+
+	if length(tTextoEmailGlobal) > 0 then
+		tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/M06SSCCDuplicadoHenkel",nMessageID:R010,".txt")
+		print(tTextoEmailGlobal) >>  tArquivoEmailErro
+		close(tArquivoEmailErro)
+		tSubjectEmail := build("Trace_",TRACE.INDEX,"_SSCC_Duplicado_Atualizado!")  
+		tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" SSCCDupHenkel ",tArquivoEmailErro)
+		log("executing command ",tCmdEmailErro,NL)
+		nRet := system(tCmdEmailErro)
+		close(tArquivoEmailErro)		
+		remove(tArquivoEmailErro)
+	endif
+endfunction
+
+

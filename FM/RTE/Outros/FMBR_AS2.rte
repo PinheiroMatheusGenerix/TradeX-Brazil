@@ -1,0 +1,40 @@
+%@(#)  FMBR_AS2.rte     modif:01-12-2017
+!==============================================================================
+% File          : FMBR_AS2.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE, autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "FMBR_AS2"
+
+!===========================================================
+
+! Initialization section
+
+begin
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    TRACE := find(build(sHOME,"/trace"),FICHEIROSAIDA=pEDISEND.ORIGINAL.NAME)
+    log(TRACE.SYSLOG_INDEX, NL)
+    SYSLOG.REFERENCE := TRACE.SYSLOG_INDEX
+endbegin
+
+!===========================================================

@@ -1,0 +1,1228 @@
+%@(#)  M41_MARS_TXT.rte     modif:01-12-2017
+!==============================================================================
+% File          : M41_MARS_TXT.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M41_MARS_TXT"
+#include "include/generix_func.inc"
+#include "include/M41_MARS_TXT.inc"
+#include "include/GEEXM06.inc"
+#include "include/GEEXM41.inc"
+#include "include/GEEXM41_BYPASS.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameXA7"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+    if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBase)
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        "", \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+    tFileOutBP := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"MAR_M41",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+    tFileOutTempBP := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"MAR_M41",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+    tNameOutBP := build("FM",tToInfologPrefixFilename,"MAR_M41",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".txt")
+
+	nCountE1 := 0
+    bGeraM06 := FALSE
+endbegin
+
+!===========================================================
+line(1:"00.00")
+    tFileOutM06 := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"06",tCODACT,build(nMessageID),".DAT")
+    tFileOutTempM06 := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"06",tCODACT,build(nMessageID),".DAT")
+    tNameOutM06 := build(tToInfologPrefixFilename,"06",tCODACT,build(nMessageID),".DAT")
+
+    R_GEEX0000_CODEXC("00")
+    R_GEEX0000_SEPEXC(".")
+    R_GEEX0000_SCOEXC("00")
+    R_GEEX0000_EMTEXC("FM") 
+    R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+    R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+    R_GEEX0000_NUMEXC("0000000")
+    R_GEEX0000_ACQEXC("0")
+    R_GEEX0000_VEREXC("5.00") 
+    R_GEEX0000_NOMDTQ("M06")
+    R_GEEX0000_LIBEXC(build(nMessageID:R010))
+
+    flush(0,0,NL) >> tFileOutTempM06
+    nContLineEscritasM06++
+
+    ! BYPASS
+        R_GEEX0000_CODEXC(S_GEEX0000_CODEXC)
+        R_GEEX0000_SEPEXC(S_GEEX0000_SEPEXC)
+        R_GEEX0000_SCOEXC(S_GEEX0000_SCOEXC)
+        R_GEEX0000_TRTEXC(S_GEEX0000_TRTEXC)
+        R_GEEX0000_EMTEXC(S_GEEX0000_EMTEXC)
+        R_GEEX0000_RCTEXC(S_GEEX0000_RCTEXC)
+        R_GEEX0000_DATEXC(S_GEEX0000_DATEXC)
+        R_GEEX0000_HEUEXC(S_GEEX0000_HEUEXC)
+        R_GEEX0000_NUMEXC(S_GEEX0000_NUMEXC)
+        R_GEEX0000_ACQEXC(S_GEEX0000_ACQEXC)
+        R_GEEX0000_VEREXC(S_GEEX0000_VEREXC)
+        R_GEEX0000_NOMSYS(S_GEEX0000_NOMSYS)
+        R_GEEX0000_NOMDTQ(S_GEEX0000_NOMDTQ)
+        R_GEEX0000_BIBDTQ(S_GEEX0000_BIBDTQ)
+        R_GEEX0000_LIBEXC(S_GEEX0000_LIBEXC)
+        R_GEEX0000_BIBDST(S_GEEX0000_BIBDST)
+        R_GEEX0000_PGMDST(S_GEEX0000_PGMDST)
+        R_GEEX0000_PARDST(S_GEEX0000_PARDST)
+        R_GEEX0000_CODACT(S_GEEX0000_CODACT)
+        R_GEEX0000_IGLSIT(S_GEEX0000_IGLSIT)
+        R_GEEX0000_EDISIT(S_GEEX0000_EDISIT)
+        R_GEEX0000_IMAEXC(S_GEEX0000_IMAEXC)
+        R_GEEX0000_IDEMSG(S_GEEX0000_IDEMSG)
+        R_GEEX0000_NATEXC(S_GEEX0000_NATEXC)
+        R_GEEX0000_EMTORI(S_GEEX0000_EMTORI)
+        R_GEEX0000_DISEXC(S_GEEX0000_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    ! FIMBYPASS
+endline
+
+! BYPASS
+    line(1:"41.00")
+        tNUMREC := S_GEEX4100_NUMREC
+        tREFREC := S_GEEX4100_REFREC
+        tDTRREC := S_GEEX4100_DTRREC
+        tHERREC := S_GEEX4100_HERREC
+        tCODACT := S_GEEX4100_CODACT
+
+        tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACT,"_RC",time("now","%Y%m%d%H%M%S"),"_",tNUMREC,".txt")
+        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACT,"_RC",time("now","%Y%m%d%H%M%S"),"_",tNUMREC,".txt")
+        tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_RC",time("now","%Y%m%d%H%M%S"),"_",tNUMREC,".txt")
+
+        tQuery := build("SELECT CODSAP1, MOTIMM", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO")
+
+        log("***********************************", NL)
+        log(tQuery, NL)
+        log("***********************************", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            taCODSAP1_06[peel(taDb2Array["MOTIMM"]," ")] := peel(taDb2Array["CODSAP1"]," ")
+            remove(taDb2Array)
+        endwhile
+                    
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        R_GEEX4100_BP_CODEXC(S_GEEX4100_CODEXC)
+        R_GEEX4100_BP_SEPEXC(S_GEEX4100_SEPEXC)
+        R_GEEX4100_BP_SCOEXC(S_GEEX4100_SCOEXC)
+        R_GEEX4100_BP_TRTEXC(S_GEEX4100_TRTEXC)
+        R_GEEX4100_BP_NUMREC(S_GEEX4100_NUMREC)
+        R_GEEX4100_BP_SNUREC(S_GEEX4100_SNUREC)
+        R_GEEX4100_BP_REFREC(S_GEEX4100_REFREC)
+        R_GEEX4100_BP_CODAPP(S_GEEX4100_CODAPP)
+        R_GEEX4100_BP_CODLDR(S_GEEX4100_CODLDR)
+        R_GEEX4100_BP_CODTRE(S_GEEX4100_CODTRE)
+        R_GEEX4100_BP_ORICDE(S_GEEX4100_ORICDE)
+        R_GEEX4100_BP_CODACT(S_GEEX4100_CODACT)
+        R_GEEX4100_BP_CODFOU(S_GEEX4100_CODFOU)
+        R_GEEX4100_BP_CODTRA(S_GEEX4100_CODTRA)
+        R_GEEX4100_BP_DTIREC(S_GEEX4100_DTIREC)
+        R_GEEX4100_BP_HEIREC(S_GEEX4100_HEIREC)
+        R_GEEX4100_BP_DTMREC(S_GEEX4100_DTMREC)
+        R_GEEX4100_BP_HEMREC(S_GEEX4100_HEMREC)
+        R_GEEX4100_BP_DTRREC(S_GEEX4100_DTRREC)
+        R_GEEX4100_BP_HERREC(S_GEEX4100_HERREC)
+        R_GEEX4100_BP_KAIREC(S_GEEX4100_KAIREC)
+        R_GEEX4100_BP_CTRREC(S_GEEX4100_CTRREC)
+        R_GEEX4100_BP_REFCNT(S_GEEX4100_REFCNT)
+        R_GEEX4100_BP_CMTREC(S_GEEX4100_CMTREC)
+        R_GEEX4100_BP_DATRLQ(S_GEEX4100_DATRLQ)
+        R_GEEX4100_BP_CODACR(S_GEEX4100_CODACR)
+        R_GEEX4100_BP_NATREC(S_GEEX4100_NATREC)
+        R_GEEX4100_BP_EDIFOU(S_GEEX4100_EDIFOU)
+        R_GEEX4100_BP_CODCNT(S_GEEX4100_CODCNT)
+        R_GEEX4100_BP_TYPRMT(S_GEEX4100_TYPRMT)
+        R_GEEX4100_BP_DISEXC(S_GEEX4100_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.01")
+        R_GEEX4101_BP_CODEXC(S_GEEX4101_CODEXC)
+        R_GEEX4101_BP_SEPEXC(S_GEEX4101_SEPEXC)
+        R_GEEX4101_BP_SCOEXC(S_GEEX4101_SCOEXC)
+        R_GEEX4101_BP_TRTEXC(S_GEEX4101_TRTEXC)
+        R_GEEX4101_BP_NUMREC(S_GEEX4101_NUMREC)
+        R_GEEX4101_BP_SNUREC(S_GEEX4101_SNUREC)
+        R_GEEX4101_BP_REFREC(S_GEEX4101_REFREC)
+        R_GEEX4101_BP_DIPREC(S_GEEX4101_DIPREC)
+        R_GEEX4101_BP_TOPREC(S_GEEX4101_TOPREC)
+        R_GEEX4101_BP_DATBDR(S_GEEX4101_DATBDR)
+        R_GEEX4101_BP_EDIACT(S_GEEX4101_EDIACT)
+        R_GEEX4101_BP_EDITRA(S_GEEX4101_EDITRA)
+        R_GEEX4101_BP_DATBDL(S_GEEX4101_DATBDL)
+        R_GEEX4101_BP_CODTDD(S_GEEX4101_CODTDD)
+        R_GEEX4101_BP_NUMMTR(S_GEEX4101_NUMMTR)
+        R_GEEX4101_BP_NUMTOU(S_GEEX4101_NUMTOU)
+        R_GEEX4101_BP_CODRCN(S_GEEX4101_CODRCN)
+        R_GEEX4101_BP_RCTSAP(S_GEEX4101_RCTSAP)
+        R_GEEX4101_BP_DISEXC(S_GEEX4101_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.02")
+        R_GEEX4102_BP_CODEXC(S_GEEX4102_CODEXC)
+        R_GEEX4102_BP_SEPEXC(S_GEEX4102_SEPEXC)
+        R_GEEX4102_BP_SCOEXC(S_GEEX4102_SCOEXC)
+        R_GEEX4102_BP_TRTEXC(S_GEEX4102_TRTEXC)
+        R_GEEX4102_BP_NUMREC(S_GEEX4102_NUMREC)
+        R_GEEX4102_BP_SNUREC(S_GEEX4102_SNUREC)
+        R_GEEX4102_BP_REFREC(S_GEEX4102_REFREC)
+        R_GEEX4102_BP_MSGREC(S_GEEX4102_MSGREC)
+        R_GEEX4102_BP_INFLIV(S_GEEX4102_INFLIV)
+        R_GEEX4102_BP_INFCMR(S_GEEX4102_INFCMR)
+        R_GEEX4102_BP_INFVET(S_GEEX4102_INFVET)
+        R_GEEX4102_BP_INFDOU(S_GEEX4102_INFDOU)
+        R_GEEX4102_BP_TEMCAM(S_GEEX4102_TEMCAM)
+        R_GEEX4102_BP_MOTRCP(S_GEEX4102_MOTRCP)
+        R_GEEX4102_BP_NUMBDL(S_GEEX4102_NUMBDL)
+        R_GEEX4102_BP_DATBDL(S_GEEX4102_DATBDL)
+        R_GEEX4102_BP_DISEXC(S_GEEX4102_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.05")
+        R_GEEX4105_BP_CODEXC(S_GEEX4105_CODEXC)
+        R_GEEX4105_BP_SEPEXC(S_GEEX4105_SEPEXC)
+        R_GEEX4105_BP_SCOEXC(S_GEEX4105_SCOEXC)
+        R_GEEX4105_BP_TRTEXC(S_GEEX4105_TRTEXC)
+        R_GEEX4105_BP_NUMREC(S_GEEX4105_NUMREC)
+        R_GEEX4105_BP_SNUREC(S_GEEX4105_SNUREC)
+        R_GEEX4105_BP_REFREC(S_GEEX4105_REFREC)
+        R_GEEX4105_BP_CODRUB(S_GEEX4105_CODRUB)
+        R_GEEX4105_BP_VALRUB(S_GEEX4105_VALRUB)
+        R_GEEX4105_BP_DISEXC(S_GEEX4105_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.20")
+        R_GEEX4120_BP_CODEXC(S_GEEX4120_CODEXC)
+        R_GEEX4120_BP_SEPEXC(S_GEEX4120_SEPEXC)
+        R_GEEX4120_BP_SCOEXC(S_GEEX4120_SCOEXC)
+        R_GEEX4120_BP_TRTEXC(S_GEEX4120_TRTEXC)
+        R_GEEX4120_BP_NUMREC(S_GEEX4120_NUMREC)
+        R_GEEX4120_BP_SNUREC(S_GEEX4120_SNUREC)
+        R_GEEX4120_BP_REFREC(S_GEEX4120_REFREC)
+        R_GEEX4120_BP_NLIREC(S_GEEX4120_NLIREC)
+        R_GEEX4120_BP_CODACT(S_GEEX4120_CODACT)
+        R_GEEX4120_BP_CODCLI(S_GEEX4120_CODCLI)
+        R_GEEX4120_BP_CODPRO(S_GEEX4120_CODPRO)
+        R_GEEX4120_BP_VALPRO(S_GEEX4120_VALPRO)
+        R_GEEX4120_BP_UVCREA(S_GEEX4120_UVCREA)
+        R_GEEX4120_BP_UNICDE(S_GEEX4120_UNICDE)
+        R_GEEX4120_BP_CODPRN(S_GEEX4120_CODPRN)
+        R_GEEX4120_BP_TYPOPE(S_GEEX4120_TYPOPE)
+        R_GEEX4120_BP_NUMOPE(S_GEEX4120_NUMOPE)
+        R_GEEX4120_BP_CODACR(S_GEEX4120_CODACR)
+        R_GEEX4120_BP_UVCREC(S_GEEX4120_UVCREC)
+        R_GEEX4120_BP_UVCGRA(S_GEEX4120_UVCGRA)
+        R_GEEX4120_BP_UVCIMM(S_GEEX4120_UVCIMM)
+        R_GEEX4120_BP_MOTIMM(S_GEEX4120_MOTIMM)
+        R_GEEX4120_BP_UVCRFU(S_GEEX4120_UVCRFU)
+        R_GEEX4120_BP_MOTRFU(S_GEEX4120_MOTRFU)
+        R_GEEX4120_BP_UVCRLQ(S_GEEX4120_UVCRLQ)
+        R_GEEX4120_BP_DATFVI(S_GEEX4120_DATFVI)
+        R_GEEX4120_BP_MESPRO(S_GEEX4120_MESPRO)
+        R_GEEX4120_BP_PDNREC(S_GEEX4120_PDNREC)
+        R_GEEX4120_BP_DATFAB(S_GEEX4120_DATFAB)
+        R_GEEX4120_BP_CODLOT(S_GEEX4120_CODLOT)
+        R_GEEX4120_BP_NUMLOT(S_GEEX4120_NUMLOT)
+        R_GEEX4120_BP_RECSOL(S_GEEX4120_RECSOL)
+        R_GEEX4120_BP_CODMTR(S_GEEX4120_CODMTR)
+        R_GEEX4120_BP_INDPRO(S_GEEX4120_INDPRO)
+        R_GEEX4120_BP_PCBPRO(S_GEEX4120_PCBPRO)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.21")
+        R_GEEX4121_BP_CODEXC(S_GEEX4121_CODEXC)
+        R_GEEX4121_BP_SEPEXC(S_GEEX4121_SEPEXC)
+        R_GEEX4121_BP_SCOEXC(S_GEEX4121_SCOEXC)
+        R_GEEX4121_BP_TRTEXC(S_GEEX4121_TRTEXC)
+        R_GEEX4121_BP_NUMREC(S_GEEX4121_NUMREC)
+        R_GEEX4121_BP_SNUREC(S_GEEX4121_SNUREC)
+        R_GEEX4121_BP_REFREC(S_GEEX4121_REFREC)
+        R_GEEX4121_BP_NLIREC(S_GEEX4121_NLIREC)
+        R_GEEX4121_BP_DIPREC(S_GEEX4121_DIPREC)
+        R_GEEX4121_BP_TOPREC(S_GEEX4121_TOPREC)
+        R_GEEX4121_BP_PRXPRO(S_GEEX4121_PRXPRO)
+        R_GEEX4121_BP_EDIPRO(S_GEEX4121_EDIPRO)
+        R_GEEX4121_BP_EDICLI(S_GEEX4121_EDICLI)
+        R_GEEX4121_BP_UVCPRE(S_GEEX4121_UVCPRE)
+        R_GEEX4121_BP_UNIREC(S_GEEX4121_UNIREC)
+        R_GEEX4121_BP_QTEUOM(S_GEEX4121_QTEUOM)
+        R_GEEX4121_BP_CODTDD(S_GEEX4121_CODTDD)
+        R_GEEX4121_BP_NUMMTR(S_GEEX4121_NUMMTR)
+        R_GEEX4121_BP_SENPDS(S_GEEX4121_SENPDS)
+        R_GEEX4121_BP_ECAPDS(S_GEEX4121_ECAPDS)
+        R_GEEX4121_BP_TYPPRX(S_GEEX4121_TYPPRX)
+        R_GEEX4121_BP_REFLIV(S_GEEX4121_REFLIV)
+        R_GEEX4121_BP_DISEXC(S_GEEX4121_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.22")
+        R_GEEX4122_BP_CODEXC(S_GEEX4122_CODEXC)
+        R_GEEX4122_BP_SEPEXC(S_GEEX4122_SEPEXC)
+        R_GEEX4122_BP_SCOEXC(S_GEEX4122_SCOEXC)
+        R_GEEX4122_BP_TRTEXC(S_GEEX4122_TRTEXC)
+        R_GEEX4122_BP_NUMREC(S_GEEX4122_NUMREC)
+        R_GEEX4122_BP_SNUREC(S_GEEX4122_SNUREC)
+        R_GEEX4122_BP_REFREC(S_GEEX4122_REFREC)
+        R_GEEX4122_BP_NLIREC(S_GEEX4122_NLIREC)
+        R_GEEX4122_BP_CODACT(S_GEEX4122_CODACT)
+        R_GEEX4122_BP_MOTRFU(S_GEEX4122_MOTRFU)
+        R_GEEX4122_BP_UVCRFU(S_GEEX4122_UVCRFU)
+        R_GEEX4122_BP_CMTRFU(S_GEEX4122_CMTRFU)
+        R_GEEX4122_BP_CM2RFU(S_GEEX4122_CM2RFU)
+        R_GEEX4122_BP_DISEXC(S_GEEX4122_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.23")
+        R_GEEX4123_BP_CODEXC(S_GEEX4123_CODEXC)
+        R_GEEX4123_BP_SEPEXC(S_GEEX4123_SEPEXC)
+        R_GEEX4123_BP_SCOEXC(S_GEEX4123_SCOEXC)
+        R_GEEX4123_BP_TRTEXC(S_GEEX4123_TRTEXC)
+        R_GEEX4123_BP_NUMREC(S_GEEX4123_NUMREC)
+        R_GEEX4123_BP_SNUREC(S_GEEX4123_SNUREC)
+        R_GEEX4123_BP_REFREC(S_GEEX4123_REFREC)
+        R_GEEX4123_BP_NLIREC(S_GEEX4123_NLIREC)
+        R_GEEX4123_BP_CODACT(S_GEEX4123_CODACT)
+        R_GEEX4123_BP_CODCLI(S_GEEX4123_CODCLI)
+        R_GEEX4123_BP_CODPRO(S_GEEX4123_CODPRO)
+        R_GEEX4123_BP_VALPRO(S_GEEX4123_VALPRO)
+        R_GEEX4123_BP_DS1PRO(S_GEEX4123_DS1PRO)
+        R_GEEX4123_BP_DS2PRO(S_GEEX4123_DS2PRO)
+        R_GEEX4123_BP_DS3PRO(S_GEEX4123_DS3PRO)
+        R_GEEX4123_BP_FAMPRO(S_GEEX4123_FAMPRO)
+        R_GEEX4123_BP_DISEXC(S_GEEX4123_DISEXC)
+        R_GEEX4123_BP_CODEXC(S_GEEX4123_CODEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.25")
+        ! CONDICAO PARA M06
+        if S_GEEX4125_CODRUB = "STLT" then
+            tVALRUB := peel(S_GEEX4125_VALRUB, " ")
+        endif
+
+        R_GEEX4125_BP_CODEXC(S_GEEX4125_CODEXC)
+        R_GEEX4125_BP_SEPEXC(S_GEEX4125_SEPEXC)
+        R_GEEX4125_BP_SCOEXC(S_GEEX4125_SCOEXC)
+        R_GEEX4125_BP_TRTEXC(S_GEEX4125_TRTEXC)
+        R_GEEX4125_BP_NUMREC(S_GEEX4125_NUMREC)
+        R_GEEX4125_BP_SNUREC(S_GEEX4125_SNUREC)
+        R_GEEX4125_BP_REFREC(S_GEEX4125_REFREC)
+        R_GEEX4125_BP_NLIREC(S_GEEX4125_NLIREC)
+        R_GEEX4125_BP_CODACT(S_GEEX4125_CODACT)
+        R_GEEX4125_BP_CODPRO(S_GEEX4125_CODPRO)
+        R_GEEX4125_BP_VALPRO(S_GEEX4125_VALPRO)
+        R_GEEX4125_BP_TYPRUB(S_GEEX4125_TYPRUB)
+        R_GEEX4125_BP_CODRUB(S_GEEX4125_CODRUB)
+        R_GEEX4125_BP_VALRUB(S_GEEX4125_VALRUB)
+        R_GEEX4125_BP_DISEXC(S_GEEX4125_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.28")
+        R_GEEX4128_BP_CODEXC(S_GEEX4128_CODEXC)
+        R_GEEX4128_BP_SEPEXC(S_GEEX4128_SEPEXC)
+        R_GEEX4128_BP_SCOEXC(S_GEEX4128_SCOEXC)
+        R_GEEX4128_BP_TRTEXC(S_GEEX4128_TRTEXC)
+        R_GEEX4128_BP_NUMREC(S_GEEX4128_NUMREC)
+        R_GEEX4128_BP_SNUREC(S_GEEX4128_SNUREC)
+        R_GEEX4128_BP_REFREC(S_GEEX4128_REFREC)
+        R_GEEX4128_BP_NLIREC(S_GEEX4128_NLIREC)
+        R_GEEX4128_BP_SEQLIT(S_GEEX4128_SEQLIT)
+        R_GEEX4128_BP_CODACT(S_GEEX4128_CODACT)
+        R_GEEX4128_BP_CODPRO(S_GEEX4128_CODPRO)
+        R_GEEX4128_BP_VALPRO(S_GEEX4128_VALPRO)
+        R_GEEX4128_BP_EDIPRO(S_GEEX4128_EDIPRO)
+        R_GEEX4128_BP_MOTLIT(S_GEEX4128_MOTLIT)
+        R_GEEX4128_BP_SENLIT(S_GEEX4128_SENLIT)
+        R_GEEX4128_BP_UVCLIT(S_GEEX4128_UVCLIT)
+        R_GEEX4128_BP_UNIUVC(S_GEEX4128_UNIUVC)
+        R_GEEX4128_BP_NUOLIT(S_GEEX4128_NUOLIT)
+        R_GEEX4128_BP_UNIUOA(S_GEEX4128_UNIUOA)
+        R_GEEX4128_BP_DISEXC(S_GEEX4128_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.30")
+        if S_GEEX4130_MOTIMM = "" then
+            bGeraM06 := TRUE
+            R_GEEX0600_CODEXC("06")
+            R_GEEX0600_SEPEXC(".")
+            R_GEEX0600_SCOEXC("00")
+            R_GEEX0600_CODPAL(S_GEEX4130_CODPAL)
+            R_GEEX0600_MOTIMM(taCODSAP1_06[tVALRUB])
+            R_GEEX0600_CODTRT("1")
+            R_GEEX0600_CODACT("MAR")
+            R_GEEX0600_CODPRO(S_GEEX4130_CODPRO)
+
+            flush(0,0,NL) >> tFileOutTempM06
+            nContLineEscritasM06++
+        endif
+
+        ! BYPASS
+            R_GEEX4130_BP_CODEXC(S_GEEX4130_CODEXC)
+            R_GEEX4130_BP_SEPEXC(S_GEEX4130_SEPEXC)
+            R_GEEX4130_BP_SCOEXC(S_GEEX4130_SCOEXC)
+            R_GEEX4130_BP_TRTEXC(S_GEEX4130_TRTEXC)
+            R_GEEX4130_BP_NUMREC(S_GEEX4130_NUMREC)
+            R_GEEX4130_BP_SNUREC(S_GEEX4130_SNUREC)
+            R_GEEX4130_BP_REFREC(S_GEEX4130_REFREC)
+            R_GEEX4130_BP_NLIREC(S_GEEX4130_NLIREC)
+            R_GEEX4130_BP_UVCMVT(S_GEEX4130_UVCMVT)
+            R_GEEX4130_BP_SPCPRO(S_GEEX4130_SPCPRO)
+            R_GEEX4130_BP_PCBPRO(S_GEEX4130_PCBPRO)
+            R_GEEX4130_BP_CODLOT(S_GEEX4130_CODLOT)
+            R_GEEX4130_BP_NUMLOT(S_GEEX4130_NUMLOT)
+            R_GEEX4130_BP_CODNDS(S_GEEX4130_CODNDS)
+            R_GEEX4130_BP_DATFAB(S_GEEX4130_DATFAB)
+            R_GEEX4130_BP_DATFVI(S_GEEX4130_DATFVI)
+            R_GEEX4130_BP_CODPAL(S_GEEX4130_CODPAL)
+            R_GEEX4130_BP_MOTIMM(S_GEEX4130_MOTIMM)
+            R_GEEX4130_BP_DATIMM(S_GEEX4130_DATIMM)
+            R_GEEX4130_BP_HEUIMM(S_GEEX4130_HEUIMM)
+            R_GEEX4130_BP_CODSIT(S_GEEX4130_CODSIT)
+            R_GEEX4130_BP_ZONSTS(S_GEEX4130_ZONSTS)
+            R_GEEX4130_BP_ALLSTS(S_GEEX4130_ALLSTS)
+            R_GEEX4130_BP_DPLSTS(S_GEEX4130_DPLSTS)
+            R_GEEX4130_BP_NIVSTS(S_GEEX4130_NIVSTS)
+            R_GEEX4130_BP_CODACT(S_GEEX4130_CODACT)
+            R_GEEX4130_BP_CODCLI(S_GEEX4130_CODCLI)
+            R_GEEX4130_BP_CODPRO(S_GEEX4130_CODPRO)
+            R_GEEX4130_BP_VALPRO(S_GEEX4130_VALPRO)
+            R_GEEX4130_BP_PRXPRO(S_GEEX4130_PRXPRO)
+            R_GEEX4130_BP_PDBPAL(S_GEEX4130_PDBPAL)
+            R_GEEX4130_BP_PDNREC(S_GEEX4130_PDNREC)
+
+            flush(0,0,NL) >> tFileOutTempBP
+        ! FIM BYPASS
+    endline
+
+    line(1:"41.31")
+        R_GEEX4131_BP_CODEXC(S_GEEX4131_CODEXC)
+        R_GEEX4131_BP_SEPEXC(S_GEEX4131_SEPEXC)
+        R_GEEX4131_BP_SCOEXC(S_GEEX4131_SCOEXC)
+        R_GEEX4131_BP_TRTEXC(S_GEEX4131_TRTEXC)
+        R_GEEX4131_BP_NUMREC(S_GEEX4131_NUMREC)
+        R_GEEX4131_BP_SNUREC(S_GEEX4131_SNUREC)
+        R_GEEX4131_BP_REFREC(S_GEEX4131_REFREC)
+        R_GEEX4131_BP_NLIREC(S_GEEX4131_NLIREC)
+        R_GEEX4131_BP_CODEMB(S_GEEX4131_CODEMB)
+        R_GEEX4131_BP_PROEMB(S_GEEX4131_PROEMB)
+        R_GEEX4131_BP_DATREC(S_GEEX4131_DATREC)
+        R_GEEX4131_BP_HEUREC(S_GEEX4131_HEUREC)
+        R_GEEX4131_BP_HEUFAB(S_GEEX4131_HEUFAB)
+        R_GEEX4131_BP_CODEAP(S_GEEX4131_CODEAP)
+        R_GEEX4131_BP_PROEAP(S_GEEX4131_PROEAP)
+        R_GEEX4131_BP_TEMPAL(S_GEEX4131_TEMPAL)
+        R_GEEX4131_BP_SENTEM(S_GEEX4131_SENTEM)
+        R_GEEX4131_BP_DISEXC(S_GEEX4131_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.35")
+        R_GEEX4135_BP_CODEXC(S_GEEX4135_CODEXC)
+        R_GEEX4135_BP_SEPEXC(S_GEEX4135_SEPEXC)
+        R_GEEX4135_BP_SCOEXC(S_GEEX4135_SCOEXC)
+        R_GEEX4135_BP_TRTEXC(S_GEEX4135_TRTEXC)
+        R_GEEX4135_BP_NUMREC(S_GEEX4135_NUMREC)
+        R_GEEX4135_BP_SNUREC(S_GEEX4135_SNUREC)
+        R_GEEX4135_BP_REFREC(S_GEEX4135_REFREC)
+        R_GEEX4135_BP_NLIREC(S_GEEX4135_NLIREC)
+        R_GEEX4135_BP_CODOBL(S_GEEX4135_CODOBL)
+        R_GEEX4135_BP_NLIOBL(S_GEEX4135_NLIOBL)
+        R_GEEX4135_BP_DATSTO(S_GEEX4135_DATSTO)
+        R_GEEX4135_BP_HEUSTO(S_GEEX4135_HEUSTO)
+        R_GEEX4135_BP_CODFOU(S_GEEX4135_CODFOU)
+        R_GEEX4135_BP_AVIREF(S_GEEX4135_AVIREF)
+        R_GEEX4135_BP_DISEXC(S_GEEX4135_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.40")
+        R_GEEX4140_BP_CODEXC(S_GEEX4140_CODEXC)
+        R_GEEX4140_BP_SEPEXC(S_GEEX4140_SEPEXC)
+        R_GEEX4140_BP_SCOEXC(S_GEEX4140_SCOEXC)
+        R_GEEX4140_BP_TRTEXC(S_GEEX4140_TRTEXC)
+        R_GEEX4140_BP_NUMREC(S_GEEX4140_NUMREC)
+        R_GEEX4140_BP_SNUREC(S_GEEX4140_SNUREC)
+        R_GEEX4140_BP_REFREC(S_GEEX4140_REFREC)
+        R_GEEX4140_BP_NLIREC(S_GEEX4140_NLIREC)
+        R_GEEX4140_BP_CODACT(S_GEEX4140_CODACT)
+        R_GEEX4140_BP_CODPRO(S_GEEX4140_CODPRO)
+        R_GEEX4140_BP_VALPRO(S_GEEX4140_VALPRO)
+        R_GEEX4140_BP_CODCLI(S_GEEX4140_CODCLI)
+        R_GEEX4140_BP_CODPAL(S_GEEX4140_CODPAL)
+        R_GEEX4140_BP_CODSER(S_GEEX4140_CODSER)
+        R_GEEX4140_BP_SNUSER(S_GEEX4140_SNUSER)
+        R_GEEX4140_BP_NUMPAL(S_GEEX4140_NUMPAL)
+        R_GEEX4140_BP_SNUPAL(S_GEEX4140_SNUPAL)
+        R_GEEX4140_BP_NUMSER(S_GEEX4140_NUMSER)
+        R_GEEX4140_BP_CODOBI(S_GEEX4140_CODOBI)
+        R_GEEX4140_BP_DISEXC(S_GEEX4140_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.45")
+        R_GEEX4145_BP_CODEXC(S_GEEX4145_CODEXC)
+        R_GEEX4145_BP_SEPEXC(S_GEEX4145_SEPEXC)
+        R_GEEX4145_BP_SCOEXC(S_GEEX4145_SCOEXC)
+        R_GEEX4145_BP_TRTEXC(S_GEEX4145_TRTEXC)
+        R_GEEX4145_BP_NUMREC(S_GEEX4145_NUMREC)
+        R_GEEX4145_BP_SNUREC(S_GEEX4145_SNUREC)
+        R_GEEX4145_BP_REFREC(S_GEEX4145_REFREC)
+        R_GEEX4145_BP_NLIREC(S_GEEX4145_NLIREC)
+        R_GEEX4145_BP_CODPAL(S_GEEX4145_CODPAL)
+        R_GEEX4145_BP_MOTIMM(S_GEEX4145_MOTIMM)
+        R_GEEX4145_BP_EDIIMO(S_GEEX4145_EDIIMO)
+        R_GEEX4145_BP_BLOANO(S_GEEX4145_BLOANO)
+        R_GEEX4145_BP_DISEXC(S_GEEX4145_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.50")
+        R_GEEX4150_BP_CODEXC(S_GEEX4150_CODEXC)
+        R_GEEX4150_BP_SEPEXC(S_GEEX4150_SEPEXC)
+        R_GEEX4150_BP_SCOEXC(S_GEEX4150_SCOEXC)
+        R_GEEX4150_BP_TRTEXC(S_GEEX4150_TRTEXC)
+        R_GEEX4150_BP_NUMREC(S_GEEX4150_NUMREC)
+        R_GEEX4150_BP_SNUREC(S_GEEX4150_SNUREC)
+        R_GEEX4150_BP_REFREC(S_GEEX4150_REFREC)
+        R_GEEX4150_BP_NLIREC(S_GEEX4150_NLIREC)
+        R_GEEX4150_BP_CODACT(S_GEEX4150_CODACT)
+        R_GEEX4150_BP_CODPRO(S_GEEX4150_CODPRO)
+        R_GEEX4150_BP_VALPRO(S_GEEX4150_VALPRO)
+        R_GEEX4150_BP_CODCLI(S_GEEX4150_CODCLI)
+        R_GEEX4150_BP_CODPAL(S_GEEX4150_CODPAL)
+        R_GEEX4150_BP_CODRUB(S_GEEX4150_CODRUB)
+        R_GEEX4150_BP_VALRUB(S_GEEX4150_VALRUB)
+        R_GEEX4150_BP_DISEXC(S_GEEX4150_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.70")
+        R_GEEX4170_BP_CODEXC(S_GEEX4170_CODEXC)
+        R_GEEX4170_BP_SEPEXC(S_GEEX4170_SEPEXC)
+        R_GEEX4170_BP_SCOEXC(S_GEEX4170_SCOEXC)
+        R_GEEX4170_BP_TRTEXC(S_GEEX4170_TRTEXC)
+        R_GEEX4170_BP_NUMREC(S_GEEX4170_NUMREC)
+        R_GEEX4170_BP_SNUREC(S_GEEX4170_SNUREC)
+        R_GEEX4170_BP_CODACT(S_GEEX4170_CODACT)
+        R_GEEX4170_BP_CODFOU(S_GEEX4170_CODFOU)
+        R_GEEX4170_BP_REFREC(S_GEEX4170_REFREC)
+        R_GEEX4170_BP_NUMWAG(S_GEEX4170_NUMWAG)
+        R_GEEX4170_BP_DISEXC(S_GEEX4170_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.80")
+        R_GEEX4180_BP_CODEXC(S_GEEX4180_CODEXC)
+        R_GEEX4180_BP_SEPEXC(S_GEEX4180_SEPEXC)
+        R_GEEX4180_BP_SCOEXC(S_GEEX4180_SCOEXC)
+        R_GEEX4180_BP_TRTEXC(S_GEEX4180_TRTEXC)
+        R_GEEX4180_BP_NUMREC(S_GEEX4180_NUMREC)
+        R_GEEX4180_BP_SNUREC(S_GEEX4180_SNUREC)
+        R_GEEX4180_BP_CODACT(S_GEEX4180_CODACT)
+        R_GEEX4180_BP_CODFOU(S_GEEX4180_CODFOU)
+        R_GEEX4180_BP_REFREC(S_GEEX4180_REFREC)
+        R_GEEX4180_BP_CODEMB(S_GEEX4180_CODEMB)
+        R_GEEX4180_BP_QTBSOR(S_GEEX4180_QTBSOR)
+        R_GEEX4180_BP_QTBENT(S_GEEX4180_QTBENT)
+        R_GEEX4180_BP_PRXEMB(S_GEEX4180_PRXEMB)
+        R_GEEX4180_BP_CODTRA(S_GEEX4180_CODTRA)
+        R_GEEX4180_BP_PROEMB(S_GEEX4180_PROEMB)
+        R_GEEX4180_BP_DATEMB(S_GEEX4180_DATEMB)
+        R_GEEX4180_BP_TYPTIE(S_GEEX4180_TYPTIE)
+        R_GEEX4180_BP_DISEXC(S_GEEX4180_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.84")
+        R_GEEX4184_BP_CODEXC(S_GEEX4184_CODEXC)
+        R_GEEX4184_BP_SEPEXC(S_GEEX4184_SEPEXC)
+        R_GEEX4184_BP_SCOEXC(S_GEEX4184_SCOEXC)
+        R_GEEX4184_BP_TRTEXC(S_GEEX4184_TRTEXC)
+        R_GEEX4184_BP_NUMREC(S_GEEX4184_NUMREC)
+        R_GEEX4184_BP_SNUREC(S_GEEX4184_SNUREC)
+        R_GEEX4184_BP_CODACT(S_GEEX4184_CODACT)
+        R_GEEX4184_BP_CODFOU(S_GEEX4184_CODFOU)
+        R_GEEX4184_BP_REFREC(S_GEEX4184_REFREC)
+        R_GEEX4184_BP_CODEMB(S_GEEX4184_CODEMB)
+        R_GEEX4184_BP_LIBTYP(S_GEEX4184_LIBTYP)
+        R_GEEX4184_BP_CODIMA(S_GEEX4184_CODIMA)
+        R_GEEX4184_BP_DISEXC(S_GEEX4184_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.90")
+        R_GEEX4190_BP_CODEXC(S_GEEX4190_CODEXC)
+        R_GEEX4190_BP_SEPEXC(S_GEEX4190_SEPEXC)
+        R_GEEX4190_BP_SCOEXC(S_GEEX4190_SCOEXC)
+        R_GEEX4190_BP_TRTEXC(S_GEEX4190_TRTEXC)
+        R_GEEX4190_BP_NUMPAL(S_GEEX4190_NUMPAL)
+        R_GEEX4190_BP_SNUPAL(S_GEEX4190_SNUPAL)
+        R_GEEX4190_BP_CODACT(S_GEEX4190_CODACT)
+        R_GEEX4190_BP_CODCLI(S_GEEX4190_CODCLI)
+        R_GEEX4190_BP_CODPRO(S_GEEX4190_CODPRO)
+        R_GEEX4190_BP_VALPRO(S_GEEX4190_VALPRO)
+        R_GEEX4190_BP_CODPAL(S_GEEX4190_CODPAL)
+        R_GEEX4190_BP_MOTIMM(S_GEEX4190_MOTIMM)
+        R_GEEX4190_BP_DATLIB(S_GEEX4190_DATLIB)
+        R_GEEX4190_BP_HEULIB(S_GEEX4190_HEULIB)
+        R_GEEX4190_BP_INDLIB(S_GEEX4190_INDLIB)
+        R_GEEX4190_BP_IMMBKL(S_GEEX4190_IMMBKL)
+        R_GEEX4190_BP_PALIMM(S_GEEX4190_PALIMM)
+        R_GEEX4190_BP_DATBKL(S_GEEX4190_DATBKL)
+        R_GEEX4190_BP_HEUBKL(S_GEEX4190_HEUBKL)
+        R_GEEX4190_BP_DATIMM(S_GEEX4190_DATIMM)
+        R_GEEX4190_BP_HEUIMM(S_GEEX4190_HEUIMM)
+		R_GEEX4190_BP_LIBIMO("Released")
+        R_GEEX4190_BP_DISEXC(S_GEEX4190_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"41.99")
+        R_GEEX4199_BP_CODEXC(S_GEEX4199_CODEXC)
+        R_GEEX4199_BP_SEPEXC(S_GEEX4199_SEPEXC)
+        R_GEEX4199_BP_SCOEXC(S_GEEX4199_SCOEXC)
+        R_GEEX4199_BP_TRTEXC(S_GEEX4199_TRTEXC)
+        R_GEEX4199_BP_NUMREC(S_GEEX4199_NUMREC)
+        R_GEEX4199_BP_SNUREC(S_GEEX4199_SNUREC)
+        R_GEEX4199_BP_REFREC(S_GEEX4199_REFREC)
+        R_GEEX4199_BP_CUMLIG(S_GEEX4199_CUMLIG)
+        R_GEEX4199_BP_CUMPAL(S_GEEX4199_CUMPAL)
+        R_GEEX4199_BP_COLTOT(S_GEEX4199_COLTOT)
+        R_GEEX4199_BP_TOTPRO(S_GEEX4199_TOTPRO)
+        R_GEEX4199_BP_DISEXC(S_GEEX4199_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+
+    line(1:"99.00")
+        R_GEEX9900_BP_CODEXC(S_GEEX9900_CODEXC)
+        R_GEEX9900_BP_SEPEXC(S_GEEX9900_SEPEXC)
+        R_GEEX9900_BP_SCOEXC(S_GEEX9900_SCOEXC)
+        R_GEEX9900_BP_TRTEXC(S_GEEX9900_TRTEXC)
+        R_GEEX9900_BP_EMTEXC(S_GEEX9900_EMTEXC)
+        R_GEEX9900_BP_RCTEXC(S_GEEX9900_RCTEXC)
+        R_GEEX9900_BP_DATEXC(S_GEEX9900_DATEXC)
+        R_GEEX9900_BP_HEUEXC(S_GEEX9900_HEUEXC)
+        R_GEEX9900_BP_NUMEXC(S_GEEX9900_NUMEXC)
+        R_GEEX9900_BP_CPTEXC(S_GEEX9900_CPTEXC)
+        R_GEEX9900_BP_NOMSYS(S_GEEX9900_NOMSYS)
+        R_GEEX9900_BP_NOMDTQ(S_GEEX9900_NOMDTQ)
+        R_GEEX9900_BP_BIBDTQ(S_GEEX9900_BIBDTQ)
+        R_GEEX9900_BP_IDEMSG(S_GEEX9900_IDEMSG)
+        R_GEEX9900_BP_DISEXC(S_GEEX9900_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+
+        ! 99.00 M06
+		R_GEEX9900_CODEXC("99")
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC("00")
+		R_GEEX9900_EMTEXC("FM")
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_CPTEXC(build(nContLineEscritasM06 - 1:R08))
+
+        flush(0,0,NL) >> tFileOutTempM06
+        nContLineEscritasM06++
+    endline
+
+    line(1:"99.99")
+        R_GEEX9999_BP_CODEXC(S_GEEX9999_CODEXC)
+        R_GEEX9999_BP_SEPEXC(S_GEEX9999_SEPEXC)
+        R_GEEX9999_BP_SCOEXC(S_GEEX9999_SCOEXC)
+        R_GEEX9999_BP_TRTEXC(S_GEEX9999_TRTEXC)
+        R_GEEX9999_BP_EMTEXC(S_GEEX9999_EMTEXC)
+        R_GEEX9999_BP_RCTEXC(S_GEEX9999_RCTEXC)
+        R_GEEX9999_BP_DATEXC(S_GEEX9999_DATEXC)
+        R_GEEX9999_BP_HEUEXC(S_GEEX9999_HEUEXC)
+        R_GEEX9999_BP_NUMEXC(S_GEEX9999_NUMEXC)
+        R_GEEX9999_BP_CPTEXC(S_GEEX9999_CPTEXC)
+        R_GEEX9999_BP_ERREXC(S_GEEX9999_ERREXC)
+        R_GEEX9999_BP_IDEMSG(S_GEEX9999_IDEMSG)
+        R_GEEX9999_BP_DEBFIN(S_GEEX9999_DEBFIN)
+        R_GEEX9999_BP_DISEXC(S_GEEX9999_DISEXC)
+
+        flush(0,0,NL) >> tFileOutTempBP
+    endline
+! FIM BYPASS
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+    ! FINALIZANDO M06
+        if bGeraM06 = TRUE and tCODACT = "MAR" then
+            close(tFileOutTempM06)
+            copy(tFileOutTempM06,tFileOutM06)
+            close(tFileOutTempM06)
+            remove(tFileOutTempM06)
+            close(tFileOutM06)
+
+            bfMajtraceM06("Recebida", \
+                        "0", \
+                        tREFREC, \
+                        time("now","%Y-%m-%dT%H:%M:%S"), \
+                        tFileOut, \
+                        "M06 - STATUS DO PALETE (REC)", \
+                        "")
+        else
+            remove(tFileOutTempM06)
+            remove(tFileOutM06)
+        endif
+    ! FIM M06
+
+    R_S0_TIPO_REGISTRO("S0")
+    R_S0_DATA(tDTRREC)
+    R_S0_HORA(build(tHERREC, "00"))
+
+    flush(0,0,NL) >> tFileOutTemp
+    nContLineEscritas++
+
+    tQuery := build("SELECT  TRIM(RD.DIPREC)                   AS DIPREC", NL," "\
+                    "       ,RD.CODPRO                         AS MATERIAL", NL," "\
+                    "       ,TRIM(RD.CODLOT)                   AS CODLOT", NL," "\
+                    "       ,RD.NLIREC                         AS EBELP", NL," "\
+                    "       ,TRIM(RL.VALRUB)                   AS MBLNR", NL," "\
+                    "       ,TRIM(RB.VALRUB)                   AS DOCNUM", NL," "\
+                    "       ,INTEGER(RD.UVCREA / RD.PCBPRO) AS QTD_ESPERADA", NL," "\
+                    "FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERERUB AS RB", NL," "\
+                    "ON RB.CODRUB = 'DOCN' AND RB.NUMREC = RD.NUMREC", NL," "\
+                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERALR AS RL", NL," "\
+                    "ON RL.CODRUB = 'DOCR' AND RD.NUMREC = RL.NUMREC AND RD.SEQREC = RL.SEQREC", NL," "\
+                    "WHERE RD.NUMREC = '",tNUMREC,"'", NL," "\
+                    "ORDER BY RD.CODLOT, RD.DIPREC")
+
+    log("***********************************", NL)
+    log(tQuery, NL)
+    log("***********************************", NL)
+
+	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", \
+						"1", \
+						tREFREC, \
+						tDataDocumento, \
+						tFileOut, \
+						"CONFIRMAÇÃO DE RECEBIMENTO", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", \
+						"1", \
+						tREFREC, \
+						tDataDocumento, \
+						tFileOut, \
+						"CONFIRMAÇÃO DE RECEBIMENTO", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+    nLineCount := 0
+	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+        nLineCount++
+
+        tDIPREC := peel(taDb2Array["DIPREC"]," ")
+        tCODPRO := peel(taDb2Array["MATERIAL"]," ")
+        tCODLOT := peel(taDb2Array["CODLOT"]," ")
+
+        taLineCount[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := build(nLineCount)
+        taEBELP[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["EBELP"]," ")
+        taMBLNR[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["MBLNR"]," ")
+        taDOCNUM[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["DOCNUM"]," ")
+        taQTD_ESPERADA[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["QTD_ESPERADA"]," ")
+		remove(taDb2Array)
+	endwhile
+				
+	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+		print("FATAL", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", \
+						"1", \
+						tREFREC, \
+						tDataDocumento, \
+						tFileOut, \
+						"CONFIRMAÇÃO DE RECEBIMENTO", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+    tQuery := build("SELECT	TRIM(RP.CODPRO)                                                 AS MATERIAL     ", NL," "\
+                    "       ,RP.CODLOT                                                      AS LOTE         ", NL," "\
+                    "       ,CASE RP.MOTIMM WHEN '' THEN IMRB.STOSAP1 ELSE IMRP.STOSAP1 END AS STATUS       ", NL," "\
+                    "       ,INTEGER(SUM(RP.UVCMVT / RP.PCBPRO))                            AS QUANTIDADE   ", NL," "\
+                    "FROM FGE50FM",tToInfologPrefixFilename,".GERECP AS RP                                  ", NL," "\
+                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERALR AS RB                             ", NL," "\
+                    "ON RP.NUMREC = RB.NUMREC AND RP.SEQREC = RB.SEQREC AND RB.CODRUB = 'STLT'              ", NL," "\
+                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IMRB                           ", NL," "\
+                    "ON RB.VALRUB = IMRB.MOTIMM                                                             ", NL," "\
+                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IMRP                           ", NL," "\
+                    "ON RP.MOTIMM = IMRP.MOTIMM                                                             ", NL," "\
+                    "WHERE 1 = 1                                                                            ", NL," "\
+                    "AND RP.NUMREC = '",tNUMREC,"'                                                          ", NL," "\
+                    "AND RP.CODACT = '",tCODACT,"'                                                          ", NL," "\
+                    "GROUP BY  RP.CODPRO                                                                    ", NL," "\
+                    "         ,RP.CODLOT                                                                    ", NL," "\
+                    "         ,CASE RP.MOTIMM WHEN '' THEN IMRB.STOSAP1 ELSE IMRP.STOSAP1 END               ", NL," "\
+                    "ORDER BY 1, 2, 3")
+
+    log("***********************************", NL)
+    log(tQuery, NL)
+    log("***********************************", NL)
+
+	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", \
+						"1", \
+						tREFREC, \
+						tDataDocumento, \
+						tFileOut, \
+						"CONFIRMAÇÃO DE RECEBIMENTO", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", \
+						"1", \
+						tREFREC, \
+						tDataDocumento, \
+						tFileOut, \
+						"CONFIRMAÇÃO DE RECEBIMENTO", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+        tCODPRO2 := peel(taDb2Array["MATERIAL"]," ")
+        tCODLOT2 := peel(taDb2Array["LOTE"]," ")
+
+        taSTATUS[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["STATUS"]," ")
+        taQUANTIDADE[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["QUANTIDADE"]," ")
+
+		remove(taDb2Array)
+	endwhile
+				
+	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+		print("FATAL", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", \
+						"1", \
+						tREFREC, \
+						tDataDocumento, \
+						tFileOut, \
+						"CONFIRMAÇÃO DE RECEBIMENTO", \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+    while tIndex in taLineCount do
+        split(tIndex, taIndexSplit, "-")
+
+        tDIPREC_Split := taIndexSplit[1]
+        tCODPRO_Split := taIndexSplit[2]
+        tCODLOT_Split := taIndexSplit[3]
+
+        if not number(peel(tCODPRO_Split," ")) = 0 then 
+            tCODPRO_aux := build(number(peel(tCODPRO_Split," ")):R018)
+        else
+            tCODPRO_aux := peel(tCODPRO_Split," ")
+        endif
+        log(tCODPRO_aux,NL)
+
+        log("Quantidade: ",taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)], NL)
+        log("Quantidade2: ",taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)], NL)
+        if number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) and length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > 0 then
+            log("IF 1", NL)
+            R_S1_TIPO_REGISTRO("S1")
+            R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+            R_S1_MATERIAL(tCODPRO_aux)
+            R_S1_QUANTIDADE(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+            taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)] := build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) - number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]))
+            R_S1_STATUS(peel(taSTATUS[build(tCODPRO_Split,"-",tCODLOT_Split)]," "))
+            R_S1_LOTE(peel(tCODLOT_Split," "))
+            R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+            R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+            
+            flush(0,0,NL) >> tFileOutTemp
+            nContLineEscritas++
+        else
+            if number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) < number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) and length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > 0 then
+                log("IF 2", NL)
+                R_S1_TIPO_REGISTRO("S1")
+                R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                R_S1_MATERIAL(tCODPRO_aux)
+                R_S1_QUANTIDADE(build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                R_S1_STATUS(peel(taSTATUS[build(tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                R_S1_LOTE(peel(tCODLOT_Split," "))
+                R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                
+                flush(0,0,NL) >> tFileOutTemp
+                nContLineEscritas++
+
+                R_S1_TIPO_REGISTRO("S1")
+                R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                R_S1_MATERIAL(tCODPRO_aux)
+                R_S1_QUANTIDADE(build(number(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) - number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]))):R016))
+                R_S1_STATUS("HOLD")
+                R_S1_LOTE(peel(tCODLOT_Split," "))
+                R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                
+                flush(0,0,NL) >> tFileOutTemp
+                nContLineEscritas++
+            else
+                if length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) = 0 then
+                    log("IF 3", NL)
+                    R_S1_TIPO_REGISTRO("S1")
+                    R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    R_S1_MATERIAL(tCODPRO_aux)
+                    R_S1_QUANTIDADE(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                    R_S1_STATUS("HOLD")
+                    R_S1_LOTE(peel(tCODLOT_Split," "))
+                    R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                    R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    
+                    flush(0,0,NL) >> tFileOutTemp
+                    nContLineEscritas++
+                else
+                    log("IF 4", NL)
+                    R_S1_TIPO_REGISTRO("S1")
+                    R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    R_S1_MATERIAL(tCODPRO_aux)
+                    R_S1_QUANTIDADE(build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                    R_S1_STATUS(peel(taSTATUS[build(tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    R_S1_LOTE(peel(tCODLOT_Split," "))
+                    R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                    R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    
+                    flush(0,0,NL) >> tFileOutTemp
+                    nContLineEscritas++
+                endif
+            endif
+        endif
+    endwhile
+
+    close(tFileOutTemp)
+    copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+    remove(tFileOutTemp)
+    close(tFileOut)
+
+    bfMajtrace("Recebida", \
+                "0", \
+                tREFREC, \
+                time("now","%Y-%m-%dT%H:%M:%S"), \
+                tFileOut, \
+                "CONFIRMAÇÃO DE RECEBIMENTO", \
+                "")
+
+    if tCODACT = "MAR" then
+        close(tFileOutTempBP)
+        copy(tFileOutTempBP,tFileOutBP)
+        close(tFileOutTempBP)
+        remove(tFileOutTempBP)
+        close(tFileOutBP)
+
+        bfMajtraceBP("Recebida", \
+                    "0", \
+                    tREFREC, \
+                    time("now","%Y-%m-%dT%H:%M:%S"), \
+                    tFileOut, \
+                    "M41 BYPASS", \
+                    "")
+    endif
+
+    close(tDbBase)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtraceBP(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOutBP
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutBP,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOutBP)
+		copy(tFileOutBP,TRACE.Out)
+		close(tFileOutBP)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtraceM06(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOutM06
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutM06,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOutM06)
+		copy(tFileOutM06,TRACE.Out)
+		close(tFileOutM06)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction

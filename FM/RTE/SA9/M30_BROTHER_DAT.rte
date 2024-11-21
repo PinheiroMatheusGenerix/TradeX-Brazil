@@ -1,0 +1,187 @@
+%@(#)  M30_BROHTER_DAT.rte     modif:27/11/2023
+!==============================================================================
+% File          : M30_BROHTER_DAT.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 27/11/2023  XX  Creation
+! 27/11/2023  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "M30_BROHTER_DAT"
+#include "include/generix_func.inc"
+#include "include/GEEXM30.inc"
+
+!==============================================================================
+
+! Initialization section
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA9"]
+
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "BROTHER"
+		tSentido := "I"
+		tMensagem := "PRODUTO"
+		tDataDocumento := time("now","%Y-%m-%d")
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+    /*
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "FMWMS"
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= taPARAM["WMSDBPASS"]
+		tDbUrl		:= taPARAM["WMSDBURL"]
+
+        bfSqlInit()
+        if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+            bfSqlErro()
+            exit(1)
+        endif
+    */
+
+	!Variaveis Gerais
+
+
+
+endbegin
+
+!==============================================================================
+
+! End statements section
+end
+
+	! Criação dos arquivos
+        tNameOut := build(tToInfologPrefixFilename,"30",build(nMessageID:R010),".DAT")
+        tFileOut := build(sHOME,"/ToInfolog/",tNameOut)
+
+    ! Tratamento final dos arquivos
+        close(SYSLOG.a)
+        copy(SYSLOG.a,tFileOut)
+        close(SYSLOG.a)
+        close(tFileOut)
+
+	log("------------------------------------------------------------", NL)
+    log("SYSLOG.a", SYSLOG.a, NL)
+    log("tFileOut", tFileOut, NL)
+    log("------------------------------------------------------------", NL)
+    
+    ! Finalizando com TRACE	
+        bfMajtrace("Recebida", \
+                    "0", \
+                    tIndexREFREC, \
+                    tDataDocumento, \
+                    tFileInput, \
+                    tFileOut, \
+                    tMensagem, \
+                    tMensagemErro)
+
+    ! Enviar interface para o cliente
+        bfToInfolog()
+
+endend
+
+!==============================================================================
+
+function bfMajtrace(tStatus, tError, tNumDoc, tDataDoc, tFileInput, tFileOut, tMensagem, tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+    TRACE.PERFIL := tPerfil
+	TRACE.SENTIDO := tSentido
+	TRACE.MENSAGEM := tMensagem
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+
+endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileInput \
+                ,tFileOut \
+                ,tMensagem \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+!==============================================================================
+
+function bfToInfolog()
+
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+
+endfunction
+
+!==============================================================================

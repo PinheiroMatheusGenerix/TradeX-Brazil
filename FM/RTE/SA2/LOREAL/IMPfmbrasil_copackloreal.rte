@@ -1,0 +1,59 @@
+base "../fmbrasil_copackloreal/fmbrasil_copackloreal.cfg" fmbrasil_copackloreal,autoflush off
+base "../fmbrasil_copackloreal/fmbrasil_copackloreal.cfg" fmbrasil_copackloreal2, readonly
+
+!ImportaTabelasCSV 20 20 50 < C:\TradeXpress5\users\txdev\rte\UnitMeasure.csv
+
+begin
+
+
+
+endbegin
+
+
+line(1)
+split(pick(1,1,EOL), taRegistoHeader, ";")
+
+endline
+
+line (not 1)
+split(pick(1,1,EOL), taRegistoDetail, ";")
+if length(taRegistoDetail[2]) > 0 and taRegistoDetail[2] <> "COMPONENTE" then
+
+	nPos :=1
+
+
+
+	
+	
+	
+	fmbrasil_copackloreal2 := find(build(sHOME,"/fmbrasil_copackloreal"),PALETE_COMPOSTO = taRegistoDetail[1],COMPONENTE = taRegistoDetail[2], QUANTIDADE = taRegistoDetail[3],LOTE_COMPONENTE = taRegistoDetail[4],COMPOSTO = taRegistoDetail[5],LOTE_COMPOSTO = taRegistoDetail[6],PROCESSED = "0")
+	if valid(fmbrasil_copackloreal2) then
+		!ja existe esta entrada e nao faz nada
+	else
+		fmbrasil_copackloreal := new(build(sHOME,"/fmbrasil_copackloreal"))
+		fmbrasil_copackloreal.PALETE_COMPOSTO := taRegistoDetail[1]
+		fmbrasil_copackloreal.COMPONENTE := taRegistoDetail[2]
+		fmbrasil_copackloreal.QUANTIDADE := taRegistoDetail[3]
+		fmbrasil_copackloreal.LOTE_COMPONENTE := taRegistoDetail[4]
+		fmbrasil_copackloreal.COMPOSTO := taRegistoDetail[5]
+		fmbrasil_copackloreal.LOTE_COMPOSTO := taRegistoDetail[6]
+		fmbrasil_copackloreal.PALETE_COMPONENTE := taRegistoDetail[7]
+		fmbrasil_copackloreal.PROCESSED := "0"
+		fmbrasil_copackloreal.INDEX_TRACE := ""
+		flush(fmbrasil_copackloreal)	
+	endif
+	
+
+endif
+remove(taRegistoDetail)
+   
+endline
+
+
+
+
+end
+
+exit(0)
+
+endend

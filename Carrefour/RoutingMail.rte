@@ -1,0 +1,51 @@
+base "syslog.cfg" SYSLOG
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	
+    tSub := pMESSAGE.subject
+
+    log("tSub",tSub,NL)
+
+	taFileName[1] := build(sHOME,"/syslog/files/x/",SYSLOG.INDEX)
+	taFileName[2] := build(sHOME,"/syslog/files/x2/",SYSLOG.INDEX)
+	taFileName[3] := build(sHOME,"/syslog/files/x3/",SYSLOG.INDEX)
+	taFileName[4] := build(sHOME,"/syslog/files/x4/",SYSLOG.INDEX)
+	taFileName[5] := build(sHOME,"/syslog/files/x5/",SYSLOG.INDEX)
+	taFileName[6] := build(sHOME,"/syslog/files/x6/",SYSLOG.INDEX)
+	taFileName[7] := build(sHOME,"/syslog/files/x7/",SYSLOG.INDEX)
+	taFileName[8] := build(sHOME,"/syslog/files/x8/",SYSLOG.INDEX)
+	taFileName[9] := build(sHOME,"/syslog/files/x9/",SYSLOG.INDEX)
+	taFileName[10] := build(sHOME,"/syslog/files/x10/",SYSLOG.INDEX)
+	
+	nTempAux := 1
+	while nTempAux <= 10 do
+		fFile := taFileName[nTempAux]
+		bEncontrou := FALSE
+		if fFile.EXIST then
+			close(fFile.FULLNAME)
+			tLinhaLida := read(fFile.FULLNAME)
+			while tLinhaLida <> EOF do
+				if index(tLinhaLida,"<nfeProc") >0 then
+					close(fFile.FULLNAME)
+					tArquivo := fFile.FULLNAME
+					bEncontrou := TRUE
+					break
+				endif
+				tLinhaLida := read(fFile.FULLNAME)
+			endwhile
+			close(fFile.FULLNAME)
+		endif
+		
+		if bEncontrou = TRUE then
+			close(tArquivo)
+			copy(tArquivo,build(sHOME,"/tmp/nfeProc_RP_",SYSLOG.INDEX,".xml"))
+			close(tArquivo)
+			close(build(sHOME,"/tmp/nfeProc_RP_",SYSLOG.INDEX,".xml"))
+			break
+		endif
+		
+		nTempAux++
+	endwhile
+	exit(0)
+endbegin

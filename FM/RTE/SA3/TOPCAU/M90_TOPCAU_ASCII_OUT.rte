@@ -1,0 +1,1557 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../trace/trace.cfg" TRACE2,autoflush off
+base "../fmbrasil_gama_ajustes_estoque/fmbrasil_gama_ajustes_estoque.cfg" fmbrasil_gama_ajustes_estoque
+base "../fmbrasil_batimento_p5/fmbrasil_batimento_p5.cfg" fmbrasil_batimento_p5_batimento
+base "../fmbrasil_batimento_p5/fmbrasil_batimento_p5.cfg" fmbrasil_batimento_p5_p5
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M90_TOPCAU_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M91COM.inc"
+#include "include/M90.inc"
+#include "include/M06.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameTOPCAU"]
+
+	tCODACTConst := "001"
+	nContadorLinhasEscritas  := 0
+	nMainIndex := 0
+	nLinha := 0
+	nLinha2 := 0
+	nLinha2 := 0
+
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	nContadorQuerys := 0
+	tArquivoEmailSentinel := ""
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	tData := S_0000_DATEXC
+	tHora := S_0000_HEUEXC   
+	bFazP5 := FALSE
+	bFazBatimento := FALSE
+	bPrimeiro9900 := TRUE
+	bTem9000 := FALSE
+	bTem9070 := FALSE
+	nNumero9070 := 0
+endline
+
+line("90.00")
+	bTem9000 := TRUE
+
+	if bPrimeiro9900 = TRUE then
+		tCODACTLido := S_9000STOCKS_CODACT
+		bPrimeiro9900 := FALSE
+	endif
+endline
+
+line("90.70")
+
+endline
+
+
+line("99.00")
+	if bTem9000 = TRUE then
+		fmbrasil_batimento_p5_batimento := find(build(sHOME,"/fmbrasil_batimento_p5"),CODACT=tCODACTLido,TIPO="BATIMENTO")
+		if valid(fmbrasil_batimento_p5_batimento) then
+			tTOEMAILbat := fmbrasil_batimento_p5_batimento.TOEMAIL
+			tCCEMAILbat := fmbrasil_batimento_p5_batimento.CCEMAIL
+			tBEGINSUBJbat := fmbrasil_batimento_p5_batimento.BEGINSUBJ
+			tHORARIOSPERMITIDOSbat := fmbrasil_batimento_p5_batimento.HORARIOSPERMITIDOS
+			tToInfologPrefixFilename :=  fmbrasil_batimento_p5_batimento.AMBIENTE
+			tHORARIOSPERMITIDOS := replace(replace(tHORARIOSPERMITIDOSbat," ",""),",",";")
+			nHorariosPermitidosAux := split(tHORARIOSPERMITIDOS,taArrayAuxApaga,";")
+			if nHorariosPermitidosAux <= 1 then
+				taArrayHORARIOSPERMITIDOS[1] := tHORARIOSPERMITIDOS
+				nHorariosPermitidosAux := 1
+			else
+				taArrayHORARIOSPERMITIDOS := taArrayAuxApaga
+			endif
+			remove(taArrayAuxApaga)
+			nTempPesquisaArray := 1
+			while nTempPesquisaArray <= nHorariosPermitidosAux do
+				log("Horario Permitidos BATIMENTO: ",taArrayHORARIOSPERMITIDOS[nTempPesquisaArray],NL)
+				if taArrayHORARIOSPERMITIDOS[nTempPesquisaArray]  = substr(tHora,1,2) then
+					bFazBatimento := TRUE
+				endif
+				nTempPesquisaArray++
+			endwhile
+		
+			remove(taArrayHORARIOSPERMITIDOS)
+		else
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Nao existe na tabela fmbrasil_batimento_p5 os valores CODACT= ",tCODACTLido," para o TIPO=BATIMENTO"))
+		endif
+
+		fmbrasil_batimento_p5_p5 := find(build(sHOME,"/fmbrasil_batimento_p5"),CODACT=tCODACTLido,TIPO="P5")
+		if valid(fmbrasil_batimento_p5_p5) then
+			tTOEMAILp5 := fmbrasil_batimento_p5_p5.TOEMAIL
+			tCCEMAILp5 := fmbrasil_batimento_p5_p5.CCEMAIL
+			tBEGINSUBJp5 := fmbrasil_batimento_p5_p5.BEGINSUBJ
+			tHORARIOSPERMITIDOSp5 := fmbrasil_batimento_p5_p5.HORARIOSPERMITIDOS
+			tToInfologPrefixFilename :=  fmbrasil_batimento_p5_p5.AMBIENTE
+			tHORARIOSPERMITIDOS := replace(replace(tHORARIOSPERMITIDOSp5," ",""),",",";")
+			nHorariosPermitidosAux := split(tHORARIOSPERMITIDOS,taArrayAuxApaga,";")
+			if nHorariosPermitidosAux <= 1 then
+				taArrayHORARIOSPERMITIDOS[1] := tHORARIOSPERMITIDOS
+				nHorariosPermitidosAux := 1
+			else
+				taArrayHORARIOSPERMITIDOS := taArrayAuxApaga
+			endif
+			
+			remove(taArrayAuxApaga)
+			
+			nTempPesquisaArray := 1
+			while nTempPesquisaArray <= nHorariosPermitidosAux do
+				log("Horario Permitidos P5: ",taArrayHORARIOSPERMITIDOS[nTempPesquisaArray],NL)
+				if taArrayHORARIOSPERMITIDOS[nTempPesquisaArray]  = substr(tHora,1,2) then
+					bFazP5 := TRUE
+				endif
+				nTempPesquisaArray++
+			endwhile
+			
+			remove(taArrayHORARIOSPERMITIDOS)
+		else
+			bfMajtrace2("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Nao existe na tabela fmbrasil_batimento_p5 os valores CODACT= ",tCODACTLido," para o TIPO=P5"))
+		endif
+
+		!===========================================================
+
+		!                      TOPCAU
+
+		!===========================================================
+		
+		if tCODACTLido = "TOP" then
+			if bFazBatimento = TRUE then
+				TRACE:=new(build(sHOME,"/trace"))
+			endif
+			
+			if bFazP5 = TRUE then
+				TRACE2:=new(build(sHOME,"/trace"))
+			endif
+
+			!===========================================================
+
+			!RESUMO
+
+			!===========================================================
+					
+			tQuery := build("SELECT  SUBSTR(CHAR(CURRENT_TIMESTAMP),9,2)||'/'||SUBSTR(CHAR(CURRENT_TIMESTAMP),6,2)||'/'||LEFT(CHAR(CURRENT_TIMESTAMP),4) DATADIA,",NL," "\
+			" 	    RE.PRODUTO, ",NL," "\
+			" 	    RE.PLANTA, ",NL," "\
+			" 	    CASE",NL," "\
+			"         WHEN RB.VALRUB IS NULL THEN AC.VALRUB ",NL," "\
+			"         ELSE RB.VALRUB ",NL," "\
+			"         END DEPOSITO,",NL," "\
+			" 		'0' LOTE, ",NL," "\
+			" 		CASE WHEN (RE.SITUACAO = 'LIV' or RE.SITUACAO is null) THEN    ",NL," "\
+			" 			CASE WHEN SUM(RE.QTDE_LIVRE + QTDE_CHK_CONF - QTDE_PUT_SEM_ITF - RE.QTD_ONDA_SEM_SEP) < 0 THEN 0",NL," "\
+			" 				 ELSE SUM(RE.QTDE_LIVRE + QTDE_CHK_CONF - QTDE_PUT_SEM_ITF - RE.QTD_ONDA_SEM_SEP) END ",NL," "\
+			" 			 ELSE 0	 ",NL," "\
+			" 		END LIVRE,     ",NL," "\
+			" 		CASE WHEN (RE.SITUACAO = 'LIV' or RE.SITUACAO is null)  THEN    ",NL," "\
+			"          		SUM(RE.QTDE_LIVRE * PP.VOLUVC) / 10 ",NL," "\
+			" 			WHEN RE.SITUACAO = 'BLO'   THEN    ",NL," "\
+			" 				SUM(RE.QTDE_BLOQ * PP.VOLUVC)  / 10 ",NL," "\
+			" 			WHEN RE.SITUACAO = 'CQ'   THEN    ",NL," "\
+			" 				SUM(RE.QTDE_CQ * PP.VOLUVC) / 10 ",NL," "\
+			" 			END VOLUME,",NL," "\
+			" 		CASE WHEN RE.SITUACAO = 'BLO'   THEN    ",NL," "\
+			" 			SUM(RE.QTDE_BLOQ + QTDE_CHK_CONF - QTDE_PUT_SEM_ITF - RE.QTD_ONDA_SEM_SEP) ELSE 0",NL," "\
+			" 		END BLOQ,		",NL," "\
+			" 		CASE WHEN RE.SITUACAO = 'CQ'   THEN    ",NL," "\
+			" 			SUM(RE.QTDE_CQ   + QTDE_CHK_CONF - QTDE_PUT_SEM_ITF - RE.QTD_ONDA_SEM_SEP)  ELSE 0",NL," "\
+			" 		END CQ,",NL," "\
+			" 		SUM(RE.QTDE_REC_DIA) QTDE_ENT_DIA,	",NL," "\
+			" 		SUM(RE.QTDESEPDIA) QTDE_SAI_DIA,",NL," "\
+			" 	    RE.STATUS,",NL," "\
+			" 		SUBSTR(CHAR(CURRENT_TIMESTAMP),9,2)||'/'||SUBSTR(CHAR(CURRENT_TIMESTAMP),6,2)||'/'||LEFT(CHAR(CURRENT_TIMESTAMP),4) || ' ' ||",NL," "\
+			" 		SUBSTR(CHAR(CURRENT_TIMESTAMP),12,2)||':'||SUBSTR(CHAR(CURRENT_TIMESTAMP),15,2) DATAHORADIA,",NL," "\
+			"       EA.EDIPRO EAN_PRINCIPAL",NL," "\
+			" FROM (",NL," "\
+			" SELECT CODPRO PRODUTO",NL," "\
+			"       ,PL.CODACT PLANTA",NL," "\
+			"       ,0 DEPOSITO",NL," "\
+			"       ,'0' LOTE      ",NL," "\
+			"       ,CASE WHEN (IM.EDIIMO = 'LIV' or IM.EDIIMO is null)  THEN    ",NL," "\
+			"            	SUM(PL.UVCSTO) ",NL," "\
+			" 		ELSE 0 END QTDE_LIVRE",NL," "\
+			"       ,CASE  WHEN IM.EDIIMO = 'BLO' THEN",NL," "\
+			"       		SUM(PL.UVCSTO)  ",NL," "\
+			"       	ELSE 0 END	QTDE_BLOQ",NL," "\
+			"       ,CASE  WHEN IM.EDIIMO = 'CQ' THEN",NL," "\
+			"       		SUM(PL.UVCSTO)  ",NL," "\
+			"       	ELSE 0 END	QTDE_CQ",NL," "\
+			"       ,0 QTDE_REC_DIA",NL," "\
+			"       ,0 QTDE_PUT_SEM_ITF",NL," "\
+			" 	  ,0 QTDE_CHK_CONF",NL," "\
+			"       ,0 QTDESEPDIA",NL," "\
+			"       ,0 QTD_ONDA_SEM_SEP     ",NL," "\
+			"       ,0 QTD_SEM_ONDA ",NL," "\
+			"       ,CASE WHEN IM.EDIIMO IS NULL THEN 'NM'",NL," "\
+			"       	ELSE PL.MOTIMM  END STATUS",NL," "\
+			"       ,CASE WHEN IM.EDIIMO IS NULL THEN 'LIV'",NL," "\
+			"        ELSE IM.EDIIMO  END SITUACAO",NL," "\
+			" FROM FGE50FM",tToInfologPrefixFilename,".GEPAL PL",NL," "\
+			" 		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			" 		ON     IM.MOTIMM=PL.MOTIMM",NL," "\
+			" WHERE PL.CODACT = '",tCODACTLido,"'",NL," "\
+			" and   PL.ETAPAL NOT IN (50,60)",NL," "\
+			" GROUP BY CODPRO",NL," "\
+			"         ,PL.CODACT",NL," "\
+			"         ,PL.MOTIMM",NL," "\
+			"         ,IM.EDIIMO",NL," "\
+			" UNION ALL",NL," "\
+			" SELECT  PL.CODPRO PRODUTO",NL," "\
+			"        ,PL.CODACT PLANTA",NL," "\
+			" 	   ,0 DEPOSITO",NL," "\
+			"        ,'0' LOTE",NL," "\
+			"        ,0 QTDE_LIVRE",NL," "\
+			"        ,0 QTDE_BLOQ",NL," "\
+			"        ,0 QTDE_CQ",NL," "\
+			"        ,CASE WHEN RD.ETAREC = 50 THEN",NL," "\
+			"        		SUM(PL.UVCSTO) ",NL," "\
+			"        	ELSE 0 END QTDE_REC_DIA       		",NL," "\
+			"        ,CASE WHEN RD.ETAREC < 50 THEN",NL," "\
+			"        		SUM(PL.UVCSTO) ",NL," "\
+			"        	ELSE 0 END QTDE_PUT_SEM_ITF",NL," "\
+			"        ,CASE WHEN RD.ETAREC = 50  THEN",NL," "\
+			"        		CASE WHEN PL.ETAPAL = 50 THEN",NL," "\
+			"        			SUM(PL.UVCSTO) ",NL," "\
+			"        		ELSE 0	",NL," "\
+			"        		END	",NL," "\
+			"        	END QTDE_CHK_CONF",NL," "\
+			"        ,0 QTDESEPDIA",NL," "\
+			"        ,0 QTD_ONDA_SEM_SEP  ",NL," "\
+			"        ,0 QTD_SEM_ONDA     ",NL," "\
+			"        ,CASE WHEN IM.EDIIMO IS NULL THEN 'NM'",NL," "\
+			"         	ELSE PL.MOTIMM",NL," "\
+			"         END STATUS",NL," "\
+			" 	  ,CASE WHEN IM.EDIIMO IS NULL THEN 'LIV'",NL," "\
+			"        ELSE IM.EDIIMO  END SITUACAO",NL," "\
+			" FROM   FGE50FM",tToInfologPrefixFilename,".GEPAL PL INNER JOIN FGE50FM",tToInfologPrefixFilename,".GERECD RD",NL," "\
+			" 		ON     PL.NUMREC=RD.NUMREC",NL," "\
+			" 		AND    PL.SNUREC=RD.SNUREC",NL," "\
+			" 		AND    PL.CODPRO=RD.CODPRO",NL," "\
+			" 		AND    PL.CODACT=RD.CODACT",NL," "\
+			" 		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECE RE",NL," "\
+			" 		ON     RD.NUMREC=RE.NUMREC",NL," "\
+			" 		AND    RD.SNUREC=RE.SNUREC",NL," "\
+			" 		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			" 		ON     IM.MOTIMM=PL.MOTIMM",NL," "\
+			" WHERE  PL.CODACT = '",tCODACTLido,"'",NL," "\
+			" and    PL.ETAPAL  <> 60",NL," "\
+			" GROUP BY PL.CODPRO",NL," "\
+			"         ,PL.CODACT",NL," "\
+			"         ,IM.EDIIMO",NL," "\
+			"         ,PL.MOTIMM",NL," "\
+			"         ,RD.ETAREC",NL," "\
+			"         ,PL.ETAPAL",NL," "\
+			" UNION ALL",NL," "\
+			" ",NL," "\
+			" ",NL," "\
+			" SELECT  SD.CODPRO PRODUTO ",NL," "\
+			" 		,SE.CODACT PLANTA     ",NL," "\
+			" 		,0 DEPOSITO",NL," "\
+			"         ,'0' LOTE",NL," "\
+			"         ,0 QTDE_LIVRE",NL," "\
+			"         ,0 QTDE_BLOQ",NL," "\
+			"         ,0 QTDE_CQ",NL," "\
+			"         ,0 QTDE_REC_DIA ",NL," "\
+			"         ,0 QTDE_PUT_SEM_ITF ",NL," "\
+			"         ,0 QTDE_CHK_CONF      ",NL," "\
+			"         ,SUM(SD.UVCLIV) QTDESEPDIA",NL," "\
+			"         ,0 QTD_ONDA_SEM_SEP",NL," "\
+			"         ,0 QTD_SEM_ONDA",NL," "\
+			"         ,CASE WHEN IM.EDIIMO IS NULL THEN 'NM'",NL," "\
+			"          	ELSE SD.MOTIMM",NL," "\
+			"          END STATUS",NL," "\
+			"        ,CASE WHEN IM.EDIIMO IS NULL THEN 'LIV'",NL," "\
+			"         ELSE IM.EDIIMO  END SITUACAO",NL," "\
+			" FROM   (",NL," "\
+			" 		SELECT  DATSUP2",NL," "\
+			"                ,TOULIV",NL," "\
+			"                ,NUMLIV ",NL," "\
+			"                ,SNULIV",NL," "\
+			"                ,NUMTOU ",NL," "\
+			"                ,CODACT",NL," "\
+			"                ,MIN (ETASUP) ETASUP",NL," "\
+			"         FROM FGE50FM",tToInfologPrefixFilename,".GESUPE",NL," "\
+			"         WHERE TYPSUP<>3",NL," "\
+			"         AND   CLILIV <> 'MASSIFICATION'",NL," "\
+			"         GROUP BY DATSUP2",NL," "\
+			"                 ,TOULIV",NL," "\
+			"                 ,NUMLIV ",NL," "\
+			"                 ,SNULIV",NL," "\
+			"                 ,NUMTOU ",NL," "\
+			"                 ,CODACT) SE ",NL," "\
+			" 	INNER JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD ",NL," "\
+			" 	ON     SE.NUMLIV=SD.NUMLIV",NL," "\
+			" 	AND    SE.SNULIV=SD.SNULIV",NL," "\
+			" 	AND    SE.CODACT=SD.CODACT",NL," "\
+			" 	AND    SE.NUMLIV=SD.NUMLIV",NL," "\
+			" 	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			" 	ON     IM.MOTIMM=SD.MOTIMM",NL," "\
+			" WHERE  SE.ETASUP = 30 ",NL," "\
+			" AND    SE.CODACT = '",tCODACTLido,"'",NL," "\
+			" AND    SD.UVCLIV>0",NL," "\
+			" GROUP BY  SD.CODPRO",NL," "\
+			"          ,SE.CODACT",NL," "\
+			"          ,SE.TOULIV",NL," "\
+			"          ,IM.EDIIMO",NL," "\
+			"          ,SD.MOTIMM",NL," "\
+			" ",NL," "\
+			" UNION ALL",NL," "\
+			" SELECT   SD.CODPRO PRODUTO",NL," "\
+			"         ,SD.CODACT PLANTA",NL," "\
+			"         ,0 DEPOSITO",NL," "\
+			"         ,'0' LOTE",NL," "\
+			"         ,0 QTDE_LIVRE",NL," "\
+			"         ,0 QTDE_BLOQ",NL," "\
+			"         ,0 QTDE_CQ",NL," "\
+			"         ,0 QTDE_REC_DIA ",NL," "\
+			"         ,0 QTDE_PUT_SEM_ITF ",NL," "\
+			"         ,0 QTDE_CHK_CONF ",NL," "\
+			"         ,0 QTDESEPDIA    ",NL," "\
+			"        ,SUM( case sd.indmas when '3' then d.uvcliv else sd.uvcliv end)	as QTD_ONDA_SEM_SEP	       ",NL," "\
+			" 	   ",NL," "\
+			"        ,0 QTD_SEM_ONDA       ",NL," "\
+			"        ,CASE",NL," "\
+			"         WHEN SE.TYPSUP = 1 THEN ",NL," "\
+			" 	        CASE",NL," "\
+			" 	        WHEN IM2.EDIIMO IS NULL THEN 'NM' ",NL," "\
+			" 	        ELSE PL.MOTIMM END",NL," "\
+			"  		ELSE",NL," "\
+			" 	        CASE",NL," "\
+			" 	        WHEN IM.EDIIMO IS NULL THEN 'NM' ",NL," "\
+			" 	        ELSE SD.MOTIMM END ",NL," "\
+			"         END STATUS",NL," "\
+			"        ,CASE",NL," "\
+			"         	WHEN SE.TYPSUP = 1 THEN ",NL," "\
+			"        		CASE WHEN IM2.EDIIMO IS NULL THEN 'LIV'",NL," "\
+			"        		ELSE IM2.EDIIMO  ",NL," "\
+			"        		END",NL," "\
+			" 		ELSE        ",NL," "\
+			"        		CASE WHEN IM.EDIIMO IS NULL THEN 'LIV'",NL," "\
+			"        		ELSE IM.EDIIMO  ",NL," "\
+			"        		END",NL," "\
+			"        	END SITUACAO",NL," "\
+			" FROM      FGE50FM",tToInfologPrefixFilename,".GESUPE SE ",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD  ON SE.NUMSUP = SD.NUMSUP AND SE.SNUSUP=SD.SNUSUP AND SE.NUMLIV=SD.NUMLIV",NL," "\
+			" left join FGE50FM",tToInfologPrefixFilename,".GESUPD d   ON d.CPTMAS  = sd.CPTMAS and d.indMas = '1'      and d.CPTMAS > 0 ",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL  PL  ON SD.NUMPAL = PL.NUMPAL	 ",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM  ON IM.MOTIMM = SD.MOTIMM",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM2 ON IM2.MOTIMM= PL.MOTIMM",NL," "\
+			" WHERE  SD.CODACT  = '",tCODACTLido,"'",NL," "\
+			" and	   se.etasup < 30",NL," "\
+			" AND    SD.UVCLIV  > 0	",NL," "\
+			" AND    SD.NUMLIV <> 0	",NL," "\
+			" AND    se.typsup  in (1, 2) ",NL," "\
+			" and    sd.indMas <> '1'",NL," "\
+			" AND    SD.ZONSTS <> 'Z'",NL," "\
+			" GROUP BY  COALESCE(d.REFLIV, sd.refliv)  ",NL," "\
+			"          ,SD.CODPRO ",NL," "\
+			"          ,SD.CODACT ",NL," "\
+			"          ,IM.EDIIMO",NL," "\
+			"          ,SD.MOTIMM",NL," "\
+			"          ,IM2.EDIIMO",NL," "\
+			" 	     ,PL.MOTIMM		 ",NL," "\
+			"          ,SE.TYPSUP	",NL," "\
+			"  ",NL," "\
+			" ) 	RE  ",NL," "\
+			" 	INNER JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PP",NL," "\
+			" 		ON RE.PRODUTO = PP.CODPRO",NL," "\
+			" 		AND   RE.PLANTA  = PP.CODACT",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA",NL," "\
+			" 	    ON    PP.CODPRO = EA.CODPRO",NL," "\
+			"     	AND   PP.CODACT = EA.CODACT",NL," "\
+			"     	AND   EA.EANDS1 = '12NC' ",NL," "\
+			" 	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+			" 		ON     RB.VALCLE=RE.STATUS",NL," "\
+			" 		AND    RB.CODRUB=RE.PLANTA",NL," "\
+			" 	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC",NL," "\
+			" 		ON     AC.CODACT =RE.PLANTA",NL," "\
+			" where RE.PRODUTO = PP.CODPRO",NL," "\
+			" AND   RE.PLANTA  = PP.CODACT",NL," "\
+			" GROUP BY  RE.PRODUTO, RE.PLANTA, AC.VALRUB, RB.VALRUB, RE.STATUS, RE.SITUACAO, EA.EDIPRO",NL," "\
+			" ORDER BY  RE.PRODUTO  ")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("DATADIA;PRODUTO;PLANTA;DEPOSITO;LOTE;LIVRE;VOLUME;BLOQ;CQ;QTDE_ENT_DIA;QTDE_SAI_DIA;STATUS;DATAHORADIA;EAN_PRINCIPAL;",NL) >>  TRACE.RESUMO
+
+						fmbrasil_gama_ajustes_estoque := find(build(sHOME,"/fmbrasil_gama_ajustes_estoque/"),Planta=tCODACTLido)dINDEX
+						if valid(fmbrasil_gama_ajustes_estoque) then
+							close(fmbrasil_gama_ajustes_estoque.CSV)
+							copy(fmbrasil_gama_ajustes_estoque.CSV, TRACE.CONTROLE_AJUSTES_WMS)
+							close(TRACE.CONTROLE_AJUSTES_WMS)
+							close(fmbrasil_gama_ajustes_estoque.CSV)
+						endif
+					endif
+								
+					if length(peel(taDb2Array["STATUS"]," ")) > 0 then
+						fmbrasil_gama_ajustes_estoque := find(build(sHOME,"/fmbrasil_gama_ajustes_estoque/"),Produto=peel(taDb2Array["PRODUTO"]," "),Planta=peel(taDb2Array["PLANTA"]," "),STATUS=peel(taDb2Array["STATUS"]," "))
+						while valid(fmbrasil_gama_ajustes_estoque) do
+							taDb2Array[fmbrasil_gama_ajustes_estoque.COD_SIT_CLI] := peel(taDb2Array[fmbrasil_gama_ajustes_estoque.COD_SIT_CLI]," ")
+							if (number(taDb2Array[fmbrasil_gama_ajustes_estoque.COD_SIT_CLI])-number(fmbrasil_gama_ajustes_estoque.Qtd)) >= 0 then
+								taDb2Array[fmbrasil_gama_ajustes_estoque.COD_SIT_CLI] := build(number(taDb2Array[fmbrasil_gama_ajustes_estoque.COD_SIT_CLI])-number(fmbrasil_gama_ajustes_estoque.Qtd))
+							endif
+							fmbrasil_gama_ajustes_estoque.TRACEGIM := build(TRACE.INDEX)
+							fmbrasil_gama_ajustes_estoque := find()
+						endwhile
+					else
+						fmbrasil_gama_ajustes_estoque := find(build(sHOME,"/fmbrasil_gama_ajustes_estoque/"),Produto=peel(taDb2Array["PRODUTO"]," "),Planta=peel(taDb2Array["PLANTA"]," "),STATUS="")
+						while valid(fmbrasil_gama_ajustes_estoque) do
+							if length(fmbrasil_gama_ajustes_estoque.STATUS) > 0 and (number(taDb2Array["LIVRE"])-number(fmbrasil_gama_ajustes_estoque.Qtd)) >= 0 then
+								taDb2Array["LIVRE"] := peel(taDb2Array["LIVRE"]," ")
+								taDb2Array["LIVRE"] := build(number(taDb2Array["LIVRE"])-number(fmbrasil_gama_ajustes_estoque.Qtd))
+							endif
+							fmbrasil_gama_ajustes_estoque.TRACEGIM := build(TRACE.INDEX)
+							fmbrasil_gama_ajustes_estoque := find()
+						endwhile
+					endif
+								
+					print(peel(taDb2Array["DATADIA"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["LIVRE"]," "),";",peel(taDb2Array["VOLUME"]," "),";",peel(taDb2Array["BLOQ"]," "),";",peel(taDb2Array["CQ"]," "),";",peel(taDb2Array["QTDE_ENT_DIA"]," "),";",peel(taDb2Array["QTDE_SAI_DIA"]," "),";",peel(taDb2Array["STATUS"]," "),";",peel(taDb2Array["DATAHORADIA"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.RESUMO
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.RESUMO
+				endif
+						
+				!acrescenta CSV entradas que nao foram processadas
+				fmbrasil_gama_ajustes_estoque := find(build(sHOME,"/fmbrasil_gama_ajustes_estoque/"),Planta=tCODACTLido)
+				while valid(fmbrasil_gama_ajustes_estoque) do
+					if fmbrasil_gama_ajustes_estoque.TRACEGIM <> build(TRACE.INDEX) then
+						if fmbrasil_gama_ajustes_estoque.COD_SIT_CLI = "LIVRE"  and number(fmbrasil_gama_ajustes_estoque.Qtd) <=0  then
+							print(fmbrasil_gama_ajustes_estoque.Data,";",fmbrasil_gama_ajustes_estoque.Produto,";",fmbrasil_gama_ajustes_estoque.Planta,";",fmbrasil_gama_ajustes_estoque.Deposito,";",fmbrasil_gama_ajustes_estoque.Lote,";","",";",replace(fmbrasil_gama_ajustes_estoque.Qtd,"-",""),";","",";","",";","",";","",";",fmbrasil_gama_ajustes_estoque.STATUS,";","",";",NL) >>  TRACE.RESUMO
+						endif
+						if fmbrasil_gama_ajustes_estoque.COD_SIT_CLI = "BLOQ"  and number(fmbrasil_gama_ajustes_estoque.Qtd) <=0  then
+							print(fmbrasil_gama_ajustes_estoque.Data,";",fmbrasil_gama_ajustes_estoque.Produto,";",fmbrasil_gama_ajustes_estoque.Planta,";",fmbrasil_gama_ajustes_estoque.Deposito,";",fmbrasil_gama_ajustes_estoque.Lote,";","",";","",";",replace(fmbrasil_gama_ajustes_estoque.Qtd,"-",""),";","",";","",";","",";",fmbrasil_gama_ajustes_estoque.STATUS,";","",";",NL) >>  TRACE.RESUMO
+						endif
+					endif									
+					fmbrasil_gama_ajustes_estoque := find()
+				endwhile
+						
+				close(TRACE.RESUMO)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				tPrefixoSubjectEmail := tBEGINSUBJbat
+				
+				if bQueryTemResul = TRUE then
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/RESUMO_",time("now","%Y%m%d%H%M%S"),".csv")
+					copy(TRACE.RESUMO,tArquivoEmailErro)
+					close(TRACE.RESUMO)
+					close(tArquivoEmailErro)
+
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_RESUMO") 
+					tNameEMAIL := build("RESUMO_",time("now","%Y%m%d%H%M%S"),".csv")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILbat," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILbat," ",""),";",",")," EmailResumo ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				else
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/RESUMO_",time("now","%Y%m%d%H%M%S"),".txt")
+					print("***Informações de Resumo no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+					close(tArquivoEmailErro)
+
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_RESUMO")
+					tNameEMAIL := build("RESUMO_",time("now","%Y%m%d%H%M%S"),".txt")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline EMAIL.RCPT=",replace(replace(tTOEMAILbat," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILbat," ",""),";",",")," EmailResumo ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				endif
+			endif
+
+			!===========================================================
+
+			!ESTOQUE_PRODUTO
+			
+			!===========================================================
+			!ESTOQUE_PRODLOC
+			!===========================================================
+
+			!===========================================================
+
+			tQuery := build("SELECT SUBSTR(CHAR(CURRENT_TIMESTAMP),9,2)||'/'||SUBSTR(CHAR(CURRENT_TIMESTAMP),6,2)||'/'||LEFT(CHAR(CURRENT_TIMESTAMP),4) DTMVTO",NL," "\
+			"      ,PL.CODPRO PRODUTO",NL," "\
+			"      ,PL.CODACT PLANTA      ",NL," "\
+			"      ,CASE",NL," "\
+			"       WHEN RB.VALRUB IS NULL THEN AC.VALRUB ",NL," "\
+			"       ELSE RB.VALRUB ",NL," "\
+			"       END DEPOSITO      ",NL," "\
+			"      ,'' LOTE",NL," "\
+			"      ,CASE",NL," "\
+			"       WHEN IM.EDIIMO IS NULL THEN 'LIV' ",NL," "\
+			"       ELSE IM.EDIIMO",NL," "\
+			"       END COD_SIT_CLI           ",NL," "\
+			"      ,SUM(PL.UVCSTO) QUANTIDADE",NL," "\
+			"      ,PL.MOTIMM STATUS",NL," "\
+			"      ,EA.EDIPRO EAN_PRINCIPAL ",NL," "\
+			"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL PL LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			"ON     IM.MOTIMM=PL.MOTIMM",NL," "\
+			"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+			"ON     IM.MOTIMM=RB.VALCLE",NL," "\
+			"AND    RB.VALCLE=PL.MOTIMM",NL," "\
+			"AND    RB.CODRUB=PL.CODACT",NL," "\
+			"AND    RB.CODRUB=PL.CODACT",NL," "\
+			"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC",NL," "\
+			"ON     AC.CODACT =PL.CODACT",NL," "\
+			"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA ",NL," "\
+			"    ON    PL.CODPRO = EA.CODPRO ",NL," "\
+			"	AND   PL.CODACT = EA.CODACT ",NL," "\
+			"	AND   EA.EANDS1 = '12NC' ",NL," "\
+			"WHERE  PL.ETAPAL NOT IN (50,60)",NL," "\
+			"AND    PL.CODACT='",tCODACTLido,"'",NL," "\
+			"GROUP BY PL.CODPRO",NL," "\
+			"        ,PL.CODACT   ",NL," "\
+			"        ,RB.VALRUB ",NL," "\
+			"        ,AC.VALRUB ",NL," "\
+			"        ,IM.EDIIMO",NL," "\
+			"        ,PL.MOTIMM ",NL," "\
+			"        ,EA.EDIPRO ",NL," "\
+			"ORDER BY 3,2")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("DTMVTO;PRODUTO;PLANTA;DEPOSITO;LOTE;COD_SIT_CLI;QUANTIDADE;STATUS;EAN_PRINCIPAL;",NL) >>  TRACE.ESTOQUE_PRODUTO
+					endif
+								
+					print(peel(taDb2Array["DTMVTO"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["COD_SIT_CLI"]," "),";",peel(taDb2Array["QUANTIDADE"]," "),";",peel(taDb2Array["STATUS"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.ESTOQUE_PRODUTO
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.ESTOQUE_PRODUTO
+				endif
+
+				close(TRACE.ESTOQUE_PRODUTO)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif			
+			endif			
+			
+			!===========================================================
+
+			!ESTOQUE_PALETE_LOCACAO
+			!ESTOQUE_PRODLOC_LOC
+
+			!===========================================================
+
+			tQuery := build("SELECT SUBSTR(CHAR(CURRENT_TIMESTAMP),9,2)||'/'||SUBSTR(CHAR(CURRENT_TIMESTAMP),6,2)||'/'||LEFT(CHAR(CURRENT_TIMESTAMP),4) DTMVTO",NL," "\
+			"      ,PL.CODPRO PRODUTO",NL," "\
+			"      ,PL.CODACT PLANTA",NL," "\
+			"      ,CASE",NL," "\
+			"       WHEN RB.VALRUB IS NULL THEN AC.VALRUB ",NL," "\
+			"       ELSE RB.VALRUB ",NL," "\
+			"       END DEPOSITO      ",NL," "\
+			"      ,PL.CODLOT LOTE",NL," "\
+			"      ,CASE",NL," "\
+			"       WHEN IM.EDIIMO IS NULL THEN 'LIV' ",NL," "\
+			"       ELSE IM.EDIIMO",NL," "\
+			"       END COD_SIT_CLI       ",NL," "\
+			"      ,PL.ZONSTS ||'-'|| RIGHT('000' || PL.ALLSTS,3) ||'-'|| RIGHT('0000' || PL.DPLSTS,4) ||'-'|| RIGHT('00' || PL.NIVSTS,2) LOCALIZACAO",NL," "\
+			"      ,PL.UVCSTO QUANTIDADE",NL," "\
+			"      ,PL.MOTIMM STATUS",NL," "\
+			"      ,PL.CODPAL PALETE",NL," "\
+			"      ,EA.EDIPRO EAN_PRINCIPAL",NL," "\
+			"      FROM FGE50FM",tToInfologPrefixFilename,".GEPAL PL LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			"      ON     IM.MOTIMM=PL.MOTIMM",NL," "\
+			"      LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+			"      ON     IM.MOTIMM=RB.VALCLE",NL," "\
+			"      AND    RB.VALCLE=PL.MOTIMM",NL," "\
+			"      AND    RB.CODRUB=PL.CODACT",NL," "\
+			"      AND    RB.CODRUB=PL.CODACT",NL," "\
+			"      LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC",NL," "\
+			"      ON     AC.CODACT =PL.CODACT ",NL," "\
+			"      LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA ",NL," "\
+			"      ON    PL.CODPRO = EA.CODPRO ",NL," "\
+			"      AND   PL.CODACT = EA.CODACT ",NL," "\
+			"      AND   EA.EANDS1 = '12NC'  ",NL," "\
+			"      WHERE  PL.ETAPAL NOT IN (50,60)",NL," "\
+			"      AND    PL.CODACT='",tCODACTLido,"'",NL," "\
+			"      ORDER BY 3,2")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("DTMVTO;PRODUTO;PLANTA;DEPOSITO;LOTE;COD_SIT_CLI;LOCALIZACAO;QUANTIDADE;STATUS;PALETE;EAN_PRINCIPAL;",NL) >>  TRACE.ESTOQUE_PALETE_LOCACAO
+					endif
+					print(peel(taDb2Array["DTMVTO"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["COD_SIT_CLI"]," "),";",peel(taDb2Array["LOCALIZACAO"]," "),";",peel(taDb2Array["QUANTIDADE"]," "),";",peel(taDb2Array["STATUS"]," "),";",peel(taDb2Array["PALETE"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.ESTOQUE_PALETE_LOCACAO
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.ESTOQUE_PALETE_LOCACAO
+				endif
+						
+				close(TRACE.ESTOQUE_PALETE_LOCACAO)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif		 
+			endif 
+			
+			!===========================================================
+
+			!CHECKIN_CONF
+
+			!===========================================================
+
+			nContadorQuerys++
+			tNomeQuery := "CHECKIN_CONF"
+			tQuery := build("SELECT  RD.DATREC DATA",NL," "\
+			"       ,PL.REFREC BL",NL," "\
+			"       ,PL.CODPRO PRODUTO",NL," "\
+			"       ,PL.CODACT PLANTA",NL," "\
+			"       ,RB.VALRUB DEPOSITO",NL," "\
+			"       ,PL.CODLOT LOTE",NL," "\
+			"       ,CASE",NL," "\
+			"        WHEN IM.EDIIMO IS NULL THEN 'LIV' ",NL," "\
+			"        ELSE IM.EDIIMO",NL," "\
+			"        END COD_SIT_CLI",NL," "\
+			"       ,SUM(PL.UVCSTO) QUANTIDADE",NL," "\
+			"       ,PL.MOTIMM STATUS",NL," "\
+			"        ,EA.EDIPRO EAN_PRINCIPAL ",NL," "\
+			" FROM   FGE50FM",tToInfologPrefixFilename,".GEPAL PL INNER JOIN FGE50FM",tToInfologPrefixFilename,".GERECD RD",NL," "\
+			" ON     PL.NUMREC=RD.NUMREC",NL," "\
+			" AND    PL.CODPRO=RD.CODPRO",NL," "\
+			" AND    PL.CODACT=RD.CODACT",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			" ON     IM.MOTIMM=PL.MOTIMM",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+			" ON     IM.MOTIMM=RB.VALCLE",NL," "\
+			" AND    RB.VALCLE=PL.MOTIMM",NL," "\
+			" AND    RB.CODRUB=PL.CODACT",NL," "\
+			" AND    RB.CODRUB=RD.CODACT",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA",NL," "\
+			" ON    PL.CODPRO = EA.CODPRO",NL," "\
+			" AND   PL.CODACT = EA.CODACT",NL," "\
+			" AND   EA.EANDS1 = '12NC' ",NL," "\
+			" WHERE  RD.ETAREC=50",NL," "\
+			" AND    PL.ETAPAL=50",NL," "\
+			" AND    PL.CODACT='",tCODACTLido,"'",NL," "\
+			" GROUP BY RD.DATREC",NL," "\
+			"		,PL.CODPRO",NL," "\
+			"		,PL.REFREC",NL," "\
+			"        ,PL.CODACT",NL," "\
+			"        ,RB.VALRUB",NL," "\
+			"        ,PL.CODLOT",NL," "\
+			"        ,IM.EDIIMO",NL," "\
+			"        ,PL.MOTIMM,EA.EDIPRO",NL," "\
+			" ORDER BY 1,2,3")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("DATA;BL;PRODUTO;PLANTA;DEPOSITO;LOTE;COD_SIT_CLI;QUANTIDADE;STATUS;",NL) >>  TRACE.CHECKIN_CONF_SOMA
+					endif
+					print(peel(taDb2Array["DATA"]," "),";",peel(taDb2Array["BL"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["COD_SIT_CLI"]," "),";",peel(taDb2Array["QUANTIDADE"]," "),";",peel(taDb2Array["STATUS"]," "),";",NL) >>  TRACE.CHECKIN_CONF_SOMA
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.CHECKIN_CONF_SOMA
+				endif
+
+				close(TRACE.CHECKIN_CONF_SOMA)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			endif			
+
+			!===========================================================
+
+			!PUTAWAY_SEM_INTERFACE
+
+			!===========================================================
+
+			nContadorQuerys++
+			tNomeQuery := "PUTAWAY_SEM_INTERFACE"
+			tQuery := build("SELECT  RE.REFREC",NL," "\
+			"	   ,PL.CODPRO PRODUTO",NL," "\
+			"       ,PL.CODACT PLANTA",NL," "\
+			"      ,CASE",NL," "\
+			"       WHEN RB.VALRUB IS NULL THEN AC.VALRUB ",NL," "\
+			"       ELSE RB.VALRUB ",NL," "\
+			"       END DEPOSITO      ",NL," "\
+			"       ,'' LOTE",NL," "\
+			"       ,SUM(PL.UVCSTO) QTDE_PUT_SEM_ITF",NL," "\
+			"       ,CASE WHEN IM.EDIIMO IS NULL THEN 'NM'",NL," "\
+			"        	ELSE PL.MOTIMM",NL," "\
+			"        END STATUS",NL," "\
+			"	  ,CASE WHEN IM.EDIIMO IS NULL THEN 'LIV'",NL," "\
+			"       ELSE IM.EDIIMO  END SITUACAO",NL," "\
+			"      ,EA.EDIPRO EAN_PRINCIPAL ",NL," "\
+			" FROM   FGE50FM",tToInfologPrefixFilename,".GEPAL PL INNER JOIN FGE50FM",tToInfologPrefixFilename,".GERECD RD",NL," "\
+			"		ON     PL.NUMREC=RD.NUMREC",NL," "\
+			"		AND    PL.SNUREC=RD.SNUREC",NL," "\
+			"		AND    PL.CODPRO=RD.CODPRO",NL," "\
+			"		AND    PL.CODACT=RD.CODACT",NL," "\
+			"		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERECE RE",NL," "\
+			"		ON     RD.NUMREC=RE.NUMREC",NL," "\
+			"		AND    RD.SNUREC=RE.SNUREC",NL," "\
+			"		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM",NL," "\
+			"		ON     IM.MOTIMM=PL.MOTIMM",NL," "\
+			"		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+			"		ON     IM.MOTIMM=RB.VALCLE",NL," "\
+			"		AND    RB.VALCLE=PL.MOTIMM",NL," "\
+			"		AND    RB.CODRUB=PL.CODACT",NL," "\
+			"		AND    RB.CODRUB=RD.CODACT",NL," "\
+			"		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC",NL," "\
+			"		ON     AC.CODACT =PL.CODACT",NL," "\
+			"		LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA ",NL," "\
+			"		ON    PL.CODPRO = EA.CODPRO ",NL," "\
+			"		AND   PL.CODACT = EA.CODACT ",NL," "\
+			"		AND   EA.EANDS1 = '12NC'  ",NL," "\
+			" WHERE  PL.CODACT = '",tCODACTLido,"'",NL," "\
+			" AND    RE.ETAREC < 50",NL," "\
+			" GROUP BY RE.REFREC,",NL," "\
+			"		 PL.CODPRO ",NL," "\
+			"        ,PL.CODACT ",NL," "\
+			"        ,IM.EDIIMO ",NL," "\
+			"        ,PL.MOTIMM ",NL," "\
+			"        ,RB.VALRUB ",NL," "\
+			"        ,AC.VALRUB,EA.EDIPRO ")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("REFREC;PRODUTO;PLANTA;DEPOSITO;LOTE;QTDE_PUT_SEM_ITF;STATUS;SITUACAO;EAN_PRINCIPAL;",NL) >>  TRACE.PUTAWAY_SEM_INTERFACE_SUBTRAI
+					endif
+					print(peel(taDb2Array["REFREC"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["QTDE_PUT_SEM_ITF"]," "),";",peel(taDb2Array["STATUS"]," "),";",peel(taDb2Array["SITUACAO"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.PUTAWAY_SEM_INTERFACE_SUBTRAI
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.PUTAWAY_SEM_INTERFACE_SUBTRAI
+				endif
+
+				close(TRACE.PUTAWAY_SEM_INTERFACE_SUBTRAI)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			endif
+
+			!===========================================================
+
+			!SEPARADO_NÃO_CONF
+
+			!===========================================================
+
+			nContadorQuerys++
+			tNomeQuery := "SEPARADO_NÃO_CONF"
+			tQuery := build("SELECT   case when SE.DATSUP2 = 0 then se.DATPRP else SE.DATSUP2 END DATE_TIME_CREATED",NL," "\
+			"        ,SD.CODPRO PRODUTO",NL," "\
+			"        ,SE.CODACT PLANTA",NL," "\
+			"        ,COALESCE(RB.VALRUB, AC.VALRUB) DEPOSITO",NL," "\
+			"        ,'' LOTE",NL," "\
+			"        ,CASE WHEN SE.TYPSUP = 1 THEN COALESCE(IM2.EDIIMO, 'LIV')",NL," "\
+			"								 ELSE COALESCE(IM.EDIIMO , 'LIV')",NL," "\
+			"       	 END COD_SIT_CLI",NL," "\
+			"        ,SUM(sd.uvcliv)	QUANTIDADE",NL," "\
+			"        ,SE.REFLIV PEDIDO",NL," "\
+			"		,EA.EDIPRO EAN_PRINCIPAL",NL," "\
+			"        FROM      FGE50FM",tToInfologPrefixFilename,".GESUPE SE ",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD  ON SE.NUMSUP = SD.NUMSUP AND SE.SNUSUP = SD.SNUSUP AND SE.NUMLIV = SD.NUMLIV",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL  PL  ON SD.NUMPAL = PL.NUMPAL	 ",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM  ON IM.MOTIMM = SD.MOTIMM ",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM2 ON IM2.MOTIMM= PL.MOTIMM ",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB  ON IM.MOTIMM = RB.VALCLE AND    RB.VALCLE=SD.MOTIMM AND    RB.CODRUB=SD.CODACT AND    RB.CODRUB=SE.CODACT ",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC ON AC.CODACT = SE.CODACT ",NL," "\
+			"        LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA	ON SD.CODPRO = EA.CODPRO AND   EA.EANDS1 = '12NC'  ",NL," "\
+			"        WHERE  SD.CODACT  = '",tCODACTLido,"' ",NL," "\
+			"        and	   se.etasup  = 30 ",NL," "\
+			"        AND    SD.UVCLIV  > 0	 ",NL," "\
+			"        AND    SD.NUMLIV <> 0	 ",NL," "\
+			"        AND    se.typsup  in (1, 2)  ",NL," "\
+			"        and    sd.indMas <> '1' ",NL," "\
+			"        GROUP BY  case when SE.DATSUP2 = 0 then se.DATPRP else SE.DATSUP2 END  ",NL," "\
+			"                ,SD.CODPRO ",NL," "\
+			"                ,SE.CODACT ",NL," "\
+			"                ,COALESCE(RB.VALRUB, AC.VALRUB)	 ",NL," "\
+			"                ,CASE WHEN SE.TYPSUP = 1 THEN COALESCE(IM2.EDIIMO, 'LIV') ",NL," "\
+			"        								 ELSE COALESCE(IM.EDIIMO , 'LIV') ",NL," "\
+			"               	 END  ",NL," "\
+			"                ,SE.REFLIV,EA.EDIPRO	 ",NL," "\
+			"        ORDER BY  1, 2, 3, 4")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("DATE_TIME_CREATED;PRODUTO;PLANTA;DEPOSITO;LOTE;COD_SIT_CLI;QUANTIDADE;PEDIDO;EAN_PRINCIPAL",NL) >>  TRACE.SEPARADO_NAO_CONF_SOMA
+					endif
+					print(peel(taDb2Array["DATE_TIME_CREATED"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["COD_SIT_CLI"]," "),";",peel(taDb2Array["QUANTIDADE"]," "),";",peel(taDb2Array["PEDIDO"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.SEPARADO_NAO_CONF_SOMA
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.SEPARADO_NAO_CONF_SOMA
+				endif
+
+				close(TRACE.SEPARADO_NAO_CONF_SOMA)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			endif		
+
+			!===========================================================
+
+			!ONDA_SOLTA_CONFIRMADOS_SEM_SEP
+
+			!===========================================================
+							
+			tQuery := build("SELECT  SUBSTR(CHAR(CURRENT_TIMESTAMP),9,2)||'/'||SUBSTR(CHAR(CURRENT_TIMESTAMP),6,2)||'/'||LEFT(CHAR(CURRENT_TIMESTAMP),4) DATADIA",NL," "\
+			"       ,COALESCE(d.REFLIV, sd.refliv) PO_NO",NL," "\
+			"       ,SD.CODPRO PRODUTO",NL," "\
+			"       ,SD.CODACT PLANTA,SE.TYPSUP",NL," "\
+			"       ,CASE",NL," "\
+			"        WHEN RB.VALRUB IS NULL THEN AC.VALRUB ",NL," "\
+			"        ELSE RB.VALRUB ",NL," "\
+			"        END DEPOSITO",NL," "\
+			"       ,'' LOTE",NL," "\
+			"       ,CASE	WHEN SE.TYPSUP = 1 	THEN COALESCE(IM2.EDIIMO, 'LIV')",NL," "\
+			"									ELSE COALESCE( IM.EDIIMO, 'LIV')",NL," "\
+			"       	END COD_SIT_CLI    ",NL," "\
+			"       ,SUM( case sd.indmas when '3' then d.uvcliv else sd.uvcliv end)	as QTD",NL," "\
+			"       	   ,CASE",NL," "\
+			"               WHEN SE.TYPSUP = 1	THEN CASE WHEN IM2.EDIIMO IS NULL THEN 'NM' ELSE PL.MOTIMM END",NL," "\
+			"        							ELSE CASE WHEN  IM.EDIIMO IS NULL THEN 'NM' ELSE SD.MOTIMM END ",NL," "\
+			"               END MOTIMM",NL," "\
+			"		,EA.EDIPRO EAN_PRINCIPAL",NL," "\
+			"       FROM      FGE50FM",tToInfologPrefixFilename,".GESUPE SE",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD  ON SE.NUMSUP = SD.NUMSUP AND SE.SNUSUP=SD.SNUSUP AND SE.NUMLIV=SD.NUMLIV",NL," "\
+			"       left join FGE50FM",tToInfologPrefixFilename,".GESUPD d   ON d.CPTMAS  = sd.CPTMAS and d.indMas = '1'      and d.CPTMAS > 0 ",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL  PL  ON SD.NUMPAL = PL.NUMPAL	 ",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM  ON IM.MOTIMM = SD.MOTIMM",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO IM2 ON IM2.MOTIMM= PL.MOTIMM",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU RB  ON IM.MOTIMM = RB.VALCLE AND    RB.VALCLE=SD.MOTIMM AND    RB.CODRUB=SD.CODACT AND    RB.CODRUB=SE.CODACT",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC ON AC.CODACT = SE.CODACT",NL," "\
+			"       LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA	ON SD.CODPRO = EA.CODPRO AND   EA.EANDS1 = '12NC' ",NL," "\
+			"       WHERE  SD.CODACT  = '",tCODACTLido,"'",NL," "\
+			"       and	   se.etasup < 30",NL," "\
+			"       AND    SD.UVCLIV  > 0",NL," "\
+			"       AND    SD.NUMLIV <> 0",NL," "\
+			"       AND    se.typsup  in (1, 2) ",NL," "\
+			"       and    sd.indMas <> '1'",NL," "\
+			"       AND    SD.ZONSTS <> 'Z'",NL," "\
+			"       GROUP BY  COALESCE(d.REFLIV, sd.refliv)  ",NL," "\
+			"                ,SD.CODPRO ",NL," "\
+			"                ,SD.CODACT ",NL," "\
+			"                ,RB.VALRUB",NL," "\
+			"                ,AC.VALRUB ",NL," "\
+			"                ,IM.EDIIMO",NL," "\
+			"                ,SD.MOTIMM",NL," "\
+			"                ,IM2.EDIIMO",NL," "\
+			"       	     ,PL.MOTIMM		 ",NL," "\
+			"                ,SE.TYPSUP		 ,EA.EDIPRO ",NL," "\
+			"       ORDER BY  1, 2, 3, 4")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("DATADIA;PO_NO;PRODUTO;PLANTA;TYPSUP;DEPOSITO;LOTE;COD_SIT_CLI;QTD;MOTIMM;EAN_PRINCIPAL;",NL) >>  TRACE.ONDA_SOLTA_CONFIRMADOS_SEM_SEP_SUBTRAI
+					endif
+					print(peel(taDb2Array["DATADIA"]," "),";",peel(taDb2Array["PO_NO"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["TYPSUP"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";",peel(taDb2Array["LOTE"]," "),";",peel(taDb2Array["COD_SIT_CLI"]," "),";",peel(taDb2Array["QTD"]," "),";",peel(taDb2Array["MOTIMM"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.ONDA_SOLTA_CONFIRMADOS_SEM_SEP_SUBTRAI
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.ONDA_SOLTA_CONFIRMADOS_SEM_SEP_SUBTRAI
+				endif
+
+				close(TRACE.ONDA_SOLTA_CONFIRMADOS_SEM_SEP_SUBTRAI)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			endif			
+
+			!===========================================================
+
+			!PEDIDOS_SEM_ONDA_SOLTA
+
+			!===========================================================
+							
+			tQuery := build("SELECT  LE.REFLIV",NL," "\
+			" 	   ,LD.CODPRO PRODUTO",NL," "\
+			"       ,LE.CODACT PLANTA",NL," "\
+			"	   ,0 DEPOSITO",NL," "\
+			"       ,'0' LOTE",NL," "\
+			"       ,SUM(LD.UVCCDE) QTD_SEM_ONDA       ",NL," "\
+			"       ,'NM' STATUS",NL," "\
+			"       ,'LIV' SITUACAO ",NL," "\
+			"	   ,EA.EDIPRO EAN_PRINCIPAL ",NL," "\
+			" FROM FGE50FM",tToInfologPrefixFilename,".GELIVE LE INNER JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD LD ",NL," "\
+			" ON     LE.NUMLIV=LD.NUMLIV",NL," "\
+			" AND    LE.SNULIV=LD.SNULIV",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC",NL," "\
+			" ON     AC.CODACT =LE.CODACT",NL," "\
+			" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEEAN EA",NL," "\
+			" ON    LD.CODPRO = EA.CODPRO",NL," "\
+			" AND   LD.CODACT = EA.CODACT",NL," "\
+			" AND   EA.EANDS1 = '12NC'  ",NL," "\
+			" WHERE  LE.ETALIV<30",NL," "\
+			" AND    LE.CODACT='",tCODACTLido,"'",NL," "\
+			" GROUP BY  LE.REFLIV",NL," "\
+			"		 ,LD.CODPRO ",NL," "\
+			"         ,LE.CODACT,EA.EDIPRO")
+
+			if bFazBatimento = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("REFLIV;PRODUTO;PLANTA;DEPOSITO;LOTE;QTD_SEM_ONDA;STATUS;SITUACAO;EAN_PRINCIPAL",NL) >>  TRACE.PEDIDOS_SEM_ONDA_SOLTA_SUBTRAI
+					endif
+					print(peel(taDb2Array["REFLIV"]," "),";",peel(taDb2Array["PRODUTO"]," "),";",peel(taDb2Array["PLANTA"]," "),";",peel(taDb2Array["DEPOSITO"]," "),";0;",peel(taDb2Array["QTD_SEM_ONDA"]," "),";",peel(taDb2Array["STATUS"]," "),";",peel(taDb2Array["SITUACAO"]," "),";",peel(taDb2Array["EAN_PRINCIPAL"]," "),";",NL) >>  TRACE.PEDIDOS_SEM_ONDA_SOLTA_SUBTRAI
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE.PEDIDOS_SEM_ONDA_SOLTA_SUBTRAI
+				endif
+
+				close(TRACE.PEDIDOS_SEM_ONDA_SOLTA_SUBTRAI)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			endif			
+
+			!===========================================================
+
+			!P5_EST_OFICIAL_WMS
+
+			!===========================================================
+							
+			tQuery := build("SELECT   GL.CODPRO SKU ",NL," "\
+							",GL.DS1PRO SKU_DESC1_35 ",NL," "\
+							",GL.CODPAL LP ",NL," "\
+							",'' LPN ",NL," "\
+							",CASE WHEN GL.MOTIMM = '' then 'NM'    else GL.MOTIMM end as SP ",NL," "\
+							",'' 	as SL ",NL," "\
+							",CASE WHEN GL.CODLOT = '' THEN 'NOLOT' ELSE GL.CODLOT END as LOT ",NL," "\
+							",GP.DESFOU as NOTE1 ",NL," "\
+							",case when GL.DATFVI = 0 then '' ",NL," "\
+							"else varchar_format( to_date(GL.DATFVI ||'000000','YYYY-MM-DD hh24:mi:ss') , 'DD/MM/YYYY') ",NL," "\
+							"end  as EXPR_DATE ",NL," "\
+							",GL.UVCSTO QTY ",NL," "\
+							",GL.UNIPRO UOM_ABREV ",NL," "\
+							",GL.ZONSTS ||'-'|| RIGHT('000' || GL.ALLSTS,3) ||'-'|| RIGHT('0000' || GL.DPLSTS,4) ||'-'|| RIGHT('00' || GL.NIVSTS,2) LOCACAO ",NL," "\
+							",CASE WHEN GL.ETAPAL = '50' THEN 'PUT'ELSE 'LOC' END  as TIPO ",NL," "\
+							",GL.REFREC BL ",NL," "\
+							",GL.valpro as PKG_NO ",NL," "\
+							",GL.FAMPRO FAMI ",NL," "\
+							", varchar_format( to_date(GL.DATREC ||'000000','YYYY-MM-DD hh24:mi:ss') , 'DD/MM/YYYY') as  DREC ",NL," "\
+							",'' PERC_VIDA_PROD ",NL," "\
+							",GP.ANAPRO DIVISAO ",NL," "\
+							",GP.CODTMD COD_ONU ",NL," "\
+							",GP.CODSEC CLASSE_RISCO ",NL," "\
+							",GL.REFREC NF ",NL," "\
+							",GL.DS2PRO as DESCRICAO ",NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL GL ",NL," "\
+							"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO GP ",NL," "\
+							"ON GP.CODPRO = GL.CODPRO ",NL," "\
+							"WHERE GL.CODACT='",tCODACTLido,"' ",NL," "\
+							"AND   GL.ETAPAL <> '60' ",NL," "\
+							"ORDER BY 1")
+
+			if bFazP5 = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("SKU;SKU_DESC1_35;LP;LPN;SP;SL;LOT;NOTE1;EXPR_DATE;QTY;UOM_ABREV;LOCACAO;TIPO;BL;PKG_NO;FAMI;DREC;PERC_VIDA_PROD;DIVISAO/CATEGORIA;COD_ONU;CLASSE_RISCO;NF;DESCRICAO/REFERENCIA",NL) >>  TRACE2.P5_EST_OFICIAL_WMS
+					endif
+
+					print(peel(taDb2Array["SKU"]," "),";",peel(taDb2Array["SKU_DESC1_35"]," "),";",build("'", peel(taDb2Array["LP"]," ")),";",peel(taDb2Array["LPN"]," "),";",peel(taDb2Array["SP"]," "),";",peel(taDb2Array["SL"]," "),";",\
+					peel(taDb2Array["LOT"]," "),";",peel(taDb2Array["NOTE1"]," "),";",peel(taDb2Array["EXPR_DATE"]," "),";",peel(taDb2Array["QTY"]," "),";",peel(taDb2Array["UOM_ABREV"]," "),";",peel(taDb2Array["LOCACAO"]," "),";",\
+					peel(taDb2Array["TIPO"]," "),";",peel(taDb2Array["BL"]," "),";",peel(taDb2Array["PKG_NO"]," "),";",peel(taDb2Array["FAMI"]," "),";",peel(taDb2Array["DREC"]," "),";",peel(taDb2Array["PERC_VIDA_PROD"]," "),";",\
+					peel(taDb2Array["DIVISAO"]," "),";",peel(taDb2Array["COD_ONU"]," "),";",peel(taDb2Array["CLASSE_RISCO"]," "),";",peel(taDb2Array["NF"]," "),";",peel(taDb2Array["DESCRICAO"]," "),";",NL) >>  TRACE2.P5_EST_OFICIAL_WMS
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE2.P5_EST_OFICIAL_WMS
+				endif
+
+				close(TRACE2.P5_EST_OFICIAL_WMS)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				tPrefixoSubjectEmail := tBEGINSUBJp5
+
+				if bQueryTemResul = TRUE then
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".csv")
+					copy(TRACE2.P5_EST_OFICIAL_WMS,tArquivoEmailErro)
+					close(TRACE2.P5_EST_OFICIAL_WMS)
+					close(tArquivoEmailErro)
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_EST_OFICIAL_WMS")
+					tNameEMAIL := build("P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".csv")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				else
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".txt")
+
+					print("***Informações de P5 EST OFICIAL WMS no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+					close(tArquivoEmailErro)
+
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_EST_OFICIAL_WMS")
+					tNameEMAIL := build("P5_EST_OFICIAL_WMS_",time("now","%Y%m%d%H%M%S"),".txt")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				endif
+			endif			
+
+			!===========================================================
+
+			!P5_INF_SEP_EXP_DIA
+
+			!===========================================================
+					
+			tQuery := build("SELECT   SD.CODACT COMP_CODE ",NL," "\
+							",SD.CODPRO SKU ",NL," "\
+							",SD.NUMSUP UMA ",NL," "\
+							",SD.UVCLIV QTD ",NL," "\
+							",'EA' UNID ",NL," "\
+							",LEFT (ROUND (SUM((SD.PDBCOL/SD.PCBPRO)*SD.UVCLIV),3),7) PESO ",NL," "\
+							",LEFT ((ROUND (SUM((SD.VOLCOL/SD.PCBPRO)*SD.UVCLIV),3)/1000),7) CUBAGEM ",NL," "\
+							",GP.CODTMD COD_ONU ",NL," "\
+							",GP.CODSEC CLASSE_RISCO ",NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GESUPD SD INNER JOIN FGE50FM",tToInfologPrefixFilename,".GEHSUP HS ",NL," "\
+							"ON   SD.NUMSUP=HS.NUMSUP ",NL," "\
+							"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO GP ",NL," "\
+							"ON GP.CODPRO = SD.CODPRO ",NL," "\
+							"WHERE INDEXP=1 ",NL," "\
+							"AND    HS.ETASUP=50 ",NL," "\
+							"AND    HS.DATHIS=VARCHAR_FORMAT((CURRENT DATE - 1 DAYS), 'YYYYMMDD') ",NL," "\
+							"AND SD.CODACT='",tCODACTLido,"' ",NL," "\
+							"GROUP BY  SD.CODACT ",NL," "\
+							",SD.CODPRO ",NL," "\
+							",SD.NUMSUP ",NL," "\
+							",SD.UVCLIV ",NL," "\
+							",GP.CODTMD ",NL," "\
+							",GP.CODSEC ",NL," "\
+							"ORDER BY 1,3,2")
+
+			if bFazP5 = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("COMP_CODE;SKU;UMA;QTD;UNID;PESO;CUBAGEM;COD_ONU;CLASSE_RISCO;",NL) >>  TRACE2.P5_INF_SEP_EXP_DIA
+					endif
+					print(peel(taDb2Array["COMP_CODE"]," "),";",peel(taDb2Array["SKU"]," "),";",peel(taDb2Array["UMA"]," "),";",peel(taDb2Array["QTD"]," "),";",peel(taDb2Array["UNID"]," "),";",peel(taDb2Array["PESO"]," "),";",\
+					peel(taDb2Array["CUBAGEM"]," "),";",peel(taDb2Array["COD_ONU"]," "),";",peel(taDb2Array["CLASSE_RISCO"]," "),";",NL) >>  TRACE2.P5_INF_SEP_EXP_DIA
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE2.P5_INF_SEP_EXP_DIA
+				endif
+
+				close(TRACE2.P5_INF_SEP_EXP_DIA)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bQueryTemResul = TRUE then
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".csv")
+					copy(TRACE2.P5_INF_SEP_EXP_DIA,tArquivoEmailErro)
+					close(TRACE2.P5_INF_SEP_EXP_DIA)
+					close(tArquivoEmailErro)
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_EXP_DIA")
+					tNameEMAIL := build("P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".csv")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				else
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".txt")
+
+					print("***Informações de P5 INF SEP EXP no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+					close(tArquivoEmailErro)
+
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_EXP_DIA")
+					tNameEMAIL := build("P5_INF_SEP_EXP_DIA_",time("now","%Y%m%d%H%M%S"),".txt")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				endif
+			endif			
+
+			!===========================================================
+
+			!P5_INF_SEP_NAO_EXP
+
+			!===========================================================
+					
+			tQuery := build("SELECT SD.CODACT COMP_CODE ",NL," "\
+							",SD.CODPRO SKU ",NL," "\
+							",SD.NUMSUP UMA ",NL," "\
+							",SD.UVCLIV QTD ",NL," "\
+							",'EA' UNID ",NL," "\
+							",LEFT (ROUND (SUM((SD.PDBCOL/SD.PCBPRO)*SD.UVCLIV),3),7) PESO ",NL," "\
+							",LEFT ((ROUND (SUM((SD.VOLCOL/SD.PCBPRO)*SD.UVCLIV),3)/1000),7) CUBAGEM ",NL," "\
+							",GP.CODTMD COD_ONU ",NL," "\
+							",GP.CODSEC CLASSE_RISCO ",NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GESUPD SD INNER JOIN FGE50FM",tToInfologPrefixFilename,".GEHSUP HS ",NL," "\
+							"ON   SD.NUMSUP=HS.NUMSUP ",NL," "\
+							"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO GP ",NL," "\
+							"ON GP.CODPRO = SD.CODPRO ",NL," "\
+							"WHERE INDEXP=0 ",NL," "\
+							"AND    HS.ETASUP=30 ",NL," "\
+							"AND    HS.DATHIS=VARCHAR_FORMAT((CURRENT DATE - 1 DAYS), 'YYYYMMDD') ",NL," "\
+							"AND SD.CODACT='",tCODACTLido,"' ",NL," "\
+							"GROUP BY  SD.CODACT ",NL," "\
+							",SD.CODPRO ",NL," "\
+							",SD.NUMSUP ",NL," "\
+							",SD.UVCLIV ",NL," "\
+							",GP.CODTMD ",NL," "\
+							",GP.CODSEC ",NL," "\
+							"ORDER BY 1,3,2")
+
+			if bFazP5 = TRUE then
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryTemResul := FALSE
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					if bQueryTemResul = FALSE then
+						bQueryTemResul := TRUE
+						print("COMP_CODE;SKU;UMA;QTD;UNID;PESO;CUBAGEM;COD_ONU;CLASSE_RISCO;",NL) >>  TRACE2.P5_INF_SEP_NAO_EXP
+					endif
+					print(peel(taDb2Array["COMP_CODE"]," "),";",peel(taDb2Array["SKU"]," "),";",peel(taDb2Array["UMA"]," "),";",peel(taDb2Array["QTD"]," "),";",peel(taDb2Array["UNID"]," "),";",peel(taDb2Array["PESO"]," "),";",\
+					peel(taDb2Array["CUBAGEM"]," "),";",peel(taDb2Array["COD_ONU"]," "),";",peel(taDb2Array["CLASSE_RISCO"]," "),";",NL) >>  TRACE2.P5_INF_SEP_NAO_EXP
+
+					remove(taDb2Array)
+				endwhile
+
+				if bQueryTemResul = FALSE then
+					print("Consulta não retornou resultados",NL) >> TRACE2.P5_INF_SEP_NAO_EXP
+				endif
+
+				close(TRACE2.P5_INF_SEP_NAO_EXP)
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bQueryTemResul = TRUE then
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".csv")
+					copy(TRACE2.P5_INF_SEP_NAO_EXP,tArquivoEmailErro)
+					close(TRACE2.P5_INF_SEP_NAO_EXP)
+					close(tArquivoEmailErro)
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_NAO_EXP")
+					tNameEMAIL := build("P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".csv")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				else
+					remove(tArquivoEmailErro)
+					tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".txt")
+
+					print("***Informações de P5 INF SEP NAO EXP no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL) >> tArquivoEmailErro
+					close(tArquivoEmailErro)
+
+					tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_P5_INF_SEP_NAO_EXP")
+					tNameEMAIL := build("P5_INF_SEP_NAO_EXP_",time("now","%Y%m%d%H%M%S"),".txt")
+					tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EMAIL.CONTENTID=text/plain EMAIL.DISPOSITION=inline  EMAIL.RCPT=",replace(replace(tTOEMAILp5," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILp5," ",""),";",",")," EmailP5 ",tArquivoEmailErro)
+					log("executing command ",tCmdEmailErro,NL)
+					nRet := system(tCmdEmailErro)
+					close(tArquivoEmailErro)				
+					remove(tArquivoEmailErro)
+				endif
+			endif			
+
+			bfSqlClose(tDbBase)
+
+			if bFazBatimento = TRUE then
+				bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+			endif
+
+			if bFazP5 = TRUE then
+				bfMajtrace2("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+			endif
+		endif
+	endif
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := tBEGINSUBJbat
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := build("BATIMENTO - ",tCODACTLido)
+	TRACE.NUMDOC := build("BATIMENTO - ",tCODACTLido)
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtrace2(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE2.ESTADO := tStatus
+	TRACE2.ERRO := tError
+	TRACE2.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE2.MENSAGEM := tTipoDocumento
+	TRACE2.PERFIL := tBEGINSUBJp5
+	TRACE2.SENTIDO := "O"
+	TRACE2.MENSAGEM := build("P5 – ESTOQUE OFICIAL WMS - ",tCODACTLido)
+	TRACE2.NUMDOC := build("P5 – ESTOQUE OFICIAL WMS - ",tCODACTLido)
+	TRACE2.DATDOC := time("now","%Y-%m-%d")
+	TRACE2.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE2.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE2.REDE := "REPROCESSADO"
+	endif
+	TRACE2.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE2.FICHEIROSAIDA := tArquivoEmailSentinel
+	close(TRACE2.Detail)
+	close(SYSLOG.a)
+
+	flush(TRACE2)
+
+endfunction
+
+!===========================================================

@@ -1,0 +1,36 @@
+<!ELEMENT receiving_confirmation (receiving_confirmation_header)>
+<!ELEMENT receiving_confirmation_header (company|warehouse|master_invoice_date+|master_invoice_number+|receiving_reference|ra_number|total_pieces|total_boxes|receiving_date|custom_properties|receiving_confirmation_body?)>
+<!ELEMENT receiving_confirmation_body (boxes|pieces+)>
+
+<!ELEMENT skus (sku)+>
+<!ELEMENT sku (barcode_sku,barcode_upc,barcode_ean,received,received_qty?,over_under_qty,order_line)+>
+<!ATTLIST sku slot CDATA #IMPLIED>
+<!ELEMENT pieces (sku)+>
+<!ELEMENT boxes (#PCDATA|carton)*>					
+<!ELEMENT carton (carton_number,received,total_over_under_qty,custom_properties,skus)+>
+<!ELEMENT custom_properties (#PCDATA|custom_property)*>
+<!ELEMENT custom_property (name,value)>
+<!ELEMENT order_line (primary_reference,secondary_reference,quantity)+>
+	
+<!ELEMENT company (#PCDATA)>
+<!ELEMENT warehouse (#PCDATA)>
+<!ELEMENT master_invoice_date (#PCDATA)>
+<!ELEMENT master_invoice_number (#PCDATA)>
+<!ELEMENT receiving_reference (#PCDATA)>
+<!ELEMENT ra_number (#PCDATA)>
+<!ELEMENT total_pieces (#PCDATA)>
+<!ELEMENT total_boxes (#PCDATA)>
+<!ELEMENT receiving_date (#PCDATA)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+<!ELEMENT carton_number (#PCDATA)>
+<!ELEMENT total_over_under_qty (#PCDATA)>
+<!ELEMENT barcode_sku (#PCDATA)>
+<!ELEMENT barcode_upc (#PCDATA)>
+<!ELEMENT barcode_ean (#PCDATA)>
+<!ELEMENT received (#PCDATA)>
+<!ELEMENT received_qty (#PCDATA)>
+<!ELEMENT over_under_qty (#PCDATA)>
+<!ELEMENT primary_reference (#PCDATA)>
+<!ELEMENT secondary_reference (#PCDATA)>
+<!ELEMENT quantity (#PCDATA)>

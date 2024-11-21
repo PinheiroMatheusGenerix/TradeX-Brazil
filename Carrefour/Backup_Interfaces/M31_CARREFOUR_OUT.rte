@@ -1,0 +1,221 @@
+%@(#) $Id:  M31_CARREFOUR_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M31_CARREFOUR_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M31_CARREFOUR_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M31_CARREFOUR_OUT
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M31_CARREFOUR_OUT"
+
+#include "include/generix_func.inc"
+#include "include/DADOS.inc"
+#include "include/GEEXM41.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+	tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]	
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	bPlataforma := FALSE
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	tAmbiente := S_GEEX0000_EMTEXC
+	tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",substr(S_GEEX0000_EMTEXC, length(S_GEEX0000_EMTEXC) - 3, length(S_GEEX0000_EMTEXC)),"")]
+	tCODACT := substr(S_GEEX0000_EMTEXC,length(S_GEEX0000_EMTEXC) - 3, length(S_GEEX0000_EMTEXC))
+
+	if tAmbiente = "FGE50PTSP" or tAmbiente = "FGE50PTAM" or tAmbiente = "FGE50PTMG" or tAmbiente = "FGE50PTDC" then
+		bPlataforma := TRUE
+	else
+		bPlataforma := FALSE
+	endif
+
+	tFileOut := build(sHOME,"/Tibco/","PT",tAmbiente,"31",build(nMessageID:R015),".DAT")
+	tFileOutTemp := build(sHOME,"/Tibco/Temp/","PT",tAmbiente,"31",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"31",build(nMessageID:R015),".DAT")
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	if bPlataforma = TRUE then
+		tQuery := build("SELECT  '00.00'|| ' '|| RPAD('FGE50CA",tToInfologPrefixFilename,"',28,' ')|| TO_CHAR(CURRENT TIMESTAMP,'YYYYMMDD')|| TO_CHAR(CURRENT TIMESTAMP,'HH24MISS')|| LPAD('0',7,'0')|| '0'|| '5.0 '|| LPAD(' ',8,' ')|| RPAD('M31',10,' ')|| 'FGE50PTDC '|| LPAD(' ',10,' ')|| LPAD(' ',3,' ')|| LPAD(' ',17,' ')|| LPAD(' ',10,' ')|| LPAD(' ',10,' ')|| LPAD(' ',30,' ')|| '001'|| LPAD('0',3,'0')|| LPAD(' ',82,' ') DADOS ", NL," "\
+                        "FROM SYSIBM.SYSDUMMY1 ", NL," "\
+                        "UNION ALL ", NL," "\
+                        "SELECT  '31.10'|| LPAD(GEPAL.CODACT,3,'0') || RPAD(GEPAL.CODPRO,17,' ')|| LPAD(TRIM(TO_CHAR(MAX(GEPAL.PCBPRO),'99999')),5,0)|| 'INTERFACE M31 INFOLOG EMBIDEAL' ", NL," "\
+                        "FROM FGE50CA",tToInfologPrefixFilename,".GEPAL GEPAL ", NL," "\
+                        "WHERE GEPAL.CODPRO IN ( ", NL," "\
+                        "SELECT  DISTINCT G2.CODPRO ", NL," "\
+                        "FROM FGE50CA",tToInfologPrefixFilename,".GEPAL G2 , FGE50CA",tToInfologPrefixFilename,".GECOMAT B ", NL," "\
+                        "WHERE G2.REFREC = B.TRIATT ", NL," "\
+                        "AND SUBSTR(B.MVTATT, 1, 5) = '41.00' ", NL," "\
+                        "AND B.MAJCRE >= TO_CHAR(CURRENT DATE, 'RRRRMMDD') ", NL," "\
+                        "AND B.NUMEXC IN ( ", NL," "\
+                        "SELECT  DISTINCT HORA.NUMEXC ", NL," "\
+                        "FROM FGE50CA",tToInfologPrefixFilename,".GECOMAT HORA ", NL," "\
+                        "WHERE SUBSTR(HORA.MVTATT, 1, 5) = '41.00' ", NL," "\
+                        "AND HORA.MAJCRE >= TO_CHAR(CURRENT DATE, 'RRRRMMDD') ", NL," "\
+                        "AND ( ", NL," "\
+                        "SELECT  MAX(HORA1.MAJHMS) ", NL," "\
+                        "FROM FGE50CA",tToInfologPrefixFilename,".GECOMAT HORA1 ", NL," "\
+                        "WHERE SUBSTR(HORA1.MVTATT, 1, 5) = '41.00' ", NL," "\
+                        "AND HORA1.MAJCRE >= TO_CHAR(CURRENT DATE, 'RRRRMMDD') ) = HORA.MAJHMS ) ) AND MESPRO IN ('1', '2') AND ETAPAL <= '50' AND CODACT = '001' ", NL," "\
+                        "GROUP BY  GEPAL.CODACT ", NL," "\
+                        "         ,GEPAL.CODPRO ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		nContQuery := 0
+
+		while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			nContQuery++
+
+			taDADOS[nContQuery] := peel(taDb2Array["DADOS"]," ")
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		nContLinhasEscritas := 0
+		nCountProd := 0
+
+		while nCountProd < nContQuery do
+			nCountProd++
+
+			R_DADOS(taDADOS[nCountProd])
+
+			flush(0,0,NL) >> tFileOutTemp
+			nContLinhasEscritas++
+		endwhile
+
+		!ESCRITA 9900
+		R_GEEX9900_CODEXC("99")
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC("00")
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_NUMEXC("0000000")
+		R_GEEX9900_CPTEXC(build(nContLinhasEscritas))
+
+		flush(0,0,NL) >> tFileOutTemp
+		close(tFileOutTemp)
+
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"","")
+
+		bfSqlClose(tDbBase)
+		exit(0)
+	endif
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := tCODACT
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M31"
+	TRACE.NUMDOC := "M31 PCB"
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+	flush(TRACE)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+	system("sleep 1")
+endfunction
+
+!===========================================================

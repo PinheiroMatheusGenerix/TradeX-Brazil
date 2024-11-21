@@ -1,0 +1,335 @@
+%@(#) $Id:  M40_HENKEL_CSV_IN.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M40_HENKEL_CSV_IN.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M40_HENKEL_CSV_IN
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M40_HENKEL_CSV_IN
+!
+!===========================================================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "DataInjection_Tranferencia"
+#include "include/DataInjection_Tranferencia.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+	! PROCESS_ERRONEOUS := TRUE
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+    tAmbiente := subst(pEDISEND.ORIGINAL.NAME, 18, 10)
+
+	!load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+	!tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+    tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+    
+    bfSqlInit()
+    
+    if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBase)
+	    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+        exit(1)
+   endif
+
+   nLine := 0
+endbegin
+
+!===========================================================
+line(not "")
+	S_REGISTO
+    nLine++
+    if nLine = 1 then
+        if S_REGISTO_DATA <> "DATA" then
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDATADocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: DATA. Value Received: ",S_REGISTO_DATA,".")
+        else 
+            if S_REGISTO_SIGLA_UNL <> "SIGLA_UNL" then
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: SIGLA_UNL. Value Received: ",S_REGISTO_SIGLA_UNL,".")
+            else
+                if S_REGISTO_SIGLA_LOJA <> "SIGLA_LOJA" then
+                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: SIGLA_LOJA. Value Received: ",S_REGISTO_SIGLA_LOJA,".")
+                else
+                    if S_REGISTO_DEPARTAMENTO <> "DEPARTAMENTO" then
+                        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: DEPARTAMENTO. Value Received: ",S_REGISTO_DEPARTAMENTO,".")
+                    else
+                        if S_REGISTO_SETOR <> "SETOR" then
+                            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: SETOR. Value Received: ",S_REGISTO_SETOR,".")
+                        else
+                            if S_REGISTO_RMS_PRODUTO <> "RMS_PRODUTO" then
+                                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: RMS_PRODUTO. Value Received: ",S_REGISTO_RMS_PRODUTO,".")
+                            else
+                                if S_REGISTO_DESCR_PRODUTO <> "DESCR_PRODUTO" then
+                                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: DESCR_PRODUTO. Value Received: ",S_REGISTO_DESCR_PRODUTO,".")
+                                else
+                                    if S_REGISTO_EMB <> "EMB" then
+                                        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: EMB. Value Received: ",S_REGISTO_EMB,".")
+                                    else
+                                        if S_REGISTO_QT_CAIXAS <> "QT_CAIXAS" then
+                                            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: QT_CAIXAS. Value Received: ",S_REGISTO_QT_CAIXAS,".")
+                                        else
+                                            if S_REGISTO_QDE_UNI <> "QDE_UNI" then
+                                                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: QDE_UNI. Value Received: ",S_REGISTO_QDE_UNI,".")
+                                            else
+                                                if  S_REGISTO_PRECO_UNI <> "PRECO_UNI" then
+                                                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: PRECO_UNI. Value Received: ",S_REGISTO_PRECO_UNI,".")        
+                                                else
+                                                    if  S_REGISTO_VALOR_TRANSFERENCIA <> "VALOR_TRANSFERENCIA" then
+                                                        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: VALOR_TRANSFERENCIA. Value Received: ",S_REGISTO_VALOR_TRANSFERENCIA,".")
+                                                    else
+                                                        if  S_REGISTO_MES <> "MÊS" then
+                                                            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: MÊS. Value Received: ",S_REGISTO_MES,".")
+                                                        else
+                                                            if  S_REGISTO_ESTADO <> "ESTADO" then
+                                                                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: ESTADO. Value Received: ",S_REGISTO_ESTADO,".")
+                                                            else
+                                                                if  S_REGISTO_REGIAO <> "REGIÃO" then
+                                                                    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: REGIÃO. Value Received: ",S_REGISTO_REGIAO,".")
+                                                                else
+                                                                    if  S_REGISTO_ANO <> "ANO" then
+                                                                        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","Arquivo enviado: CDA WITH ERRORS, not considered. Value expected: ANO. Value Received: ",S_REGISTO_ANO,".")
+                                                                    endif
+                                                                endif
+                                                            endif
+                                                        endif
+                                                    endif
+                                                endif
+                                            endif
+                                        endif
+                                    endif
+                                endif
+                            endif
+                        endif
+                    endif
+                endif
+            endif
+        endif
+    else
+        tQuery := build("SELECT * ", NL," "\
+                            "	FROM ",tAmbiente,".BASE ", NL," "\
+                            "	WHERE CAMPO = '",S_REGISTO_Chave,"'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+            bfQueryUpdate(S_REGISTO_DATA,S_REGISTO_SIGLA_UNL,S_REGISTO_SIGLA_LOJA,S_REGISTO_DEPARTAMENTO,S_REGISTO_SETOR,S_REGISTO_RMS_PRODUTO,S_REGISTO_DESCR_PRODUTO,S_REGISTO_EMB,S_REGISTO_QT_CAIXAS,S_REGISTO_QDE_UNI,S_REGISTO_PRECO_UNI,S_REGISTO_VALOR_TRANSFERENCIA,S_REGISTO_MES,S_REGISTO_ESTADO,S_REGISTO_REGIAO,S_REGISTO_ANO)
+            remove(taDb2Array)
+        endwhile
+        
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = FALSE do
+            bfQueryInsert(S_REGISTO_DATA,S_REGISTO_SIGLA_UNL,S_REGISTO_SIGLA_LOJA,S_REGISTO_DEPARTAMENTO,S_REGISTO_SETOR,S_REGISTO_RMS_PRODUTO,S_REGISTO_DESCR_PRODUTO,S_REGISTO_EMB,S_REGISTO_QT_CAIXAS,S_REGISTO_QDE_UNI,S_REGISTO_PRECO_UNI,S_REGISTO_VALOR_TRANSFERENCIA,S_REGISTO_MES,S_REGISTO_ESTADO,S_REGISTO_REGIAO,S_REGISTO_ANO)
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree( tDbBase, "SELECTdb2"  ) = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    endif
+
+    
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+! End statements section
+
+end
+
+endend
+
+!===========================================================
+
+function bfQueryUpdate(DATA,SIGLA_UNL,SIGLA_LOJA,DEPARTAMENTO,SETOR,RMS_PRODUTO,DESCR_PRODUTO,EMB,QT_CAIXAS,QDE_UNI,PRECO_UNI,VALOR_TRANSFERENCIA,MES,ESTADO,REGIAO,ANO)
+    tQueryUpdate := build("UPDATE FGE50.BASE ", NL," "\
+                        "SET ", NL," "\
+                        "CAMPO = ",DATA, NL," "\
+                        "CAMPO = ",SIGLA_UNL, NL," "\
+                        "CAMPO = ",SIGLA_LOJA, NL," "\
+                        "CAMPO = ",DEPARTAMENTO, NL," "\
+                        "CAMPO = ",SETOR, NL," "\
+                        "CAMPO = ",RMS_PRODUTO, NL," "\
+                        "CAMPO = ",DESCR_PRODUTO, NL," "\
+                        "CAMPO = ",EMB, NL," "\
+                        "CAMPO = ",QT_CAIXAS, NL," "\
+                        "CAMPO = ",QDE_UNI, NL," "\
+                        "CAMPO = ",PRECO_UNI, NL," "\
+                        "CAMPO = ",VALOR_TRANSFERENCIA, NL," "\
+                        "CAMPO = ",MÊS, NL," "\
+                        "CAMPO = ",ESTADO, NL," "\
+                        "CAMPO = ",REGIÃO, NL," "\
+                        "CAMPO = ",ANO, NL," "\
+                        "WHERE CAMPO = ",Chave, " WITH NONE ")
+
+    log("------------------------------------------------------------", NL)
+    log(tQueryUpdade,NL)
+    log("------------------------------------------------------------", NL)
+
+    if not bfSqlSet(tDbBase, "SELECTdb2", tQueryUpdade) then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(27)
+    endif
+
+    if not bfSqlExec(tDbBase, "SELECTdb2") then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(28)
+    endif
+
+    if not bfSqlCommit(tDbBase, "SELECTdb2") then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(29)
+    endif
+
+    if not bfSqlFree(tDbBase, "SELECTdb2") then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(30)
+    endif
+endfunction
+
+function bfQueryInsert(DATA,SIGLA_UNL,SIGLA_LOJA,DEPARTAMENTO,SETOR,RMS_PRODUTO,DESCR_PRODUTO,EMB,QT_CAIXAS,QDE_UNI,PRECO_UNI,VALOR_TRANSFERENCIA,MES,ESTADO,REGIAO,ANO)
+    tQueryInsert := build("INSERT INTO FGE50.BASE ()", NL," "\
+                            "VALUES (",DATA, ",", NL ,"\
+                            "    ,SIGLA_UNL, NL "\
+                            "    ,SIGLA_LOJA, NL "\
+                            "    ,DEPARTAMENTO, NL "\
+                            "    ,SETOR, NL "\
+                            "    ,RMS_PRODUTO, NL "\
+                            "    ,DESCR_PRODUTO, NL "\
+                            "    ,EMB, NL "\
+                            "    ,QT_CAIXAS, NL "\
+                            "    ,QDE_UNI, NL "\
+                            "    ,PRECO_UNI, NL "\
+                            "    ,VALOR_TRANSFERENCIA, NL "\
+                            "    ,MES, NL "\
+                            "    ,ESTADO, NL "\
+                            "    ,REGIAO, NL "\
+                            "    ,ANO, NL ") ")
+                            
+
+    log("------------------------------------------------------------", NL)
+    log(tQueryUpdade,NL)
+    log("------------------------------------------------------------", NL)
+
+    if not bfSqlSet(tDbBase, "SELECTdb2", tQueryUpdade) then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(27)
+    endif
+
+    if not bfSqlExec(tDbBase, "SELECTdb2") then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(28)
+    endif
+
+    if not bfSqlCommit(tDbBase, "SELECTdb2") then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(29)
+    endif
+
+    if not bfSqlFree(tDbBase, "SELECTdb2") then
+        log(tfSqlErrorStr(), NL)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+        exit(30)
+    endif
+endfunction
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "HENKEL"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "RECEBIMENTO E DEVOLUCAO"
+	TRACE.NUMDOC := taREFREC[nTempNumeroLinha]
+	TRACE.DATDOC := tfConvertDate(taDTIREC[nTempNumeroLinha], "DD-MM-YYYY" , "YYYY-MM-DD")
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+   if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+	endif
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOutTemp)
+		copy(tFileOutTemp,TRACE.Out)
+		close(tFileOutTemp)
+		close(TRACE.Out)
+	endif
+	flush(TRACE)
+endfunction
+
+!===========================================================

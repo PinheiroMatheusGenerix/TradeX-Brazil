@@ -1,0 +1,95 @@
+%@(#)  source_filename.rte     modif:2011-07-12
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 2011-07-12  XX  Creation
+! 2011-07-12  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+base "syslog.cfg" SYSLOG
+! Input/output macros file
+!#include "include/M51_GECOM_OUT.inc"
+
+
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+   nPos := 1
+   nNumeroItem := 0
+   !nContadorM51 := cContadorM51
+   
+  
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+
+   
+   
+ tLinhaEdifactIn := ""
+  bPrintMsg := FALSE
+    while tLinhaEdifactIn<>EOF do
+        tLinhaEdifactIn := read(INPUT)
+                    
+            
+        if  length(tLinhaEdifactIn)>0 do
+           switch substr(tLinhaEdifactIn,1,5)   
+				
+              case "51.00" : 
+               nContadorTempM51 := cContadorTempM51
+               close(tFileOut)
+               tFileOut := build(sHOME,"/tmp/M51/",pEDISEND.ORIGINAL.NAME,"_",build(nContadorTempM51))
+			   print(tLinhaLidaZERO,NL) >> tFileOut
+                 print(tLinhaEdifactIn,NL) >> tFileOut
+                 case "00.00" : 
+					tLinhaLidaZERO := tLinhaEdifactIn
+                default :
+                      print(tLinhaEdifactIn,NL) >> tFileOut
+
+              endswitch
+                      endif
+                
+    endwhile  
+    
+    close(INPUT)
+    close(INPUT)
+    close(tFileOut)
+remove(ARGV[1])
+endbegin
+
+!=========
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+exit(0)
+
+
+!===========================================================
+
+   
+
+
+endend
+

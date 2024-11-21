@@ -1,0 +1,362 @@
+%@(#) $Id:  M30_CARREFOUR_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M30_CARREFOUR_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M30_CARREFOUR_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M30_CARREFOUR_OUT
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M30_CARREFOUR_OUT"
+
+#include "include/generix_func.inc"
+#include "include/Delete_IMEI_CSV.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	tFileOut := build(sHOME,"/DocTemp/Delete_IMEI_",build(nMessageID:R015),".csv")
+	tFileOutTemp := build(sHOME,"/DocTemp/Temp/Delete_IMEI_",build(nMessageID:R015),".csv")
+	tNameOut := build("Delete_IMEI_",build(nMessageID:R015),".csv")
+
+    tAmbiente := substr(pEDISEND.ORIGINAL.NAME, 13, index(pEDISEND.ORIGINAL.NAME, "-ECOM") - 13)
+
+	load(0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+    tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",tAmbiente)]
+
+	tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= "GNXBR21"
+	tDbUrl		:= taPARAM["WMSDBURL"]	
+
+	tDbBase2 := "FMWMSDelete"
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+    if not bfSqlJdbc(tDbBase2, tDbUsername, tDbPassword, tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBase)
+        bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr())) 
+        exit(1)
+    endif
+
+	bPlataforma := FALSE
+    nLine := 0
+    nLineCount := 0
+
+    print("NUMSER;"\
+          "SNUSER;"\
+          "CODACT;"\
+          "CODPRO;"\
+          "VALPRO;"\
+          "CODSER;"\
+          "ETASER;"\
+          "CODPAL;"\
+          "CLILIV;"\
+          "SERSUP;"\
+          "EDIPRO;"\
+          "NUMREC;"\
+          "SNUREC;"\
+          "REFREC;"\
+          "NUMLIV;"\
+          "SNULIV;"\
+          "REFLIV;"\
+          "DATLIV;"\
+          "HEULIV;"\
+          "DATEXP;"\
+          "HEUEXP;"\
+          "DATREC;"\
+          "HEUREC;"\
+          "DATTRC;"\
+          "HEUTRC;"\
+          "NUMTRC;"\
+          "FAMCPL;"\
+          "NUMPAL;"\
+          "SNUPAL;"\
+          "CODFOU;"\
+          "ORISER;"\
+          "CODCLI;"\
+          "MOTIMM;"\
+          "NUMTOU;"\
+          "CNFLIG;"\
+          "DISPO ;"\
+          "MAJCRE;"\
+          "MAJDAT;"\
+          "MAJHMS;"\
+          "MAJPGM;"\
+          "MAJUTI;"\
+          "MAJECR",NL) >> tFileOutTemp
+endbegin
+
+!===========================================================
+
+line(not "")
+    S_Detail
+    nLine++
+
+    taREFLIV[nLine] := substr(S_Detail_REFLIV, index(S_Detail_REFLIV, "E"), 30)
+
+    log("taREFLIV[",nLine,"] = |", taREFLIV[nLine], "| ", NL)
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+    while nLineCount < nLine do
+        nLineCount++
+        tQuery := build("SELECT  NUMSER ",NL," "\
+                        "       ,SNUSER ",NL," "\
+                        "       ,CODACT ",NL," "\
+                        "       ,CODPRO ",NL," "\
+                        "       ,VALPRO ",NL," "\
+                        "       ,CODSER ",NL," "\
+                        "       ,ETASER ",NL," "\
+                        "       ,CODPAL ",NL," "\
+                        "       ,CLILIV ",NL," "\
+                        "       ,SERSUP ",NL," "\
+                        "       ,EDIPRO ",NL," "\
+                        "       ,NUMREC ",NL," "\
+                        "       ,SNUREC ",NL," "\
+                        "       ,REFREC ",NL," "\
+                        "       ,NUMLIV ",NL," "\
+                        "       ,SNULIV ",NL," "\
+                        "       ,REFLIV ",NL," "\
+                        "       ,DATLIV ",NL," "\
+                        "       ,HEULIV ",NL," "\
+                        "       ,DATEXP ",NL," "\
+                        "       ,HEUEXP ",NL," "\
+                        "       ,DATREC ",NL," "\
+                        "       ,HEUREC ",NL," "\
+                        "       ,DATTRC ",NL," "\
+                        "       ,HEUTRC ",NL," "\
+                        "       ,NUMTRC ",NL," "\
+                        "       ,FAMCPL ",NL," "\
+                        "       ,NUMPAL ",NL," "\
+                        "       ,SNUPAL ",NL," "\
+                        "       ,CODFOU ",NL," "\
+                        "       ,ORISER ",NL," "\
+                        "       ,CODCLI ",NL," "\
+                        "       ,MOTIMM ",NL," "\
+                        "       ,NUMTOU ",NL," "\
+                        "       ,CNFLIG ",NL," "\
+                        "       ,DISPO  ",NL," "\
+                        "       ,MAJCRE ",NL," "\
+                        "       ,MAJDAT ",NL," "\
+                        "       ,MAJHMS ",NL," "\
+                        "       ,MAJPGM ",NL," "\
+                        "       ,MAJUTI ",NL," "\
+                        "       ,MAJECR ",NL," "\
+                        "FROM ",tToInfologPrefixFilename,".GESERI ",NL," "\
+                        "WHERE REFLIV='",taREFLIV[nLineCount],"' ")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        bQueryTemResul := FALSE
+        while bfSqlFetchArray(tDbBase, "SELECTdb2",taDb2Array) = TRUE do
+            bQueryTemResul := TRUE
+            print(build(peel(taDb2Array["NUMSER"]," "),";", \
+                        peel(taDb2Array["SNUSER"]," "),";", \
+                        peel(taDb2Array["CODACT"]," "),";", \
+                        peel(taDb2Array["CODPRO"]," "),";", \
+                        peel(taDb2Array["VALPRO"]," "),";", \
+                        peel(taDb2Array["CODSER"]," "),";", \
+                        peel(taDb2Array["ETASER"]," "),";", \
+                        build("'",peel(taDb2Array["CODPAL"]," ")),";", \
+                        peel(taDb2Array["CLILIV"]," "),";", \
+                        peel(taDb2Array["SERSUP"]," "),";", \
+                        peel(taDb2Array["EDIPRO"]," "),";", \
+                        peel(taDb2Array["NUMREC"]," "),";", \
+                        peel(taDb2Array["SNUREC"]," "),";", \
+                        peel(taDb2Array["REFREC"]," "),";", \
+                        peel(taDb2Array["NUMLIV"]," "),";", \
+                        peel(taDb2Array["SNULIV"]," "),";", \
+                        peel(taDb2Array["REFLIV"]," "),";", \
+                        peel(taDb2Array["DATLIV"]," "),";", \
+                        peel(taDb2Array["HEULIV"]," "),";", \
+                        peel(taDb2Array["DATEXP"]," "),";", \
+                        peel(taDb2Array["HEUEXP"]," "),";", \
+                        peel(taDb2Array["DATREC"]," "),";", \
+                        peel(taDb2Array["HEUREC"]," "),";", \
+                        peel(taDb2Array["DATTRC"]," "),";", \
+                        peel(taDb2Array["HEUTRC"]," "),";", \
+                        peel(taDb2Array["NUMTRC"]," "),";", \
+                        peel(taDb2Array["FAMCPL"]," "),";", \
+                        peel(taDb2Array["NUMPAL"]," "),";", \
+                        peel(taDb2Array["SNUPAL"]," "),";", \
+                        peel(taDb2Array["CODFOU"]," "),";", \
+                        peel(taDb2Array["ORISER"]," "),";", \
+                        peel(taDb2Array["CODCLI"]," "),";", \
+                        peel(taDb2Array["MOTIMM"]," "),";", \
+                        peel(taDb2Array["NUMTOU"]," "),";", \
+                        peel(taDb2Array["CNFLIG"]," "),";", \
+                        peel(taDb2Array["DISPO "]," "),";", \
+                        peel(taDb2Array["MAJCRE"]," "),";", \
+                        peel(taDb2Array["MAJDAT"]," "),";", \
+                        peel(taDb2Array["MAJHMS"]," "),";", \
+                        peel(taDb2Array["MAJPGM"]," "),";", \
+                        peel(taDb2Array["MAJUTI"]," "),";", \
+                        peel(taDb2Array["MAJECR"]," ")),NL) >> tFileOutTemp
+
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bQueryTemResul = TRUE then
+            tQueryDelete := build("DELETE ",NL," "\
+                                  "FROM ",tToInfologPrefixFilename,".GESERI ",NL," "\
+                                  "WHERE REFLIV='",taREFLIV[nLineCount],"' ")
+
+            log("------------------------------------------------------------", NL)
+            log(tQueryDelete,NL)
+            log("------------------------------------------------------------", NL)
+
+            if not bfSqlSet(tDbBase2, "Updatedb2", tQueryDelete) then
+                log(tfSqlErrorStr(), NL)
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+                exit(27)
+            endif
+
+            if not bfSqlExec(tDbBase2, "Updatedb2") then
+                log(tfSqlErrorStr(), NL)
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+                exit(28)
+            endif
+
+            if not bfSqlCommit(tDbBase2, "Updatedb2") then
+                log(tfSqlErrorStr(), NL)
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+                exit(29)
+            endif
+
+            if not bfSqlFree(tDbBase2, "Updatedb2") then
+                log(tfSqlErrorStr(), NL)
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+                exit(30)
+            endif
+        else
+            log("Não tem resultado na Query!", NL)
+        endif
+    endwhile
+
+    close(tFileOutTemp)
+    copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+    remove(tFileOutTemp)
+    
+    if bQueryTemResul = TRUE then
+        tPrefixoSubjectEmail := tToInfologPrefixFilename
+        tSubjectEmail := build("[",tPrefixoSubjectEmail,"] Delete IMEI")
+        tCmdEmail := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameOut," Enviar_Email ",tFileOut)
+        log("executing command = ",tCmdEmail,NL)
+        nRet := system(tCmdEmail)
+    endif
+
+    close(tFileOut)
+
+    bfMajtrace("Recebida","0","",tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+    remove(tFileOut)
+
+    bfSqlClose(tDbBase)
+    exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := tAmbiente
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "DELETE IMEI"
+	TRACE.NUMDOC := "DELETE IMEI"
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := pEDISEND.ORIGINAL.NAME
+	
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+	flush(TRACE)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+	system("sleep 1")
+endfunction
+
+!===========================================================

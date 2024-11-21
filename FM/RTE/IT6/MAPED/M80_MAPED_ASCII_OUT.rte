@@ -1,0 +1,381 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M80_MAPED_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M80.inc"
+#include "include/MAPED_AJUSTEShelflife.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+ 
+    
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAPED"]
+
+		
+		
+
+    
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	
+	
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+    
+nMainIndex := 0
+nLinha := 0
+nLinhaQuery := 0
+
+nLinhaWM := 0
+nLinhaMAPED := 0
+bFazInterfaceMAPED := FALSE
+endbegin
+
+!===========================================================
+
+
+
+
+line(1:"00.00")
+ !   tCentroCusto := S_0000_EDISIT
+    tData := S_0000FILEHEADER_DATEXC
+    tHora := S_0000FILEHEADER_HEUEXC   
+	nLinhaMAPED := 0
+	bFazInterfaceMAPED := FALSE
+    !log("S_0000_EDISIT - ",S_0000_EDISIT,NL)
+endline
+
+
+line(1:"80.00")
+bConsidera := FALSE
+
+	
+	
+				nLinhaMAPED++
+				taDATMVT_SIS[nLinhaMAPED] := S_GEEX8000_DATMVT
+				taHEUMVT_SIS[nLinhaMAPED] := S_GEEX8000_HEUMVT
+				taCODMVT_SIS[nLinhaMAPED] := S_GEEX8000_CODMVT
+				taMOTMVT_SIS[nLinhaMAPED] := S_GEEX8000_MOTMVT
+				taCODPRO_SIS[nLinhaMAPED] := S_GEEX8000_CODPRO
+				taUVCMVT_SIS[nLinhaMAPED] := S_GEEX8000_UVCMVT
+				taSENMVT_SIS[nLinhaMAPED] := S_GEEX8000_SENMVT
+				taCODPAL_SIS[nLinhaMAPED] := S_GEEX8000_CODPAL
+				
+	
+	
+endline
+
+
+line(1:"80.01")
+if bConsidera = TRUE then
+	taDIPLIV[nLinha] := build(taDIPLIV[nLinha],build(substr(S_GEEX8001_FAMPRO,1,1)):1, build(substr(taCODLOT8000[nLinha],1,9)):9)	
+endif
+
+if bConsidera_WM = TRUE then
+	taPDBMVT_WM[nLinhaWM] := build(number(S_GEEX8001_PDBMVT)/1000)
+endif
+endline
+
+line("99.00")
+   
+
+
+! -----------------------------------------------------------
+! -----------------------------------------------------------
+
+
+
+!MAPED
+
+	if  nLinhaMAPED > 0 then
+		tCODACTLidoConvertido := "MAP_"
+		tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"MAPAJUSTE_",time("now" ,"%Y%m%d%H%M%S"),".TXT")
+	    tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"MAPAJUSTE_",time("now" ,"%Y%m%d%H%M%S"),".TXT")
+	    tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"MAPAJUSTE_",time("now" ,"%Y%m%d%H%M%S"),".TXT")
+			  
+			  
+			  
+		 nTempLinhaMAPED := 1
+		 while nTempLinhaMAPED <= nLinhaMAPED do
+		
+		
+			  
+			  
+			  
+			  R_Cabecalho_TipoRegisto("15")
+			  R_Cabecalho_CodigoEstablecimento("")
+			R_Cabecalho_CodigoDepositante("05317331000416")
+			R_Cabecalho_CodigoRCQ("")
+			R_Cabecalho_NumeroRCQ("")
+			R_Cabecalho_EDataEmissaoRCQ("")
+			R_Cabecalho_CodigoProduto(taCODPRO_SIS[nTempLinhaMAPED])
+			R_Cabecalho_TipoUOM("PC")
+			R_Cabecalho_DescTipoUC("")
+			R_Cabecalho_FatorTipoUC("")
+			R_Cabecalho_QTDEProduto(taUVCMVT_SIS[nTempLinhaMAPED])
+
+
+			 
+	tQuery := 	build("SELECT I.MOTIMM, I.LIBIMO, I.EDIIMO, R.CODRUB ATIVIDADE, R.VALRUB DEPOSITO "\
+"FROM FGE50FM",tToInfologPrefixFilename,".GEZIMO I LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU R "\
+"ON I.MOTIMM=R.VALCLE ")
+
+					log("tQuery ",tQuery,NL)
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		
+						
+						
+					
+						   tMOTIIMQuery := (peel(taDb2Array["MOTIMM"]," "))
+						   
+						
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+			   
+			
+			   
+
+
+
+				R_Cabecalho_ClasseProdOrigem(tMOTIIMQuery)
+				R_Cabecalho_ClasseProdDestino(taMOTMVT_SIS[nTempLinhaMAPED])
+
+			R_Cabecalho_IDClasseProdOrigem("")
+
+			R_Cabecalho_IDClasseProdDestino("")
+
+			  
+			  
+			  flush(0,0,NL) >> tFileOutTemp
+			  
+			  
+			  
+
+
+			   
+			   
+			   
+
+	
+			   
+			   	system("sleep 1")
+							 close(tFileOutTemp)
+						copy(tFileOutTemp,tFileOut)
+							close(tFileOutTemp)
+							remove(tFileOutTemp)
+								close(tFileOut)
+
+
+
+
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+								
+							
+		nTempLinhaMAPED++
+		endwhile				
+
+	endif
+
+
+
+
+
+
+
+
+exit(0)
+
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+bfSqlClose(tDbBase)
+
+
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := "AJUSTES"
+
+   TRACE.PERFIL := "MAPED"
+   TRACE.SENTIDO := "O"
+   TRACE.NUMDOC := build(taCODPRO_SIS[nTempLinhaMAPED]," / ",taMOTMVT_SIS[nTempLinhaMAPED])
+   TRACE.DATDOC := tfConvertDate(taDATMVT_SIS[nTempLinhaMAPED], "YYYYMMDD" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+ TRACE.LIBEXC := tLIBEXC
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+if tError="0" then
+
+
+
+
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endif
+
+
+flush(TRACE)
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+
+
+
+!===========================================================
+!===========================================================
+

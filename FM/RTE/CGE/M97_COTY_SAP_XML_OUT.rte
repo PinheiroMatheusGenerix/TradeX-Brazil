@@ -1,0 +1,878 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+schema "XML/FMBrasil/SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP - v01.xsd" validating
+message "XML/FMBrasil/SHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP.dtd" building
+
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_dlvnumcoty/fmbrasil_dlvnumcoty.cfg" fmbrasil_dlvnumcoty, readonly
+
+#define TX_PROG_INFO "M97_COTY_SAP_OUT"
+#include "include/generix_func.inc"
+#include "include/M97_ASCII.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    !nMessageID := cMessageID
+    pXML.INCONVOUT := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+		
+		tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	/*
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+    */
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+endbegin
+
+line(1:"00.00")
+ tREFLIV := ""
+ bGeraArquivo := FALSE
+ 
+ tMensagemTrace := "ESTADOS"
+endline
+
+
+
+line(1:"97.50")
+tPickingStaDate := ""
+tPickingStaTime := ""
+tPickingEnddate := ""
+tPickingEndTime := ""
+tShippedDate :=    ""
+tShippedTime :=    ""
+
+
+tLoadStaDate := ""
+tLoadStaTime := ""
+tLoadEnddate := ""
+tLoadEndTime := ""
+bSHIP := FALSE
+
+tPickingStaDate_2 := ""
+tPickingStaTime_2 := ""
+tPickingEnddate_2 := ""
+tPickingEndTime_2 := ""
+tShippedDate_2 :=    ""
+tShippedTime_2 :=    ""
+
+
+tLoadStaDate_2 := ""
+tLoadStaTime_2 := ""
+tLoadEnddate_2 := ""
+tLoadEndTime_2 := ""
+bSHIP_2 := FALSE
+
+bGeraArquivo := FALSE
+bGeraArquivo_2 := FALSE
+
+ if S_GEEX9750_ETALIV = "40" then
+	tPickingStaDate := S_GEEX9750_DATEXC
+	tPickingStaTime := S_GEEX9750_HEUEXC
+	bGeraArquivo := TRUE
+	tMensagemTrace := "INICIO PICKING"
+ endif
+ 
+  if S_GEEX9750_ETALIV = "50" then
+	tPickingEnddate := S_GEEX9750_DATEXC
+	tPickingEndTime := S_GEEX9750_HEUEXC
+	tLoadStaDate_2 := S_GEEX9750_DATEXC
+	tLoadStaTime_2 := S_GEEX9750_HEUEXC
+	
+	bGeraArquivo := TRUE
+	bGeraArquivo_2 := TRUE
+	tMensagemTrace := "FIM PICKING"
+	tMensagemTrace_2 := "INICIO CARREGAMENTO"
+ endif
+ 
+  if S_GEEX9750_ETALIV = "60" then
+	tLoadEnddate := S_GEEX9750_DATEXC
+	tLoadEndTime := S_GEEX9750_HEUEXC
+ 	tShippedDate_2 := S_GEEX9750_DATEXC
+	tShippedTime_2 := S_GEEX9750_HEUEXC
+	bGeraArquivo := TRUE
+	bGeraArquivo_2 := TRUE
+	bSHIP_2 := TRUE
+	tMensagemTrace := "FIM CARREGAMENTO"
+	tMensagemTrace_2 := "PEDIDO EXPEDIDO"
+ endif
+
+ tREFLIV := S_GEEX9750_REFLIV
+ 
+ 
+ 
+ 
+ if length(tREFLIV) > 0 and index(tREFLIV,"/") = 0 then
+if bGeraArquivo = TRUE then
+	bGeraArquivo := FALSE
+	
+	
+		tREFLIVConv := ""
+	fmbrasil_dlvnumcoty := find(build(sHOME,"/fmbrasil_dlvnumcoty"),REFLIV = tREFLIV)
+	while valid(fmbrasil_dlvnumcoty) do
+		
+		
+		tREFLIVConv := fmbrasil_dlvnumcoty.DLVNUM 
+		
+		
+		
+
+						
+				nMessageID := cMessageIDSHCCOTY
+				if nMessageID = 999999 then
+						cMessageIDSHCCOTY := 0
+				endif
+				
+				tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+				tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+
+						
+						
+					  tfEscreveeGoodsxMLm()
+						
+
+
+					   if valid(MESSAGE) then
+
+								print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+									 print(MESSAGE) > tFileOutTemp
+									 
+									close(tFileOutTemp)
+									copy(tFileOutTemp,tFileOut)
+									close(tFileOutTemp)
+									remove(tFileOutTemp)
+									close(tFileOut)
+										
+									
+								bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")	
+								!close(tFileOut)
+
+
+					   else
+							 print("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>",NL) > tFileOutTemp
+							 print(MESSAGE) > tFileOutTemp
+							 close(tFileOutTemp)      
+						     tErroTraducao := build("Schema not matched",NL)
+						     bfMajtrace("Erro de Traducao","1",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Orders",build("Schema not matched ",NL))
+							  
+						     close(tFileOutTemp)
+					   
+						endif
+		
+		
+				if bGeraArquivo_2 = TRUE then
+				
+											nMessageID := cMessageIDSHCCOTY
+											if nMessageID = 999999 then
+													cMessageIDSHCCOTY := 0
+											endif
+											
+											tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+											tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+											tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+
+													
+												  ! abaixo FUNCAO 2 !!!!!!!!!!!!!!!!
+												  tfEscreveeGoodsxMLm2()
+													
+
+
+												   if valid(MESSAGE) then
+
+															print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+																 print(MESSAGE) > tFileOutTemp
+																 
+																close(tFileOutTemp)
+																copy(tFileOutTemp,tFileOut)
+																close(tFileOutTemp)
+																remove(tFileOutTemp)
+																close(tFileOut)
+																	
+																
+															bfMajtrace_2("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")	
+															!close(tFileOut)
+
+
+												   else
+														 print("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>",NL) > tFileOutTemp
+														 print(MESSAGE) > tFileOutTemp
+														 close(tFileOutTemp)      
+														 tErroTraducao := build("Schema not matched",NL)
+														 bfMajtrace_2("Erro de Traducao","1",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Orders",build("Schema not matched ",NL))
+														  
+														 close(tFileOutTemp)
+												   
+													endif
+				endif
+		
+		
+		
+		
+		
+	
+		fmbrasil_dlvnumcoty := find()	
+	endwhile
+	
+	
+	  
+
+endif
+endif
+ 
+
+endline
+
+
+/*
+
+
+					line(1:"97.60")
+					bGeraArquivo := FALSE
+					tLoadStaDate := ""
+					tLoadStaTime := ""
+					tLoadEnddate := ""
+					tLoadEndTime := ""  
+
+					 if S_GEEX9760_ETACHT = "10" then
+						tLoadStaDate := S_GEEX9760_DATEXC
+						tLoadStaTime := S_GEEX9760_HEUEXC
+						bGeraArquivo := TRUE
+						tMensagemTrace := "INICIO CARREGAMENTO"
+						
+					 endif
+					 
+					  if S_GEEX9760_ETACHT = "20" then
+						tLoadEnddate := S_GEEX9760_DATEXC
+						tLoadEndTime := S_GEEX9760_HEUEXC
+						bGeraArquivo := TRUE
+						tMensagemTrace := "FIM CARREGAMENTO"
+					 endif
+					 
+					! tREFLIV := S_GEEX9760_REFLIV
+					 
+					 
+					 
+
+					 
+					 
+
+
+
+					tQuery := build("SELECT REFLIV "\
+					"FROM FGE50FM",tToInfologPrefixFilename,".GETOUD "\
+					"WHERE NUMTOU='",S_GEEX9760_NUMTOU,"'")
+						log(tQuery,NL)
+
+
+								if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+											 print("FATAL ", tfSqlErrorStr())
+											 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+											exit(1)
+									
+								endif
+
+								if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+									 print("FATAL ", tfSqlErrorStr())
+									  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+											exit(1)
+
+								endif
+
+								tREFLIV    :=  ""
+								while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+									
+									
+									tREFLIV    := peel(taDb2Array["REFLIV"]," ")
+
+									log("tREFLIV ",tREFLIV,NL)
+														
+														
+														
+										 if length(tREFLIV) > 0 and index(tREFLIV,"/") = 0 then
+										if bGeraArquivo = TRUE then
+											
+											
+												fmbrasil_dlvnumcoty := find(build(sHOME,"/fmbrasil_dlvnumcoty"),REFLIV = tREFLIV)
+												while valid(fmbrasil_dlvnumcoty) do
+																
+																
+																tREFLIVConv := fmbrasil_dlvnumcoty.DLVNUM 
+										
+																	nMessageID := cMessageIDSHCCOTY
+																	if nMessageID = 999999 then
+																			cMessageIDSHCCOTY := 0
+																	endif
+																	
+																	tFileOut := build(sHOME,"/ToAS2Proxy/FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+																	
+																	tFileOutTemp := build(sHOME,"/ToAS2Proxy/Temp/FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+																	
+																
+																	tNameOut := build("FM",tToInfologPrefixFilename,"SHC_",tREFLIVConv,"_",nMessageID:R06,"_",time("now" ,"%Y%m%d"),"_",time("now" ,"%H%M%S"),".xml")
+
+
+
+																		
+																		
+																		tfEscreveeGoodsxMLm()
+																	
+
+																	   if valid(MESSAGE) then
+
+																				print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+																					 print(MESSAGE) > tFileOutTemp
+																					 
+																					 close(tFileOutTemp)
+																					 
+																					 
+
+
+
+
+
+																				close(tFileOutTemp)
+																				copy(tFileOutTemp,tFileOut)
+																					close(tFileOutTemp)
+																					remove(tFileOutTemp)
+																						close(tFileOut)
+																						
+																					
+																				bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")	
+																				close(tFileOut)
+
+
+																	   else
+																			 print("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>",NL) > tFileOutTemp
+																			print(MESSAGE) > tFileOutTemp
+																			close(tFileOutTemp)      
+																		   tErroTraducao := build("Schema not matched",NL)
+																		   bfMajtrace("Erro de Traducao","1",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Orders",build("Schema not matched ",NL))
+																			  
+																		  close(tFileOutTemp)
+																	   
+																		 endif
+																							
+												
+											
+												fmbrasil_dlvnumcoty := find()	
+											endwhile
+										endif
+										endif
+									
+									
+									
+									remove(taDb2Array)
+
+								endwhile
+								
+								
+
+								if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+									print("FATAL", tfSqlErrorStr())
+									 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+											exit(1)
+								endif
+					 
+
+					 
+								
+					 
+					 
+					 
+					 
+					endline
+ 
+*/
+
+line("99.00")
+
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+!bfSqlClose(tDbBase)
+
+
+	exit(0)
+endend
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := tMensagemTrace
+   TRACE.NUMDOC := tREFLIVConv
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		   if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+
+close(tFileOut)
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+
+if tMensagemTrace = "INICIO PICKING" then
+	!deixa seguir mensagem para COTY
+else
+	remove(tFileOut) !so envia no workflow de ordem
+endif
+
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace_2(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := tMensagemTrace_2
+   TRACE.NUMDOC := tREFLIVConv
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		   if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+
+close(tFileOut)
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+
+
+if tMensagemTrace_2 = "INICIO PICKING" then
+	!deixa seguir mensagem para COTY
+else
+	remove(tFileOut) !so envia no workflow de ordem
+endif
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+!===========================================================
+function tfEscreveeGoodsxMLm()
+
+!===========================================================
+
+segment SSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP     ! M 1/1 
+   !eAxsi:noNamespaceSchemaLocation   ! C  
+   !eAxsi:schemaLocation   ! C  
+
+endsegment
+
+! Group gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG : M 1/1 
+segment STrnNam gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnNam  := "SHIP_CONFIRM" ! C  
+
+endsegment
+
+segment STrnVer gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnVer  := "1.0" ! C  
+
+endsegment
+
+segment STrnTyp gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+if bSHIP = TRUE then
+   eETrnTyp := "SHIP"  ! C  
+else
+	eETrnTyp := "PREP"  ! C 
+endif
+
+endsegment
+
+
+
+
+if number(tPickingStaDate) > 0 then
+	segment SPickingStaDate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingStaDate := build(tfConvertDate(build(   tPickingStaDate,tPickingStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")   ! C  
+
+	endsegment
+endif
+
+if number(tPickingStaDate) > 0 then
+	segment SPickingStaTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingStaTime := build(tfConvertDate(build(   tPickingStaDate,tPickingStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")   ! C  
+
+	endsegment
+endif
+
+
+if number(tPickingEnddate) > 0 then
+	segment SPickingEnddate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingEnddate  := build(tfConvertDate(build(   tPickingEnddate,tPickingEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+if number(tPickingEnddate) > 0 then
+	segment SPickingEndTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingEndTime :=build(tfConvertDate(build(   tPickingEnddate,tPickingEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+if number(tLoadStaDate) > 0 then
+	segment SLoadStaDate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadStaDate :=  build(tfConvertDate(build(   tLoadStaDate,tLoadStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+if number(tLoadStaDate) > 0 then
+	segment SLoadStaTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadStaTime := build(tfConvertDate(build(   tLoadStaDate,tLoadStaTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+if number(tLoadEnddate) > 0 then
+	segment SLoadEnddate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadEnddate := build(tfConvertDate(build(   tLoadEnddate,tLoadEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+if number(tLoadEnddate) > 0 then
+	segment SLoadEndTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadEndTime := build(tfConvertDate(build(   tLoadEnddate,tLoadEndTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+
+if number(tShippedDate) > 0 then
+	segment SShippedDate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEShippedDate  :=  build(tfConvertDate(build(   tShippedDate,tShippedTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  ! C  
+
+	endsegment
+	endif
+
+	if number(tShippedDate) > 0 then
+	segment SShippedTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEShippedTime   := build(tfConvertDate(build(   tShippedDate,tShippedTime,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  ! C  
+
+	endsegment
+endif
+
+
+! Group gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG : C 1/unbound 
+segment SDlvNum gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+	
+		eEDlvNum  := tREFLIVConv
+
+endsegment
+
+
+endfunction
+
+
+
+! ----------------------------------------------------------------------------------------------------------------------------------------
+! ----------------------------------------------------------------------------------------------------------------------------------------
+
+! ----------------------------------------------------------------------------------------------------------------------------------------
+! ----------------------------------------------------------------------------------------------------------------------------------------
+
+!===========================================================
+!===========================================================
+
+!===========================================================
+function tfEscreveeGoodsxMLm2()
+
+!===========================================================
+
+segment SSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP     ! M 1/1 
+   !eAxsi:noNamespaceSchemaLocation   ! C  
+   !eAxsi:schemaLocation   ! C  
+
+endsegment
+
+! Group gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG : M 1/1 
+segment STrnNam gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnNam  := "SHIP_CONFIRM" ! C  
+
+endsegment
+
+segment STrnVer gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnVer  := "1.0" ! C  
+
+endsegment
+
+segment STrnTyp gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+if bSHIP_2 = TRUE then
+   eETrnTyp := "SHIP"  ! C  
+else
+	eETrnTyp := "PREP"  ! C 
+endif
+
+endsegment
+
+
+
+
+if number(tPickingStaDate_2) > 0 then
+	segment SPickingStaDate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingStaDate := build(tfConvertDate(build(   tPickingStaDate_2,tPickingStaTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")   ! C  
+
+	endsegment
+endif
+
+if number(tPickingStaDate_2) > 0 then
+	segment SPickingStaTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingStaTime := build(tfConvertDate(build(   tPickingStaDate_2,tPickingStaTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")   ! C  
+
+	endsegment
+endif
+
+
+if number(tPickingEnddate_2) > 0 then
+	segment SPickingEnddate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingEnddate  := build(tfConvertDate(build(   tPickingEnddate_2,tPickingEndTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+if number(tPickingEnddate_2) > 0 then
+	segment SPickingEndTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEPickingEndTime :=build(tfConvertDate(build(   tPickingEnddate_2,tPickingEndTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+if number(tLoadStaDate_2) > 0 then
+	segment SLoadStaDate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadStaDate :=  build(tfConvertDate(build(   tLoadStaDate_2,tLoadStaTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+if number(tLoadStaDate_2) > 0 then
+	segment SLoadStaTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadStaTime := build(tfConvertDate(build(   tLoadStaDate_2,tLoadStaTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+if number(tLoadEnddate_2) > 0 then
+	segment SLoadEnddate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadEnddate := build(tfConvertDate(build(   tLoadEnddate_2,tLoadEndTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+if number(tLoadEnddate_2) > 0 then
+	segment SLoadEndTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eELoadEndTime := build(tfConvertDate(build(   tLoadEnddate_2,tLoadEndTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  
+
+	endsegment
+endif
+
+
+
+if number(tShippedDate_2) > 0 then
+	segment SShippedDate gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEShippedDate  :=  build(tfConvertDate(build(   tShippedDate_2,tShippedTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  ! C  
+
+	endsegment
+endif
+
+if number(tShippedDate_2) > 0 then
+	segment SShippedTime gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG     ! C 1/1 
+	   eEShippedTime   := build(tfConvertDate(build(   tShippedDate_2,tShippedTime_2,"00"),"YYYYMMDDHHMMSS" , "YYYY-MM-DDTHH:MM:SS"),"+00:00")  ! C  ! C  
+
+	endsegment
+endif
+
+
+! Group gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG : C 1/unbound 
+segment SDlvNum gGSHIP_CONFIRM-BR_FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGSHIPMENT_SEG,gGDELIVERY_SEG     ! C 1/1 
+	
+		eEDlvNum  := tREFLIVConv
+
+endsegment
+
+
+endfunction
+
+
+
+

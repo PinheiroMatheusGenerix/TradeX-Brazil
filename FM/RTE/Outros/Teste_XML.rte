@@ -1,0 +1,143 @@
+%@(#)  Teste_XML.rte     modif:21-11-2017
+!==============================================================================
+% File          : Teste_XML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/NFE/procNFe_v4.00.xsd" validating, receiving
+schema "XML/FMBrasil/NFE/procNFe_v4.01.xsd" validating, building
+message "XML/FMBrasil/nfeProc.dtd" receiving, passthru
+message "XML/FMBrasil/nfeProc2.dtd" building
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "Teste_XML"
+#include "include/generix_func.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+	tDbBase		:= "FMWMS"
+	tDbBase2	:= "FMWMS2"
+
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	tFileOut := build(sHOME,"/local/TESTE_M40",nMessageID,".xml")
+	tFileOutTemp := build(sHOME,"/local/Temp/TESTE_M40",nMessageID,".xml")
+	tNameOut := build("TESTE_M40",nMessageID,".xml")
+endbegin
+
+!===========================================================
+nodein Sserie gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+	tCampo1 := eEserie   ! M
+	nodeout Sserie2  gGnfeProc2,gGNFe2   ! M 1/1 
+		eEserie2 := eEserie
+		! print(eEserie) >> tFileOutTemp
+		flush(0,0,NL) >> tFileOutTemp
+	endnodeout
+
+endnodein
+
+
+
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	! nodeout Sserie2  gGnfeProc2,gGNFe2,gGinfNFe2   ! M 1/1 
+	! 	eEserie2 := tCampo1
+	! 	! print("TESTE2") >> tFileOutTemp
+	! 	flush(0,0,NL) >> tFileOutTemp
+	! endnodeout
+
+	close(tFileOutTemp)
+
+	copy(tFileOutTemp,tFileOut)
+	close(tFileOutTemp)
+	! remove(tFileOutTemp)
+	close(tFileOut)
+				
+	bfMajtraceM40XML("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+endend
+
+!===========================================================
+
+function  bfMajtraceM40XML(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := ""
+	TRACE.MENSAGEM := "TESTE XML"
+	TRACE.SENTIDO := "X"
+	TRACE.NUMDOC := "TESTE XML"
+	TRACE.DATDOC := ""
+	TRACE.MESSAGEID := build(nMessageID)   
+	TRACE.REDE := "TESTE XML"
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endfunction

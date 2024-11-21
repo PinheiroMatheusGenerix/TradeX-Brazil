@@ -1,0 +1,93 @@
+base "../fmbrasil_clientespedloreal/fmbrasil_clientespedloreal.cfg" BASE
+
+!SumolImportSML_CLIENTES_SOGENAVE_SAP 4 10 13 5 5 5 40 < C:\Influe\TradeXpress5\users\txdev\rte\sumol\tables\sml_csvg.tab
+
+begin
+
+
+
+endbegin
+
+
+line(1)
+split(pick(1,1,EOL), taRegistoHeader, ";")
+
+endline
+
+line (not 1)
+split(pick(1,1,EOL), taRegistoDetail, ";")
+if length(taRegistoDetail[2]) > 0 then
+	BASE := new(build(sHOME,"/fmbrasil_clientespedloreal/"))
+	nPos :=1
+
+
+	nPos := nPos + naLen[1]
+	BASE.CODCLI := peel(taRegistoDetail[1]," ")
+
+	nPos := nPos + naLen[2]
+	BASE.CNPJ := peel(taRegistoDetail[2]," ")
+
+	nPos := nPos + naLen[3]
+	BASE.NOME := peel(taRegistoDetail[3]," ")
+
+	nPos := nPos + naLen[4]
+	BASE.RUA := peel(taRegistoDetail[4]," ")
+
+	nPos := nPos + naLen[5]
+	BASE.NUMERO := peel(taRegistoDetail[5]," ")
+   
+	nPos := nPos + naLen[6]
+	BASE.COMPLEMENTO := peel(taRegistoDetail[6]," ")
+	
+	nPos := nPos + naLen[7]
+	BASE.BAIRRO := peel(taRegistoDetail[7]," ")
+	
+	nPos := nPos + naLen[8]
+	BASE.CIDADE := peel(taRegistoDetail[8]," ")
+	
+	
+	nPos := nPos + naLen[9]
+	BASE.CODETD := peel(taRegistoDetail[9]," ")
+	
+	nPos := nPos + naLen[10]
+	BASE.CEP := peel(taRegistoDetail[10]," ")
+	
+	
+	nPos := nPos + naLen[11]
+	BASE.TELEFONE := peel(taRegistoDetail[11]," ")
+	
+	
+	nPos := nPos + naLen[12]
+	BASE.EMAIL := peel(taRegistoDetail[12]," ")
+	
+	nPos := nPos + naLen[13]
+	BASE.CNPJFILIAL := peel(taRegistoDetail[13]," ")
+	
+	
+	nPos := nPos + naLen[14]
+	BASE.INSCRESTADUAL := peel(taRegistoDetail[14]," ")
+	
+	
+	nPos := nPos + naLen[15]
+	BASE.CODIGOFABRICANTE := peel(taRegistoDetail[15]," ")
+	
+	
+	nPos := nPos + naLen[16]
+	BASE.CODERP := peel(taRegistoDetail[16]," ")
+	
+	nPos := nPos + naLen[17]
+	BASE.CODACT := peel(taRegistoDetail[17]," ")
+	
+endif
+remove(taRegistoDetail)
+   
+endline
+
+
+
+
+end
+
+exit(0)
+
+endend

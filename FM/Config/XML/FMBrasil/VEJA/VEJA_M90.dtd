@@ -1,0 +1,20 @@
+<!ELEMENT inventory (inventory_header,Inventory_body)*>
+	<!ELEMENT inventory_header (TransactionType,TransactionReferenceNumber,MessageCount,warehouse)*>
+		<!ELEMENT TransactionType (#PCDATA)>
+		<!ELEMENT TransactionReferenceNumber (#PCDATA)>
+		<!ELEMENT MessageCount (#PCDATA)>
+		<!ELEMENT warehouse (#PCDATA)>
+<!ELEMENT Inventory_body (item)*>
+	<!ELEMENT item (barcode_sku,barcode_upc,barcode_ean,item_description,size_code,color_code,color_description,style,unit_price,retail_price,quantity,slot)*>
+		<!ELEMENT barcode_sku (#PCDATA)>
+		<!ELEMENT barcode_upc (#PCDATA)>
+		<!ELEMENT barcode_ean (#PCDATA)>
+		<!ELEMENT item_description (#PCDATA)>
+		<!ELEMENT size_code (#PCDATA)>
+		<!ELEMENT color_code (#PCDATA)>
+		<!ELEMENT color_description (#PCDATA)>
+		<!ELEMENT style (#PCDATA)>
+		<!ELEMENT unit_price (#PCDATA)>
+		<!ELEMENT retail_price (#PCDATA)>
+		<!ELEMENT quantity (#PCDATA)>
+		<!ELEMENT slot (#PCDATA)>

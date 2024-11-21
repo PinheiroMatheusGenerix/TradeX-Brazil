@@ -1,0 +1,1002 @@
+%@(#)  source_filename.rte     modif:23-11-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 23-11-2017  XX  Creation
+! 23-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#include "include/M30_Loreal_CSV.inc"
+#include "include/M30.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+      nPos := 1
+    nRec := 1
+   SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+ 
+
+
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameLOREAL"]
+
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+  !tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"30",build(nMessageID:R015),".DAT")
+    
+
+
+ 
+    
+  
+    nNumeroLinha := 0
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+endbegin
+
+!===========================================================
+
+
+line(not "")
+S_Produto
+
+if length(peel(S_Produto_Material," ")) > 0 and peel(S_Produto_Material," ") <> "Material" then
+if  S_Produto_UMA = "ST" or S_Produto_UMA = "ZR1" or S_Produto_UMA = "ZR2" or S_Produto_UMA = "ZLA" or S_Produto_UMA = "PAL" then
+   nNumeroLinha++
+
+  taMaterial[nNumeroLinha] :=   S_Produto_Material
+  taUMA[nNumeroLinha] :=   S_Produto_UMA
+  taContador[nNumeroLinha] :=   S_Produto_Contador
+  taCodigo_EAN_UPC[nNumeroLinha] :=   S_Produto_Codigo_EAN_UPC
+  taCg[nNumeroLinha] :=   S_Produto_Cg
+  taComprimento[nNumeroLinha] :=   S_Produto_Comprimento
+  taLargura[nNumeroLinha] :=   S_Produto_Largura
+  taAltura[nNumeroLinha] :=   S_Produto_Altura
+  taUOMmedidas[nNumeroLinha] :=   S_Produto_UOMmedidas
+  taVolume[nNumeroLinha] :=   S_Produto_Volume
+  taUVI[nNumeroLinha] :=   S_Produto_UVI
+  taPesoBruto[nNumeroLinha] :=   S_Produto_PesoBruto
+  taUnidadeVolumePeso[nNumeroLinha] :=   S_Produto_UnidadeVolumePeso
+  taMaterialDescription[nNumeroLinha] :=   S_Produto_MaterialDescription
+  taReferenceMaterial[nNumeroLinha] :=   S_Produto_ReferenceMaterial
+  taHazMatNum[nNumeroLinha] :=   S_Produto_HazMatNum
+  taRShLi[nNumeroLinha] :=   S_Produto_RShLi
+  taSLife[nNumeroLinha] :=   S_Produto_SLife
+  taPerInd[nNumeroLinha] :=   S_Produto_PerInd
+  taCodAct[nNumeroLinha] := S_Produto_CodAct
+  taCODMDR[nNumeroLinha] :=   S_Produto_CODMDR
+  taCODMDS[nNumeroLinha] :=   S_Produto_CODMDS
+  
+  
+  baRegistoAConsiderar[nNumeroLinha] := TRUE
+   
+  if taUMA[nNumeroLinha] = "ST" then
+  
+     taMaterialUN[nNumeroLinha] :=   S_Produto_Material
+     taUMAUN[nNumeroLinha] :=   S_Produto_UMA
+     taContadorUN[nNumeroLinha] :=   S_Produto_Contador
+     taCodigo_EAN_UPCUN[nNumeroLinha] :=   S_Produto_Codigo_EAN_UPC
+     taCgUN[nNumeroLinha] :=   S_Produto_Cg
+     taComprimentoUN[nNumeroLinha] :=   S_Produto_Comprimento
+     taLarguraUN[nNumeroLinha] :=   S_Produto_Largura
+     taAlturaUN[nNumeroLinha] :=   S_Produto_Altura
+     taUOMmedidasUN[nNumeroLinha] :=   S_Produto_UOMmedidas
+     taVolumeUN[nNumeroLinha] :=   S_Produto_Volume
+     taUVIUN[nNumeroLinha] :=   S_Produto_UVI
+     taPesoBrutoUN[nNumeroLinha] :=   S_Produto_PesoBruto
+     taUnidadeVolumePesoUN[nNumeroLinha] :=   S_Produto_UnidadeVolumePeso
+     taMaterialDescriptionUN[nNumeroLinha] :=   S_Produto_MaterialDescription
+     taReferenceMaterialUN[nNumeroLinha] :=   S_Produto_ReferenceMaterial
+     taHazMatNumUN[nNumeroLinha] :=   S_Produto_HazMatNum
+     taRShLiUN[nNumeroLinha] :=   S_Produto_RShLi
+     taSLifeUN[nNumeroLinha] :=   S_Produto_SLife
+     taPerIndUN[nNumeroLinha] :=   S_Produto_PerInd
+	 taCodActUN[nNumeroLinha] := S_Produto_CodAct
+	 taCODMDRUN[nNumeroLinha] :=   S_Produto_CODMDR
+	 taCODMDSUN[nNumeroLinha] :=   S_Produto_CODMDS
+  endif
+   
+   if taUMA[nNumeroLinha] = "ZR1" then
+     taContadorZR1[nNumeroLinha] :=   S_Produto_Contador
+	 taComprimentoZR1[nNumeroLinha] :=   S_Produto_Comprimento
+	 taLarguraZR1[nNumeroLinha] :=   S_Produto_Largura
+	 taAlturaZR1[nNumeroLinha] :=   S_Produto_Altura
+	 taPesoBrutoZR1[nNumeroLinha] :=   S_Produto_PesoBruto
+	 taUnidadeVolumePesoZR1[nNumeroLinha] := S_Produto_UnidadeVolumePeso
+	 
+	 taVolumeZR1[nNumeroLinha] :=   S_Produto_Volume
+	 taUOMmedidasZR1[nNumeroLinha] :=   S_Produto_UOMmedidas
+	 taCodigo_EAN_UPCZR1[nNumeroLinha] :=   S_Produto_Codigo_EAN_UPC
+	 taMaterialDescriptionZR1[nNumeroLinha] :=   S_Produto_MaterialDescription
+	 taCodActZR1[nNumeroLinha] := S_Produto_CodAct
+	 taCODMDRZR1[nNumeroLinha] :=   S_Produto_CODMDR
+	 taCODMDSZR1[nNumeroLinha] :=   S_Produto_CODMDS
+   endif
+   
+   
+  if taUMA[nNumeroLinha] = "ZR2" then
+  
+     taMaterialCX[nNumeroLinha] :=   S_Produto_Material
+     taUMACX[nNumeroLinha] :=   S_Produto_UMA
+     taContadorCX[nNumeroLinha] :=   S_Produto_Contador
+     taCodigo_EAN_UPCCX[nNumeroLinha] :=   S_Produto_Codigo_EAN_UPC
+     taCgCX[nNumeroLinha] :=   S_Produto_Cg
+     taComprimentoCX[nNumeroLinha] :=   S_Produto_Comprimento
+     taLarguraCX[nNumeroLinha] :=   S_Produto_Largura
+     taAlturaCX[nNumeroLinha] :=   S_Produto_Altura
+     taUOMmedidasCX[nNumeroLinha] :=   S_Produto_UOMmedidas
+     taVolumeCX[nNumeroLinha] :=   S_Produto_Volume
+     taUVICX[nNumeroLinha] :=   S_Produto_UVI
+     taPesoBrutoCX[nNumeroLinha] :=   S_Produto_PesoBruto
+     taUnidadeVolumePesoCX[nNumeroLinha] :=   S_Produto_UnidadeVolumePeso
+     taMaterialDescriptionCX[nNumeroLinha] :=   S_Produto_MaterialDescription
+     taReferenceMaterialCX[nNumeroLinha] :=   S_Produto_ReferenceMaterial
+     taHazMatNumCX[nNumeroLinha] :=   S_Produto_HazMatNum
+     taRShLiCX[nNumeroLinha] :=   S_Produto_RShLi
+     taSLifeCX[nNumeroLinha] :=   S_Produto_SLife
+     taPerIndCX[nNumeroLinha] :=   S_Produto_PerInd
+	taCodActCX[nNumeroLinha] := S_Produto_CodAct
+	taCODMDRCX[nNumeroLinha] :=   S_Produto_CODMDR
+	 taCODMDSCX[nNumeroLinha] :=   S_Produto_CODMDS
+  endif
+  
+  
+  if taUMA[nNumeroLinha] = "ZLA" then
+  
+     taMaterialCAMADA[nNumeroLinha] :=   S_Produto_Material
+     taUMACAMADA[nNumeroLinha] :=   S_Produto_UMA
+     taContadorCAMADA[nNumeroLinha] :=   S_Produto_Contador
+     taCodigo_EAN_UPCCAMADA[nNumeroLinha] :=   S_Produto_Codigo_EAN_UPC
+     taCgCAMADA[nNumeroLinha] :=   S_Produto_Cg
+     taComprimentoCAMADA[nNumeroLinha] :=   S_Produto_Comprimento
+     taLarguraCAMADA[nNumeroLinha] :=   S_Produto_Largura
+     taAlturaCAMADA[nNumeroLinha] :=   S_Produto_Altura
+     taUOMmedidasCAMADA[nNumeroLinha] :=   S_Produto_UOMmedidas
+     taVolumeCAMADA[nNumeroLinha] :=   S_Produto_Volume
+     taUVICAMADA[nNumeroLinha] :=   S_Produto_UVI
+     taPesoBrutoCAMADA[nNumeroLinha] :=   S_Produto_PesoBruto
+     taUnidadeVolumePesoCAMADA[nNumeroLinha] :=   S_Produto_UnidadeVolumePeso
+     taMaterialDescriptionCAMADA[nNumeroLinha] :=   S_Produto_MaterialDescription
+     taReferenceMaterialCAMADA[nNumeroLinha] :=   S_Produto_ReferenceMaterial
+     taHazMatNumCAMADA[nNumeroLinha] :=   S_Produto_HazMatNum
+     taRShLiCAMADA[nNumeroLinha] :=   S_Produto_RShLi
+     taSLifeCAMADA[nNumeroLinha] :=   S_Produto_SLife
+     taPerIndCAMADA[nNumeroLinha] :=   S_Produto_PerInd
+	 taCodActCAMADA[nNumeroLinha] := S_Produto_CodAct
+	 taCODMDRCAMADA[nNumeroLinha] :=   S_Produto_CODMDR
+	 taCODMDSCAMADA[nNumeroLinha] :=   S_Produto_CODMDS
+  endif
+  
+  
+  if taUMA[nNumeroLinha] = "PAL" then
+  
+     taMaterialPAL[nNumeroLinha] :=   S_Produto_Material
+     taUMAPAL[nNumeroLinha] :=   S_Produto_UMA
+     taContadorPAL[nNumeroLinha] :=   S_Produto_Contador
+     taCodigo_EAN_UPCPAL[nNumeroLinha] :=   S_Produto_Codigo_EAN_UPC
+     taCgPAL[nNumeroLinha] :=   S_Produto_Cg
+     taComprimentoPAL[nNumeroLinha] :=   S_Produto_Comprimento
+     taLarguraPAL[nNumeroLinha] :=   S_Produto_Largura
+     taAlturaPAL[nNumeroLinha] :=   S_Produto_Altura
+     taUOMmedidasPAL[nNumeroLinha] :=   S_Produto_UOMmedidas
+     taVolumePAL[nNumeroLinha] :=   S_Produto_Volume
+     taUVIPAL[nNumeroLinha] :=   S_Produto_UVI
+     taPesoBrutoPAL[nNumeroLinha] :=   S_Produto_PesoBruto
+     taUnidadeVolumePesoPAL[nNumeroLinha] :=   S_Produto_UnidadeVolumePeso
+     taMaterialDescriptionPAL[nNumeroLinha] :=   S_Produto_MaterialDescription
+     taReferenceMaterialPAL[nNumeroLinha] :=   S_Produto_ReferenceMaterial
+     taHazMatNumPAL[nNumeroLinha] :=   S_Produto_HazMatNum
+     taRShLiPAL[nNumeroLinha] :=   S_Produto_RShLi
+     taSLifePAL[nNumeroLinha] :=   S_Produto_SLife
+     taPerIndPAL[nNumeroLinha] :=   S_Produto_PerInd
+	 taCodActPAL[nNumeroLinha] := S_Produto_CodAct
+	 taCODMDRPAL[nNumeroLinha] :=   S_Produto_CODMDR
+	 taCODMDSPAL[nNumeroLinha] :=   S_Produto_CODMDS
+  endif
+endif  
+endif 
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+
+
+
+
+print("taUMA[1] ",taUMA[1],NL)
+
+nTempNumeroLinha  := 1
+nNumeroConsidera := 0
+while nTempNumeroLinha <= nNumeroLinha do
+   print("nTempNumeroLinha ",nTempNumeroLinha ,NL)
+   if baRegistoAConsiderar[nTempNumeroLinha] = TRUE then
+                nNumeroConsidera++                             
+   
+               if taUMA[nTempNumeroLinha] = "ST" then 
+                
+                  taFinalMaterialUN[nNumeroConsidera] :=   taMaterialUN[nTempNumeroLinha]
+                  taFinalUMAUN[nNumeroConsidera] :=   taUMAUN[nTempNumeroLinha]
+                  taFinalContadorUN[nNumeroConsidera] :=   taContadorUN[nTempNumeroLinha]
+                  taFinalCodigo_EAN_UPCUN[nNumeroConsidera] :=  taCodigo_EAN_UPCUN[nTempNumeroLinha]
+                  taFinalCgUN[nNumeroConsidera] :=   taCgUN[nTempNumeroLinha]
+                  taFinalComprimentoUN[nNumeroConsidera] :=   taComprimentoUN[nTempNumeroLinha]
+                  taFinalLarguraUN[nNumeroConsidera] :=   taLarguraUN[nTempNumeroLinha]
+                  taFinalAlturaUN[nNumeroConsidera] :=   taAlturaUN[nTempNumeroLinha]
+                  taFinalUOMmedidasUN[nNumeroConsidera] :=   taUOMmedidasUN[nTempNumeroLinha]
+                  taFinalVolumeUN[nNumeroConsidera] :=   taVolumeUN[nTempNumeroLinha]
+                  taFinalUVIUN[nNumeroConsidera] :=   taUVIUN[nTempNumeroLinha]
+                  taFinalPesoBrutoUN[nNumeroConsidera] :=   taPesoBrutoUN[nTempNumeroLinha]
+                  taFinalUnidadeVolumePesoUN[nNumeroConsidera] :=   taUnidadeVolumePesoUN[nTempNumeroLinha]
+                  taFinalMaterialDescriptionUN[nNumeroConsidera] :=    taMaterialDescriptionUN[nTempNumeroLinha]
+                  taFinalReferenceMaterialUN[nNumeroConsidera] :=   taReferenceMaterialUN[nTempNumeroLinha]
+                  taFinalHazMatNumUN[nNumeroConsidera] :=   taHazMatNumUN[nTempNumeroLinha]
+                  taFinalRShLiUN[nNumeroConsidera] :=   taRShLiUN[nTempNumeroLinha]
+                  taFinalSLifeUN[nNumeroConsidera] :=   taSLifeUN[nTempNumeroLinha]
+                  taFinalPerIndUN[nNumeroConsidera] :=   taPerIndUN[nTempNumeroLinha]
+					taFinalCodActUN[nNumeroConsidera] := taCodActUN[nTempNumeroLinha]
+					taFinalCODMDRUN[nNumeroConsidera] :=   taCODMDRUN[nTempNumeroLinha]
+					taFinalCODMDSUN[nNumeroConsidera] :=   taCODMDSUN[nTempNumeroLinha]
+                endif
+                
+                
+                 if taUMA[nTempNumeroLinha] = "ZR1" then 
+				 
+					taFinalContadorZR1[nNumeroConsidera] :=   taContadorZR1[nTempNumeroLinha]
+					taFinalComprimentoZR1[nNumeroConsidera] := taComprimentoZR1[nTempNumeroLinha]
+					taFinalLarguraZR1[nNumeroConsidera] := taLarguraZR1[nTempNumeroLinha]
+					taFinalAlturaZR1[nNumeroConsidera] := taAlturaZR1[nTempNumeroLinha]
+					taFinalPesoBrutoZR1[nNumeroConsidera] := taPesoBrutoZR1[nTempNumeroLinha]
+					taFinalUnidadeVolumePesoZR1[nNumeroConsidera] :=   taUnidadeVolumePesoZR1[nTempNumeroLinha]
+					taFinalVolumeZR1[nNumeroConsidera] :=   taVolumeZR1[nTempNumeroLinha]
+					taFinalUOMmedidasZR1[nNumeroConsidera] :=   taUOMmedidasZR1[nTempNumeroLinha]
+					taFinalCodigo_EAN_UPCZR1[nNumeroConsidera] :=  taCodigo_EAN_UPCZR1[nTempNumeroLinha]
+					taFinalMaterialDescriptionZR1[nNumeroConsidera] :=    taMaterialDescriptionZR1[nTempNumeroLinha]
+					taFinalCodActZR1[nNumeroConsidera] := taCodActZR1[nTempNumeroLinha]
+					taFinalCODMDRZR1[nNumeroConsidera] :=   taCODMDRZR1[nTempNumeroLinha]
+					taFinalCODMDSZR1[nNumeroConsidera] :=   taCODMDSZR1[nTempNumeroLinha]
+				endif
+                
+                if taUMA[nTempNumeroLinha] = "ZR2" then 
+                   taFinalMaterialCX[nNumeroConsidera] :=   taMaterialCX[nTempNumeroLinha]
+                  taFinalUMACX[nNumeroConsidera] :=   taUMACX[nTempNumeroLinha]
+                  taFinalContadorCX[nNumeroConsidera] :=   taContadorCX[nTempNumeroLinha]
+                  taFinalCodigo_EAN_UPCCX[nNumeroConsidera] :=  taCodigo_EAN_UPCCX[nTempNumeroLinha]
+                  taFinalCgCX[nNumeroConsidera] :=   taCgCX[nTempNumeroLinha]
+                  taFinalComprimentoCX[nNumeroConsidera] :=   taComprimentoCX[nTempNumeroLinha]
+                  taFinalLarguraCX[nNumeroConsidera] :=   taLarguraCX[nTempNumeroLinha]
+                  taFinalAlturaCX[nNumeroConsidera] :=   taAlturaCX[nTempNumeroLinha]
+                  taFinalUOMmedidasCX[nNumeroConsidera] :=   taUOMmedidasCX[nTempNumeroLinha]
+                  taFinalVolumeCX[nNumeroConsidera] :=   taVolumeCX[nTempNumeroLinha]
+                  taFinalUVICX[nNumeroConsidera] :=   taUVICX[nTempNumeroLinha]
+                  taFinalPesoBrutoCX[nNumeroConsidera] :=   taPesoBrutoCX[nTempNumeroLinha]
+                  taFinalUnidadeVolumePesoCX[nNumeroConsidera] :=   taUnidadeVolumePesoCX[nTempNumeroLinha]
+                  taFinalMaterialDescriptionCX[nNumeroConsidera] :=    taMaterialDescriptionCX[nTempNumeroLinha]
+                  taFinalReferenceMaterialCX[nNumeroConsidera] :=   taReferenceMaterialCX[nTempNumeroLinha]
+                  taFinalHazMatNumCX[nNumeroConsidera] :=   taHazMatNumCX[nTempNumeroLinha]
+                  taFinalRShLiCX[nNumeroConsidera] :=   taRShLiCX[nTempNumeroLinha]
+                  taFinalSLifeCX[nNumeroConsidera] :=   taSLifeCX[nTempNumeroLinha]
+                  taFinalPerIndCX[nNumeroConsidera] :=   taPerIndCX[nTempNumeroLinha]
+				  taFinalCodActCX[nNumeroConsidera] := taCodActCX[nTempNumeroLinha]
+				  taFinalCODMDRCX[nNumeroConsidera] :=   taCODMDRCX[nTempNumeroLinha]
+				  taFinalCODMDSCX[nNumeroConsidera] :=   taCODMDSCX[nTempNumeroLinha]
+                endif
+                        
+                        
+                if taUMA[nTempNumeroLinha] = "ZLA" then 
+                taFinalMaterialCAMADA[nNumeroConsidera] :=   taMaterialCAMADA[nTempNumeroLinha]
+                  taFinalUMACAMADA[nNumeroConsidera] :=   taUMACAMADA[nTempNumeroLinha]
+                  taFinalContadorCAMADA[nNumeroConsidera] :=   taContadorCAMADA[nTempNumeroLinha]
+                  taFinalCodigo_EAN_UPCCAMADA[nNumeroConsidera] :=  taCodigo_EAN_UPCCAMADA[nTempNumeroLinha]
+                  taFinalCgCAMADA[nNumeroConsidera] :=   taCgCAMADA[nTempNumeroLinha]
+                  taFinalComprimentoCAMADA[nNumeroConsidera] :=   taComprimentoCAMADA[nTempNumeroLinha]
+                  taFinalLarguraCAMADA[nNumeroConsidera] :=   taLarguraCAMADA[nTempNumeroLinha]
+                  taFinalAlturaCAMADA[nNumeroConsidera] :=   taAlturaCAMADA[nTempNumeroLinha]
+                  taFinalUOMmedidasCAMADA[nNumeroConsidera] :=   taUOMmedidasCAMADA[nTempNumeroLinha]
+                  taFinalVolumeCAMADA[nNumeroConsidera] :=   taVolumeCAMADA[nTempNumeroLinha]
+                  taFinalUVICAMADA[nNumeroConsidera] :=   taUVICAMADA[nTempNumeroLinha]
+                  taFinalPesoBrutoCAMADA[nNumeroConsidera] :=   taPesoBrutoCAMADA[nTempNumeroLinha]
+                  taFinalUnidadeVolumePesoCAMADA[nNumeroConsidera] :=   taUnidadeVolumePesoCAMADA[nTempNumeroLinha]
+                  taFinalMaterialDescriptioCAMADA[nNumeroConsidera] :=    taMaterialDescriptionCAMADA[nTempNumeroLinha]
+                  taFinalReferenceMaterialCAMADA[nNumeroConsidera] :=   taReferenceMaterialCAMADA[nTempNumeroLinha]
+                  taFinalHazMatNumCAMADA[nNumeroConsidera] :=   taHazMatNumCAMADA[nTempNumeroLinha]
+                  taFinalRShLiCAMADA[nNumeroConsidera] :=   taRShLiCAMADA[nTempNumeroLinha]
+                  taFinalSLifeCAMADA[nNumeroConsidera] :=   taSLifeCAMADA[nTempNumeroLinha]
+                  taFinalPerIndCAMADA[nNumeroConsidera] :=   taPerIndCAMADA[nTempNumeroLinha]
+				  taFinalCodActCAMADA[nNumeroConsidera] := taCodActCAMADA[nTempNumeroLinha]
+				  taFinalCODMDRCAMADA[nNumeroConsidera] :=   taCODMDRCAMADA[nTempNumeroLinha]
+					taFinalCODMDSCAMADA[nNumeroConsidera] :=   taCODMDSCAMADA[nTempNumeroLinha]
+                endif
+                               
+                
+                
+               
+                if taUMA[nTempNumeroLinha] = "PAL" then 
+                
+                      taFinalMaterialPAL[nNumeroConsidera] :=   taMaterialPAL[nTempNumeroLinha]
+                  taFinalUMAPAL[nNumeroConsidera] :=   taUMAPAL[nTempNumeroLinha]
+                  taFinalContadorPAL[nNumeroConsidera] :=   taContadorPAL[nTempNumeroLinha]
+                  taFinalCodigo_EAN_UPCPAL[nNumeroConsidera] :=  taCodigo_EAN_UPCPAL[nTempNumeroLinha]
+                  taFinalCgPAL[nNumeroConsidera] :=   taCgPAL[nTempNumeroLinha]
+                  taFinalComprimentoPAL[nNumeroConsidera] :=   taComprimentoPAL[nTempNumeroLinha]
+                  taFinalLarguraPAL[nNumeroConsidera] :=   taLarguraPAL[nTempNumeroLinha]
+                  taFinalAlturaPAL[nNumeroConsidera] :=   taAlturaPAL[nTempNumeroLinha]
+                  taFinalUOMmedidasPAL[nNumeroConsidera] :=   taUOMmedidasPAL[nTempNumeroLinha]
+                  taFinalVolumePAL[nNumeroConsidera] :=   taVolumePAL[nTempNumeroLinha]
+                  taFinalUVIPAL[nNumeroConsidera] :=   taUVIPAL[nTempNumeroLinha]
+                  taFinalPesoBrutoPAL[nNumeroConsidera] :=   taPesoBrutoPAL[nTempNumeroLinha]
+                  taFinalUnidadeVolumePesoPAL[nNumeroConsidera] :=   taUnidadeVolumePesoPAL[nTempNumeroLinha]
+                  taFinalMaterialDescriptionPAL[nNumeroConsidera] :=    taMaterialDescriptionPAL[nTempNumeroLinha]
+                  taFinalReferenceMaterialPAL[nNumeroConsidera] :=   taReferenceMaterialPAL[nTempNumeroLinha]
+                  taFinalHazMatNumPAL[nNumeroConsidera] :=   taHazMatNumPAL[nTempNumeroLinha]
+                  taFinalRShLiPAL[nNumeroConsidera] :=   taRShLiPAL[nTempNumeroLinha]
+                  taFinalSLifePAL[nNumeroConsidera] :=   taSLifePAL[nTempNumeroLinha]
+                  taFinalPerIndPAL[nNumeroConsidera] :=   taPerIndPAL[nTempNumeroLinha]
+				  taFinalCodActPAL[nNumeroConsidera] := taCodActPAL[nTempNumeroLinha]
+				  taFinalCODMDRPAL[nNumeroConsidera] :=   taCODMDRPAL[nTempNumeroLinha]
+					taFinalCODMDSPAL[nNumeroConsidera] :=   taCODMDSPAL[nTempNumeroLinha]
+                endif
+                      
+   
+   
+   
+   
+   
+   
+   
+      nTempNumeroLinha2 := nTempNumeroLinha +1 
+      while nTempNumeroLinha2 <= nNumeroLinha do
+            if taMaterial[nTempNumeroLinha2] = taMaterial[nTempNumeroLinha] and  baRegistoAConsiderar[nTempNumeroLinha2] = TRUE then
+               baRegistoAConsiderar[nTempNumeroLinha2] := FALSE
+               if taUMA[nTempNumeroLinha2] = "ST" then 
+                taFinalMaterialUN[nNumeroConsidera] :=   taMaterialUN[nTempNumeroLinha2]
+                  taFinalUMAUN[nNumeroConsidera] :=   taUMAUN[nTempNumeroLinha2]
+                  taFinalContadorUN[nNumeroConsidera] :=   taContadorUN[nTempNumeroLinha2]
+                  taFinalCodigo_EAN_UPCUN[nNumeroConsidera] :=  taCodigo_EAN_UPCUN[nTempNumeroLinha2]
+                  taFinalCgUN[nNumeroConsidera] :=   taCgUN[nTempNumeroLinha2]
+                  taFinalComprimentoUN[nNumeroConsidera] :=   taComprimentoUN[nTempNumeroLinha2]
+                  taFinalLarguraUN[nNumeroConsidera] :=   taLarguraUN[nTempNumeroLinha2]
+                  taFinalAlturaUN[nNumeroConsidera] :=   taAlturaUN[nTempNumeroLinha2]
+                  taFinalUOMmedidasUN[nNumeroConsidera] :=   taUOMmedidasUN[nTempNumeroLinha2]
+                  taFinalVolumeUN[nNumeroConsidera] :=   taVolumeUN[nTempNumeroLinha2]
+                  taFinalUVIUN[nNumeroConsidera] :=   taUVIUN[nTempNumeroLinha2]
+                  taFinalPesoBrutoUN[nNumeroConsidera] :=   taPesoBrutoUN[nTempNumeroLinha2]
+                  taFinalUnidadeVolumePesoUN[nNumeroConsidera] :=   taUnidadeVolumePesoUN[nTempNumeroLinha2]
+                  taFinalMaterialDescriptionUN[nNumeroConsidera] :=    taMaterialDescriptionUN[nTempNumeroLinha2]
+                  taFinalReferenceMaterialUN[nNumeroConsidera] :=   taReferenceMaterialUN[nTempNumeroLinha2]
+                  taFinalHazMatNumUN[nNumeroConsidera] :=   taHazMatNumUN[nTempNumeroLinha2]
+                  taFinalRShLiUN[nNumeroConsidera] :=   taRShLiUN[nTempNumeroLinha2]
+                  taFinalSLifeUN[nNumeroConsidera] :=   taSLifeUN[nTempNumeroLinha2]
+                  taFinalPerIndUN[nNumeroConsidera] :=   taPerIndUN[nTempNumeroLinha2]
+					taFinalCodActUN[nNumeroConsidera] := taCodActUN[nTempNumeroLinha2]
+					taFinalCODMDRUN[nNumeroConsidera] :=   taCODMDRUN[nTempNumeroLinha2]
+					taFinalCODMDSUN[nNumeroConsidera] :=   taCODMDSUN[nTempNumeroLinha2]
+                
+                endif
+                
+                 if taUMA[nTempNumeroLinha2] = "ZR1" then 
+				 
+					taFinalContadorZR1[nNumeroConsidera] :=   taContadorZR1[nTempNumeroLinha2]
+					
+					taFinalComprimentoZR1[nNumeroConsidera] := taComprimentoZR1[nTempNumeroLinha2]
+					taFinalLarguraZR1[nNumeroConsidera] := taLarguraZR1[nTempNumeroLinha2]
+					taFinalAlturaZR1[nNumeroConsidera] := taAlturaZR1[nTempNumeroLinha2]
+					taFinalPesoBrutoZR1[nNumeroConsidera] := taPesoBrutoZR1[nTempNumeroLinha2]
+					taFinalUnidadeVolumePesoZR1[nNumeroConsidera] :=   taUnidadeVolumePesoZR1[nTempNumeroLinha2]
+					
+					taFinalVolumeZR1[nNumeroConsidera] :=   taVolumeZR1[nTempNumeroLinha2]
+					taFinalUOMmedidasZR1[nNumeroConsidera] :=   taUOMmedidasZR1[nTempNumeroLinha2]
+					taFinalCodigo_EAN_UPCZR1[nNumeroConsidera] :=  taCodigo_EAN_UPCZR1[nTempNumeroLinha2]
+					taFinalMaterialDescriptionZR1[nNumeroConsidera] :=    taMaterialDescriptionZR1[nTempNumeroLinha2]
+					taFinalCodActZR1[nNumeroConsidera] := taCodActZR1[nTempNumeroLinha2]
+					taFinalCODMDRZR1[nNumeroConsidera] :=   taCODMDRZR1[nTempNumeroLinha2]
+					taFinalCODMDSZR1[nNumeroConsidera] :=   taCODMDSZR1[nTempNumeroLinha2]
+				endif
+                
+                if taUMA[nTempNumeroLinha2] = "ZR2" then 
+                
+                        taFinalMaterialCX[nNumeroConsidera] :=   taMaterialCX[nTempNumeroLinha2]
+                  taFinalUMACX[nNumeroConsidera] :=   taUMACX[nTempNumeroLinha2]
+                  taFinalContadorCX[nNumeroConsidera] :=   taContadorCX[nTempNumeroLinha2]
+                  taFinalCodigo_EAN_UPCCX[nNumeroConsidera] :=  taCodigo_EAN_UPCCX[nTempNumeroLinha2]
+                  taFinalCgCX[nNumeroConsidera] :=   taCgCX[nTempNumeroLinha2]
+                  taFinalComprimentoCX[nNumeroConsidera] :=   taComprimentoCX[nTempNumeroLinha2]
+                  taFinalLarguraCX[nNumeroConsidera] :=   taLarguraCX[nTempNumeroLinha2]
+                  taFinalAlturaCX[nNumeroConsidera] :=   taAlturaCX[nTempNumeroLinha2]
+                  taFinalUOMmedidasCX[nNumeroConsidera] :=   taUOMmedidasCX[nTempNumeroLinha2]
+                  taFinalVolumeCX[nNumeroConsidera] :=   taVolumeCX[nTempNumeroLinha2]
+                  taFinalUVICX[nNumeroConsidera] :=   taUVICX[nTempNumeroLinha2]
+                  taFinalPesoBrutoCX[nNumeroConsidera] :=   taPesoBrutoCX[nTempNumeroLinha2]
+                  taFinalUnidadeVolumePesoCX[nNumeroConsidera] :=   taUnidadeVolumePesoCX[nTempNumeroLinha2]
+                  taFinalMaterialDescriptionCX[nNumeroConsidera] :=    taMaterialDescriptionCX[nTempNumeroLinha2]
+                  taFinalReferenceMaterialCX[nNumeroConsidera] :=   taReferenceMaterialCX[nTempNumeroLinha2]
+                  taFinalHazMatNumCX[nNumeroConsidera] :=   taHazMatNumCX[nTempNumeroLinha2]
+                  taFinalRShLiCX[nNumeroConsidera] :=   taRShLiCX[nTempNumeroLinha2]
+                  taFinalSLifeCX[nNumeroConsidera] :=   taSLifeCX[nTempNumeroLinha2]
+                  taFinalPerIndCX[nNumeroConsidera] :=   taPerIndCX[nTempNumeroLinha2]
+				  taFinalCodActCX[nNumeroConsidera] := taCodActCX[nTempNumeroLinha2]
+					taFinalCODMDRCX[nNumeroConsidera] :=   taCODMDRCX[nTempNumeroLinha2]
+					taFinalCODMDSCX[nNumeroConsidera] :=   taCODMDSCX[nTempNumeroLinha2]
+                endif
+                        
+                        
+                if taUMA[nTempNumeroLinha2] = "ZLA" then 
+                
+                      taFinalMaterialCAMADA[nNumeroConsidera] :=   taMaterialCAMADA[nTempNumeroLinha2]
+                  taFinalUMACAMADA[nNumeroConsidera] :=   taUMACAMADA[nTempNumeroLinha2]
+                  taFinalContadorCAMADA[nNumeroConsidera] :=   taContadorCAMADA[nTempNumeroLinha2]
+                  taFinalCodigo_EAN_UPCCAMADA[nNumeroConsidera] :=  taCodigo_EAN_UPCCAMADA[nTempNumeroLinha2]
+                  taFinalCgCAMADA[nNumeroConsidera] :=   taCgCAMADA[nTempNumeroLinha2]
+                  taFinalComprimentoCAMADA[nNumeroConsidera] :=   taComprimentoCAMADA[nTempNumeroLinha2]
+                  taFinalLarguraCAMADA[nNumeroConsidera] :=   taLarguraCAMADA[nTempNumeroLinha2]
+                  taFinalAlturaCAMADA[nNumeroConsidera] :=   taAlturaCAMADA[nTempNumeroLinha2]
+                  taFinalUOMmedidasCAMADA[nNumeroConsidera] :=   taUOMmedidasCAMADA[nTempNumeroLinha2]
+                  taFinalVolumeCAMADA[nNumeroConsidera] :=   taVolumeCAMADA[nTempNumeroLinha2]
+                  taFinalUVICAMADA[nNumeroConsidera] :=   taUVICAMADA[nTempNumeroLinha2]
+                  taFinalPesoBrutoCAMADA[nNumeroConsidera] :=   taPesoBrutoCAMADA[nTempNumeroLinha2]
+                  taFinalUnidadeVolumePesoCAMADA[nNumeroConsidera] :=   taUnidadeVolumePesoCAMADA[nTempNumeroLinha2]
+                  taFinalMaterialDescriptioCAMADA[nNumeroConsidera] :=    taMaterialDescriptionCAMADA[nTempNumeroLinha2]
+                  taFinalReferenceMaterialCAMADA[nNumeroConsidera] :=   taReferenceMaterialCAMADA[nTempNumeroLinha2]
+                  taFinalHazMatNumCAMADA[nNumeroConsidera] :=   taHazMatNumCAMADA[nTempNumeroLinha2]
+                  taFinalRShLiCAMADA[nNumeroConsidera] :=   taRShLiCAMADA[nTempNumeroLinha2]
+                  taFinalSLifeCAMADA[nNumeroConsidera] :=   taSLifeCAMADA[nTempNumeroLinha2]
+                  taFinalPerIndCAMADA[nNumeroConsidera] :=   taPerIndCAMADA[nTempNumeroLinha2]
+				  taFinalCodActCAMADA[nNumeroConsidera] := taCodActCAMADA[nTempNumeroLinha2]
+				  	taFinalCODMDRCAMADA[nNumeroConsidera] :=   taCODMDRCAMADA[nTempNumeroLinha2]
+					taFinalCODMDSCAMADA[nNumeroConsidera] :=   taCODMDSCAMADA[nTempNumeroLinha2]
+                endif
+                               
+                
+                
+               
+                if taUMA[nTempNumeroLinha2] = "PAL" then 
+                
+                         taFinalMaterialPAL[nNumeroConsidera] :=   taMaterialPAL[nTempNumeroLinha2]
+                  taFinalUMAPAL[nNumeroConsidera] :=   taUMAPAL[nTempNumeroLinha2]
+                  taFinalContadorPAL[nNumeroConsidera] :=   taContadorPAL[nTempNumeroLinha2]
+                  taFinalCodigo_EAN_UPCPAL[nNumeroConsidera] :=  taCodigo_EAN_UPCPAL[nTempNumeroLinha2]
+                  taFinalCgPAL[nNumeroConsidera] :=   taCgPAL[nTempNumeroLinha2]
+                  taFinalComprimentoPAL[nNumeroConsidera] :=   taComprimentoPAL[nTempNumeroLinha2]
+                  taFinalLarguraPAL[nNumeroConsidera] :=   taLarguraPAL[nTempNumeroLinha2]
+                  taFinalAlturaPAL[nNumeroConsidera] :=   taAlturaPAL[nTempNumeroLinha2]
+                  taFinalUOMmedidasPAL[nNumeroConsidera] :=   taUOMmedidasPAL[nTempNumeroLinha2]
+                  taFinalVolumePAL[nNumeroConsidera] :=   taVolumePAL[nTempNumeroLinha2]
+                  taFinalUVIPAL[nNumeroConsidera] :=   taUVIPAL[nTempNumeroLinha2]
+                  taFinalPesoBrutoPAL[nNumeroConsidera] :=   taPesoBrutoPAL[nTempNumeroLinha2]
+                  taFinalUnidadeVolumePesoPAL[nNumeroConsidera] :=   taUnidadeVolumePesoPAL[nTempNumeroLinha2]
+                  taFinalMaterialDescriptionPAL[nNumeroConsidera] :=    taMaterialDescriptionPAL[nTempNumeroLinha2]
+                  taFinalReferenceMaterialPAL[nNumeroConsidera] :=   taReferenceMaterialPAL[nTempNumeroLinha2]
+                  taFinalHazMatNumPAL[nNumeroConsidera] :=   taHazMatNumPAL[nTempNumeroLinha2]
+                  taFinalRShLiPAL[nNumeroConsidera] :=   taRShLiPAL[nTempNumeroLinha2]
+                  taFinalSLifePAL[nNumeroConsidera] :=   taSLifePAL[nTempNumeroLinha2]
+                  taFinalPerIndPAL[nNumeroConsidera] :=   taPerIndPAL[nTempNumeroLinha2]
+				  taFinalCodActPAL[nNumeroConsidera] := taCodActPAL[nTempNumeroLinha2]
+				  	taFinalCODMDRPAL[nNumeroConsidera] :=   taCODMDRUN[nTempNumeroLinha2]
+					taFinalCODMDSPAL[nNumeroConsidera] :=   taCODMDSUN[nTempNumeroLinha2]
+                endif
+                       
+                        
+                               
+            endif            
+      
+            nTempNumeroLinha2++
+      endwhile
+   endif
+   
+
+   nTempNumeroLinha++
+endwhile
+ 
+ 
+  if nContadorLinhasEscritas = 0 then
+     R_00HEADER_CODEXC("00")
+     R_00HEADER_SEPEXC(".")
+     R_00HEADER_SCOEXC("00")
+     R_00HEADER_TRTEXC("")
+     R_00HEADER_EMTEXC("FM") 
+     R_00HEADER_RCTEXC("")
+     R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_00HEADER_NUMEXC("0000000")
+     R_00HEADER_ACQEXC("0")
+     R_00HEADER_VEREXC("5.00") 
+     R_00HEADER_NOMSYS("")  
+     R_00HEADER_NOMDTQ("M30")
+     R_00HEADER_BIBDTQ("")
+     R_00HEADER_LIBEXC(build(nMessageID:R010))
+     R_00HEADER_BIBDST("")
+     R_00HEADER_PGMDST("")
+     R_00HEADER_PARDST("")
+     R_00HEADER_CODACT("")
+     R_00HEADER_IGLSIT("")
+     R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_00HEADER_IMAEXC("")  
+     R_00HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+     
+   endif
+ 
+ 
+ print("nNumeroConsidera  ",nNumeroConsidera ,NL)
+ 
+ nTempNumeroLinha  := 1
+while nTempNumeroLinha <= nNumeroConsidera do
+! if baRegistoAConsiderar[nTempNumeroLinha] = TRUE then
+   R_30PRODUCTINFORMATION_CODEXC("30")
+   R_30PRODUCTINFORMATION_SEPEXC(".")
+   R_30PRODUCTINFORMATION_SCOEXC("00")
+   R_30PRODUCTINFORMATION_TRTEXC("2")
+   R_30PRODUCTINFORMATION_CODACT(taFinalCodActUN[nTempNumeroLinha])    !(eECODACT)
+   R_30PRODUCTINFORMATION_CODPRO(taFinalMaterialUN[nTempNumeroLinha])  
+   !R_30PRODUCTINFORMATION_VALPRO(eEVALPRO)
+   !R_30PRODUCTINFORMATION_DS1PRO(substr(tDSPROAux,1,30))
+   !R_30PRODUCTINFORMATION_DS2PRO(substr(tDSPROAux,1,30))
+   R_30PRODUCTINFORMATION_FOUPRO("9999")
+   !R_30PRODUCTINFORMATION_VAPPRO(eEVAPPRO) 
+   !R_30PRODUCTINFORMATION_FAMPRO(eEFAMPRO)
+   !R_30PRODUCTINFORMATION_ANAPRO(eEANAPRO)   ! M 
+   !R_30PRODUCTINFORMATION_EDIPRO(tDUN_14)   ! M  
+   R_30PRODUCTINFORMATION_SPCPRO(build(number(taFinalContadorZR1[nTempNumeroLinha]):R04))
+   R_30PRODUCTINFORMATION_PCBPRO(build(number(taFinalContadorCX[nTempNumeroLinha]):R05))   ! M  
+   !R_30PRODUCTINFORMATION_UNIPRO(eEUNIPRO)   ! M  
+   !R_30PRODUCTINFORMATION_MESPRO(eEMESPRO)   ! M 
+!   R_30PRODUCTINFORMATION_PDBUVC("0001256")   ! M 
+   !R_30PRODUCTINFORMATION_PDNUVC(eEPDNUVC)   ! M  
+   R_30PRODUCTINFORMATION_DS1PRO(taFinalMaterialDescriptionUN[nTempNumeroLinha])
+   R_30PRODUCTINFORMATION_FOUPRO("33306929000798")! ver
+   
+   
+   
+   !R_30PRODUCTINFORMATION_TOPPRN(tPLUV_PLU_do_Composto) !ver
+   if taFinalUnidadeVolumePesoCX[nTempNumeroLinha] = "KG" then
+      tCont := build(number(taFinalPesoBrutoCX[nTempNumeroLinha]) * 1000)
+   else
+      tCont := build(number(taFinalPesoBrutoCX[nTempNumeroLinha]) )
+   endif
+   R_30PRODUCTINFORMATION_PDBCOL(build(number(tCont):R07)) 
+   
+   if taFinalUOMmedidasCX[nTempNumeroLinha] = "MM" then
+      tCont1 := build(number(taFinalAlturaCX[nTempNumeroLinha]) / 10)
+      tCont2 := build(number(taFinalComprimentoCX[nTempNumeroLinha]) / 10)
+      tCont3 := build(number(taFinalLarguraCX[nTempNumeroLinha]) / 10)
+   else
+      tCont1 := build(number(taFinalAlturaCX[nTempNumeroLinha]) * 1)
+      tCont2 := build(number(taFinalComprimentoCX[nTempNumeroLinha]) * 1)
+      tCont3 := build(number(taFinalLarguraCX[nTempNumeroLinha]) * 1)
+   endif
+   R_30PRODUCTINFORMATION_HAUCOL(build(number(tCont1 ):R03)) 
+   R_30PRODUCTINFORMATION_LNGCOL(build(number(tCont2 ):R03)) 
+   R_30PRODUCTINFORMATION_LRGCOL(build(number(tCont3 ):R03)) 
+   print("taFinalMaterialDescriptionUN[nTempNumeroLinha] ",taFinalMaterialDescriptionUN[nTempNumeroLinha],NL)
+   print("[nTempNumeroLinha] ",nTempNumeroLinha,NL)
+
+   /*
+   nContComprimento := number(taFinalComprimentoPAL[nTempNumeroLinha])/number(taFinalComprimentoCX[nTempNumeroLinha])
+   nContAltura := number(taFinalAlturaPAL[nTempNumeroLinha])/number(taFinalAlturaCX[nTempNumeroLinha])
+   nContLargura := number(taFinalLarguraPAL[nTempNumeroLinha])/number(taFinalLarguraCX[nTempNumeroLinha])
+   
+   nMenorValorDert := nfRetornaMenorValor(nContComprimento,nContAltura,nContLargura )
+   tMenorValorDert := build(nMenorValorDert)
+   tCont := build(substr(tMenorValorDert,1,index(tMenorValorDert,".")-1))
+   */
+   if number(taFinalContadorCX[nTempNumeroLinha]) = 0 then
+	log("taFinalContadorCX[nTempNumeroLinha] ",taFinalContadorCX[nTempNumeroLinha],NL)
+	log("nTempNumeroLinha ",nTempNumeroLinha,NL)
+endif
+   tCont := build(number(taFinalContadorCAMADA[nTempNumeroLinha])/number(taFinalContadorCX[nTempNumeroLinha]))
+   R_30PRODUCTINFORMATION_COLCOU(build(number(tCont):R04)) !ver
+   R_30PRODUCTINFORMATION_COLCOU2(build(number(tCont ):R04)) !ver
+   tCont := build(number(taFinalContadorPAL[nTempNumeroLinha])/number(taFinalContadorCAMADA[nTempNumeroLinha]))
+	R_30PRODUCTINFORMATION_COUPAL(build(number(tCont ):R04)) !ver
+ R_30PRODUCTINFORMATION_COUPAL2(build(number(tCont ):R04)) !ver
+ 
+ 
+   
+   if taFinalUOMmedidasUN[nTempNumeroLinha] = "MM" then
+      tCont1 := build(number(taFinalAlturaUN[nTempNumeroLinha]) / 10)
+      tCont2 := build(number(taFinalComprimentoUN[nTempNumeroLinha]) / 10)
+      tCont3 := build(number(taFinalLarguraUN[nTempNumeroLinha]) / 10)
+   else
+      tCont1 := build(number(taFinalAlturaUN[nTempNumeroLinha]) * 1)
+      tCont2 := build(number(taFinalComprimentoUN[nTempNumeroLinha]) * 1)
+      tCont3 := build(number(taFinalLarguraUN[nTempNumeroLinha]) * 1)
+   endif
+ /*
+ 
+   R_30PRODUCTINFORMATION_HAUUVC(build(number(tCont1 ):R03)) !tAltura_unidade_) 
+   R_30PRODUCTINFORMATION_LNGUVC(build(number(tCont2 ):R03)) !tComprimento_unidade) 
+   R_30PRODUCTINFORMATION_LRGUVC(build(number(tCont3 ):R03)) !tLargura_unidade)
+   */
+   
+   if taFinalUnidadeVolumePesoUN[nTempNumeroLinha] = "KG" then
+      tCont := build(number(taFinalPesoBrutoUN[nTempNumeroLinha]) * 1000 )
+   else
+      tCont := build(number(taFinalPesoBrutoUN[nTempNumeroLinha]) )
+   endif
+   
+   R_30PRODUCTINFORMATION_PDBUVC(build(number(tCont ):R07)) 
+	R_30PRODUCTINFORMATION_PDNUVC(build(number(tCont ):R07))    
+ !  R_30PRODUCTINFORMATION_FAMPRO(build(tSeccao,tGrupo,tSub_grupo)) !ver
+   
+	tCont := build(number(taFinalRShLiUN[nTempNumeroLinha]) * 365)
+   R_30PRODUCTINFORMATION_NBJDLV(build(number(tCont ):R03))
+
+   
+   R_30PRODUCTINFORMATION_CODMDR(taFinalCODMDRUN[nTempNumeroLinha])
+   R_30PRODUCTINFORMATION_CODMDS(taFinalCODMDSUN[nTempNumeroLinha])
+   
+   
+   nContadorLinhasEscritas++
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+
+
+
+R_GEEX3002_CODEXC("30")
+R_GEEX3002_SEPEXC(".")
+R_GEEX3002_SCOEXC("02") 
+R_GEEX3002_TRTEXC("2")
+ R_GEEX3002_CODACT(taFinalCodActUN[nTempNumeroLinha] )
+ R_GEEX3002_CODPRO(taFinalMaterialUN[nTempNumeroLinha])
+ 
+ 
+ tCont := build(number(taFinalVolumeZR1[nTempNumeroLinha]) * 1000 )
+R_GEEX3002_COESPC(build(number(tCont):R04))
+!log("taFinalRShLiUN[nTempNumeroLinha] ",taFinalRShLiUN[nTempNumeroLinha],NL)
+   tCont := build(number(taFinalRShLiUN[nTempNumeroLinha]) * 365)
+  ! log("tCont ",tCont,NL)
+   R_GEEX3002_SECDLV(build(number(tCont ):R03))
+   
+   
+   
+   
+    ! log("taFinalSLifeUN[nTempNumeroLinha] ",taFinalSLifeUN[nTempNumeroLinha],NL)
+   tCont := build(number(taFinalSLifeUN[nTempNumeroLinha]) * 365)
+   R_GEEX3002_NBJFVI(build(number(tCont ):R04))
+   
+   
+if taFinalHazMatNumUN[nTempNumeroLinha] = "Z00" or taFinalHazMatNumUN[nTempNumeroLinha] = "0" then
+   !nao escreve
+else
+R_GEEX3002_CODTMD(taFinalHazMatNumUN[nTempNumeroLinha])
+endif
+
+   if taFinalUOMmedidasUN[nTempNumeroLinha] = "MM" then
+      tCont1 := build(number(taFinalAlturaUN[nTempNumeroLinha]) * 10)
+      tCont2 := build(number(taFinalComprimentoUN[nTempNumeroLinha]) * 10)
+      tCont3 := build(number(taFinalLarguraUN[nTempNumeroLinha]) * 10)
+   else
+      tCont1 := build(number(taFinalAlturaUN[nTempNumeroLinha]) * 100)
+      tCont2 := build(number(taFinalComprimentoUN[nTempNumeroLinha]) * 100)
+      tCont3 := build(number(taFinalLarguraUN[nTempNumeroLinha]) * 100)
+   endif
+
+R_GEEX3002_HAUUVC2(build(number(tCont1 ):R05))
+R_GEEX3002_LNGUVC2(build(number(tCont2 ):R05))
+R_GEEX3002_LRGUVC2(build(number(tCont3 ):R05))
+
+
+	  
+   if taFinalUOMmedidasZR1[nTempNumeroLinha] = "MM" then
+      tCont1 := build(number(taFinalAlturaZR1[nTempNumeroLinha]) * 10)
+      tCont2 := build(number(taFinalComprimentoZR1[nTempNumeroLinha]) * 10)
+      tCont3 := build(number(taFinalLarguraZR1[nTempNumeroLinha]) * 10)
+   else
+      tCont1 := build(number(taFinalAlturaZR1[nTempNumeroLinha]) * 100)
+      tCont2 := build(number(taFinalComprimentoZR1[nTempNumeroLinha]) * 100)
+      tCont3 := build(number(taFinalLarguraZR1[nTempNumeroLinha]) * 100)
+   endif
+	  
+R_GEEX3002_HAUSPC2(build(number(tCont1):R05))
+R_GEEX3002_LNGSPC2(build(number(tCont2):R05))
+R_GEEX3002_LRGSPC2(build(number(tCont3):R05))
+ if taFinalUnidadeVolumePesoZR1[nTempNumeroLinha] = "KG" then
+      tCont := build(number(taFinalPesoBrutoZR1[nTempNumeroLinha]) * 1000 )
+   else
+      tCont := build(number(taFinalPesoBrutoZR1[nTempNumeroLinha]) )
+   endif
+   
+   R_GEEX3002_PDBSPC(build(number(tCont ):R07)) 
+
+
+   nContadorLinhasEscritas++
+   flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+
+
+
+    if length(taFinalCodigo_EAN_UPCUN[nTempNumeroLinha]) > 0 then
+
+      R_30EANINFORMATION_CODEXC("30")
+      R_30EANINFORMATION_SEPEXC(".")
+      R_30EANINFORMATION_SCOEXC("20")
+      R_30EANINFORMATION_TRTEXC("2")
+      R_30EANINFORMATION_CODACT(taFinalCodActUN[nTempNumeroLinha] ) 
+      R_30EANINFORMATION_CODPRO(taFinalMaterialUN[nTempNumeroLinha])
+      R_30EANINFORMATION_EDIPRO(taFinalCodigo_EAN_UPCUN[nTempNumeroLinha])
+      R_30EANINFORMATION_EDIPRN("1")
+      R_30EANINFORMATION_EDIQLF("0")
+      R_30EANINFORMATION_DS1PRO(taFinalMaterialDescriptionUN[nTempNumeroLinha])
+
+      nContadorLinhasEscritas++
+      flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00   
+    endif
+    
+    
+    if length(taFinalCodigo_EAN_UPCCX[nTempNumeroLinha]) > 0 then
+
+      R_30EANINFORMATION_CODEXC("30")
+      R_30EANINFORMATION_SEPEXC(".")
+      R_30EANINFORMATION_SCOEXC("20")
+      R_30EANINFORMATION_TRTEXC("2")
+      R_30EANINFORMATION_CODACT(taFinalCodActUN[nTempNumeroLinha] ) 
+      R_30EANINFORMATION_CODPRO(taFinalMaterialUN[nTempNumeroLinha])
+      R_30EANINFORMATION_EDIPRO(taFinalCodigo_EAN_UPCCX[nTempNumeroLinha])
+      R_30EANINFORMATION_EDIPRN("0")
+      R_30EANINFORMATION_EDIQLF("3")
+      R_30EANINFORMATION_DS1PRO(taFinalMaterialDescriptionCX[nTempNumeroLinha])
+
+      nContadorLinhasEscritas++
+      flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00   
+    endif
+	
+	
+	   if length(taFinalCodigo_EAN_UPCZR1[nTempNumeroLinha]) > 0 then
+
+      R_30EANINFORMATION_CODEXC("30")
+      R_30EANINFORMATION_SEPEXC(".")
+      R_30EANINFORMATION_SCOEXC("20")
+      R_30EANINFORMATION_TRTEXC("2")
+      R_30EANINFORMATION_CODACT(taFinalCodActUN[nTempNumeroLinha] ) 
+      R_30EANINFORMATION_CODPRO(taFinalMaterialUN[nTempNumeroLinha])
+      R_30EANINFORMATION_EDIPRO(taFinalCodigo_EAN_UPCZR1[nTempNumeroLinha])
+      R_30EANINFORMATION_EDIPRN("0")
+      R_30EANINFORMATION_EDIQLF("2")
+      R_30EANINFORMATION_DS1PRO(taFinalMaterialDescriptionZR1[nTempNumeroLinha])
+
+      nContadorLinhasEscritas++
+      flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00   
+    endif
+	
+
+/*
+    if length(tDUN_14) > 0 then
+      R_30EANINFORMATION_CODEXC("30")
+      R_30EANINFORMATION_SEPEXC(".")
+      R_30EANINFORMATION_SCOEXC("20")
+      R_30EANINFORMATION_TRTEXC("2")
+      R_30EANINFORMATION_CODACT(taFinalCodActUN[nTempNumeroLinha] )
+      R_30EANINFORMATION_CODPRO(tCodigo_Produto_PLU)
+      R_30EANINFORMATION_EDIPRO(tDUN_14)
+      R_30EANINFORMATION_EDIPRN("0")
+      R_30EANINFORMATION_EDIQLF("3")
+ R_30EANINFORMATION_DS1PRO(tNome_Produto)
+*/
+
+      /* Codigo Fernando Figueiredo!!!!!!!!!!!!!!!!
+
+      if length(tDUN_14) > 0 then
+        R_30EANINFORMATION_EDIPRO(tDUN_14)
+        R_30EANINFORMATION_EDIPRN("1")
+        R_30EANINFORMATION_EDIQLF("0")
+      else
+        R_30EANINFORMATION_EDIPRO(tEAN)
+        R_30EANINFORMATION_EDIPRN("0")
+        R_30EANINFORMATION_EDIQLF("3")
+      endif
+      */   
+/*
+      nContadorLinhasEscritas++
+      flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+
+    endif
+log("aqui3",NL)
+
+*/
+
+!endif
+
+
+
+!583, 58P, 600 e 602
+
+	if taFinalCodActUN[nTempNumeroLinha] = "583" or taFinalCodActUN[nTempNumeroLinha] = "58P" or taFinalCodActUN[nTempNumeroLinha] = "600" or taFinalCodActUN[nTempNumeroLinha] = "602" then
+	if length(taFinalCodigo_EAN_UPCUN[nTempNumeroLinha]) > 0 then	
+		/*
+		QUANDO EDIQLF=0 ENTÃO "AEAN"
+		QUANDO EDIQLF=3 ENTÃO "BEAN"
+		*/
+		R_3050_CODEXC("30")
+		R_3050_SEPEXC(".")
+		R_3050_SCOEXC("50")
+		R_3050_TRTEXC("2") !("2")
+		R_3050_CODACT(taFinalCodActUN[nTempNumeroLinha])
+		R_3050_CODPRO(taFinalMaterialUN[nTempNumeroLinha])
+		R_3050_TYPRUB("2")
+		R_3050_CODRUB("AEAN")
+		R_3050_VALRUB(taFinalCodigo_EAN_UPCUN[nTempNumeroLinha])
+		
+		  nContadorLinhasEscritas++
+		  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00   
+	endif
+	endif
+
+
+
+
+
+	if taFinalCodActUN[nTempNumeroLinha] = "583" or taFinalCodActUN[nTempNumeroLinha] = "58P" or taFinalCodActUN[nTempNumeroLinha] = "600" or taFinalCodActUN[nTempNumeroLinha] = "602" then
+	if length(taFinalCodigo_EAN_UPCCX[nTempNumeroLinha]) > 0 then
+	/*
+		
+		QUANDO EDIQLF=0 ENTÃO "AEAN"
+		QUANDO EDIQLF=3 ENTÃO "BEAN"
+		*/
+		R_3050_CODEXC("30")
+		R_3050_SEPEXC(".")
+		R_3050_SCOEXC("50")
+		R_3050_TRTEXC("2") !("2")
+		R_3050_CODACT(taFinalCodActUN[nTempNumeroLinha])
+		R_3050_CODPRO(taFinalMaterialUN[nTempNumeroLinha])
+		R_3050_TYPRUB("2")
+		R_3050_CODRUB("BEAN")
+		R_3050_VALRUB(taFinalCodigo_EAN_UPCCX[nTempNumeroLinha])
+		
+		  nContadorLinhasEscritas++
+		  flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00   
+		
+	endif
+	endif
+
+
+
+
+
+
+   nTempNumeroLinha++
+endwhile
+
+    R_99FILEFOOTER_CODEXC("99")
+    R_99FILEFOOTER_SEPEXC(".")
+    R_99FILEFOOTER_SCOEXC("00")
+    R_99FILEFOOTER_TRTEXC("")
+    R_99FILEFOOTER_EMTEXC("FM")
+    R_99FILEFOOTER_RCTEXC("")
+    R_99FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+    R_99FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+    R_99FILEFOOTER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_99FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_99FILEFOOTER_NOMSYS("")
+    !R_99FILEFOOTER_NOMDTQ("")
+    !R_99FILEFOOTER_BIBDTQ("")
+    !R_99FILEFOOTER_IDEMSG("")
+    !R_99FILEFOOTER_DISEXC("")
+
+    flush(0,0,NL)  >> tFileOutTemp
+    close(tFileOutTemp)
+
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+
+bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+
+exit(0)
+
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "LOREAL"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "PRODUTOS"
+   TRACE.NUMDOC := time("now","%Y-%m-%d")
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+
+
+
+
+if tError="0" then
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+endif
+flush(TRACE)
+endfunction
+
+
+function nfRetornaMenorValor(nContComprimento,nContAltura,nContLargura )
+if nContComprimento <= nContAltura and nContComprimento <= nContLargura then 
+   return nContComprimento
+else
+   if nContAltura <= nContComprimento  and nContAltura <= nContLargura then 
+      return nContAltura 
+   else
+      if nContLargura <= nContComprimento  and nContLargura  <= nContAltura then 
+         return nContLargura 
+      endif
+   endif
+endif
+
+
+
+endfunction
+
+

@@ -1,0 +1,393 @@
+%@(#)  M06_MARS_BYPASS.rte     modif:02-05-2023
+!==============================================================================
+% File          : M06_MARS_BYPASS.rte   version 1.0.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : Richard - Generix BR
+!==============================================================================
+! 02-05-2023  XX  Creation / Copy
+! 18-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M06_MARS_BYPASS"
+#include "include/generix_func.inc"
+#include "include/GEEXM06.inc"
+#include "include/GEEXM06_BYPASS.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nPos := 1
+	nRec := 1
+	nMessageID := cMessageID
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameXA7"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase , tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"M06 - BYPASS",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+	
+	tFileOutBP := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"06",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".DAT")
+    tFileOutTempBP := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"06",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".DAT")
+    tNameOutBP := build("",tToInfologPrefixFilename,"06",time("now","%Y%m%d%H%M%S"),substr(build(nMessageID), length(build(nMessageID)) - 1, 2),".DAT")
+
+	taACTION["0"] := "AVL"
+	taACTION["1"] := "HEL"
+	taACTION["2"] := "DIN"
+	taACTION["3"] := "FSI"
+	taACTION["4"] := "DIS"
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	!BYPASS INICIO
+		R_GEEX0000_CODEXC(S_GEEX0000_BP_CODEXC)
+		R_GEEX0000_SEPEXC(S_GEEX0000_BP_SEPEXC)
+		R_GEEX0000_SCOEXC(S_GEEX0000_BP_SCOEXC)
+		R_GEEX0000_TRTEXC(S_GEEX0000_BP_TRTEXC)
+		R_GEEX0000_EMTEXC(S_GEEX0000_BP_EMTEXC)
+		R_GEEX0000_RCTEXC(S_GEEX0000_BP_RCTEXC)
+		R_GEEX0000_DATEXC(S_GEEX0000_BP_DATEXC)
+		R_GEEX0000_HEUEXC(S_GEEX0000_BP_HEUEXC)
+		R_GEEX0000_NUMEXC(S_GEEX0000_BP_NUMEXC)
+		R_GEEX0000_ACQEXC(S_GEEX0000_BP_ACQEXC)
+		R_GEEX0000_VEREXC(S_GEEX0000_BP_VEREXC)
+		R_GEEX0000_NOMSYS(S_GEEX0000_BP_NOMSYS)
+		R_GEEX0000_NOMDTQ(S_GEEX0000_BP_NOMDTQ)
+		R_GEEX0000_BIBDTQ(S_GEEX0000_BP_BIBDTQ)
+		R_GEEX0000_LIBEXC(build(nMessageID:R010))
+		R_GEEX0000_BIBDST(S_GEEX0000_BP_BIBDST)
+		R_GEEX0000_PGMDST(S_GEEX0000_BP_PGMDST)
+		R_GEEX0000_PARDST(S_GEEX0000_BP_PARDST)
+		R_GEEX0000_CODACT(S_GEEX0000_BP_CODACT)
+		R_GEEX0000_IGLSIT(S_GEEX0000_BP_IGLSIT)
+		R_GEEX0000_EDISIT(S_GEEX0000_BP_EDISIT)
+		R_GEEX0000_IMAEXC(S_GEEX0000_BP_IMAEXC)
+		R_GEEX0000_IDEMSG(S_GEEX0000_BP_IDEMSG)
+		R_GEEX0000_NATEXC(S_GEEX0000_BP_NATEXC)
+		R_GEEX0000_EMTORI(S_GEEX0000_BP_EMTORI)
+		R_GEEX0000_DISEXC(S_GEEX0000_BP_DISEXC)
+		
+		flush(0,0,NL) >> tFileOutTempBP
+	!BYPASS FINAL
+endline
+
+line(1:"06.00")
+	if S_GEEX0600_CODACT <> "MAR" then
+		log("Gera interface apenas para MAR", NL)
+		remove(tFileOutBP)
+		remove(tFileOutTempBP)
+		exit(1)
+	endif
+
+	!BYPASS INICIO
+		tCODPAL := peel(S_GEEX0600_CODPAL, " ")
+		
+		if length(tCODPAL) > 0 then
+			! QUERY IMO_GEPAL, IMO_ORIGEM, IMO_BLACKLIST, IMO_LIBPOS1, IMO_LIBPOS2, IMO_LIBPOS3
+				tQuery := build("SELECT  PL.MOTIMM                                                     AS IMO_GEPAL		",NL," "\
+								"       ,PL.IMMORI                                                     AS IMO_ORIGEM	",NL," "\
+								"       ,CASE WHEN LB.IMMBKL IS NULL OR LB.IMMBKL = '' THEN CASE IM.GSTBKL				",NL," "\
+								"             WHEN '1' THEN PL.MOTIMM  ELSE '' END  ELSE LB.IMMBKL END AS IMO_BLACKLIST	",NL," "\
+								"       ,LB.MOTIM1                                                     AS IMO_LIBPOS1	",NL," "\
+								"       ,LB.MOTIM2                                                     AS IMO_LIBPOS2	",NL," "\
+								"       ,LB.MOTIMM                                                     AS IMO_LIBPOS3	",NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS PL									",NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPLIB AS LB								",NL," "\
+								"ON PL.CODPAL = LB.CODPAL																",NL," "\
+								"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IM								",NL," "\
+								"ON PL.MOTIMM = IM.MOTIMM																",NL," "\
+								"WHERE PL.CODPAL = '",S_GEEX0600_BP_CODPAL,"'													")
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				bQueryResult1 := FALSE
+				if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+					bQueryResult1 := TRUE
+					tIMO_GEPAL := peel(taDb2Array["IMO_GEPAL"]," ")
+					tIMO_ORIGEM := peel(taDb2Array["IMO_ORIGEM"]," ")
+					tIMO_BLACKLIST := peel(taDb2Array["IMO_BLACKLIST"]," ")
+					tIMO_LIBPOS1 := peel(taDb2Array["IMO_LIBPOS1"]," ")
+					tIMO_LIBPOS2 := peel(taDb2Array["IMO_LIBPOS2"]," ")
+					tIMO_LIBPOS3 := peel(taDb2Array["IMO_LIBPOS3"]," ")
+					! LOGS
+						log("************************************************************************", NL)
+						log("tIMO_GEPAL = ", tIMO_GEPAL, NL)
+						log("tIMO_ORIGEM = ", tIMO_ORIGEM, NL)
+						log("tIMO_BLACKLIST = ", tIMO_BLACKLIST, NL)
+						log("tIMO_LIBPOS1 = ", tIMO_LIBPOS1, NL)
+						log("tIMO_LIBPOS2 = ", tIMO_LIBPOS2, NL)
+						log("tIMO_LIBPOS3 = ", tIMO_LIBPOS3, NL)
+						log("************************************************************************", NL)
+					! FIM LOGS
+					remove(taDb2Array)
+				endif
+
+				if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			! FIM QUERY IMO_GEPAL, IMO_ORIGEM, IMO_BLACKLIST, IMO_LIBPOS1, IMO_LIBPOS2, IMO_LIBPOS3
+
+			if bQueryResult1 = FALSE then
+				! QUERY IMO_BLACKLIST
+					tQuery := build("SELECT MOTIMM AS IMO_BLACKLIST",NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEBKLD",NL," "\
+									"WHERE CODPAL = '",S_GEEX0600_BP_CODPAL,"'")
+
+					log("------------------------------------------------------------", NL)
+					log(tQuery,NL)
+					log("------------------------------------------------------------", NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					bQueryResult1 := FALSE
+					if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+						bQueryResult1 := TRUE
+						tIMO_BLACKLIST := peel(taDb2Array["IMO_BLACKLIST"]," ")
+						! LOGS
+							log("************************************************************************", NL)
+							log("tIMO_BLACKLIST = ", tIMO_BLACKLIST, NL)
+							log("************************************************************************", NL)
+						! FIM LOGS
+						remove(taDb2Array)
+					endif
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceBP("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+				! FIM QUERY IMO_BLACKLIST
+			endif
+
+			! Campos preenchidos: GEEX0600_MOTIMM, GEEX0600_CODTRT e tGEEX0600_IDEMSG
+			if S_GEEX0600_BP_MOTIMM = "1" then
+				bfLanceM06(taACTION[S_GEEX0600_BP_MOTIMM], "1", "1")
+			else
+				if S_GEEX0600_BP_MOTIMM = "0" and length(tIMO_BLACKLIST) > 0 then
+					bfLanceM06(tIMO_BLACKLIST, "2", "1")
+				else
+					if (S_GEEX0600_BP_MOTIMM = "2" or S_GEEX0600_BP_MOTIMM = "3" \
+					or S_GEEX0600_BP_MOTIMM = "4") and length(tIMO_BLACKLIST) > 0 then
+						bfLanceM06(tIMO_BLACKLIST, "2", "0")
+						bfLanceM06(tIMO_ORIGEM, "2", "0")
+						bfLanceM06(taACTION[S_GEEX0600_BP_MOTIMM], "1", "1")
+					else
+						if (S_GEEX0600_BP_MOTIMM = "2" or S_GEEX0600_BP_MOTIMM = "3" \
+						or S_GEEX0600_BP_MOTIMM = "4") and length(tIMO_BLACKLIST) = 0 then
+							bfLanceM06(tIMO_GEPAL, "2", "0")
+							bfLanceM06(taACTION[S_GEEX0600_BP_MOTIMM], "1", "1")
+						else
+							remove(tFileOutBP)
+							remove(tFileOutTempBP)
+							exit(1)
+						endif
+					endif
+				endif
+			endif
+		else
+			remove(tFileOutBP)
+			remove(tFileOutTempBP)
+			exit(1)
+		endif
+	!BYPASS FIM
+endline
+
+line(1:"99.00")
+	!BYPASS INICIO
+		R_GEEX9900_CODEXC(S_GEEX9900_BP_CODEXC)
+		R_GEEX9900_SEPEXC(S_GEEX9900_BP_SEPEXC)
+		R_GEEX9900_SCOEXC(S_GEEX9900_BP_SCOEXC)
+		R_GEEX9900_TRTEXC(S_GEEX9900_BP_TRTEXC)
+		R_GEEX9900_EMTEXC(S_GEEX9900_BP_EMTEXC)
+		R_GEEX9900_RCTEXC(S_GEEX9900_BP_RCTEXC)
+		R_GEEX9900_DATEXC(S_GEEX9900_BP_DATEXC)
+		R_GEEX9900_HEUEXC(S_GEEX9900_BP_HEUEXC)
+		R_GEEX9900_NUMEXC(S_GEEX9900_BP_NUMEXC)
+		R_GEEX9900_CPTEXC(S_GEEX9900_BP_CPTEXC)
+		R_GEEX9900_NOMSYS(S_GEEX9900_BP_NOMSYS)
+		R_GEEX9900_NOMDTQ(S_GEEX9900_BP_NOMDTQ)
+		R_GEEX9900_BIBDTQ(S_GEEX9900_BP_BIBDTQ)
+		R_GEEX9900_IDEMSG(S_GEEX9900_BP_IDEMSG)
+		R_GEEX9900_DISEXC(S_GEEX9900_BP_DISEXC)
+
+		flush(0,0,NL) >> tFileOutTempBP
+	!BYPASS FIM
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	close(tFileOutTempBP)
+    copy(tFileOutTempBP,tFileOutBP)
+	close(tFileOutTempBP)
+    remove(tFileOutTempBP)
+    close(tFileOutBP)
+
+    bfMajtraceBP("Recebida", \
+                "0", \
+                tCODPAL, \
+                time("now","%Y-%m-%dT%H:%M:%S"), \
+                tFileOut, \
+                "M06 - BYPASS", \
+                "")
+
+    close(tDbBase)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtraceBP(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "MARS"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOutBP
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOutBP,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL, NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOutBP)
+		copy(tFileOutBP,TRACE.Out)
+		close(tFileOutBP)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+	
+endfunction
+
+!===========================================================
+
+function bfLanceM06(tGEEX0600_MOTIMM, tGEEX0600_CODTRT, tGEEX0600_IDEMSG)
+	R_GEEX0600_CODEXC(S_GEEX0600_BP_CODEXC)
+	R_GEEX0600_SEPEXC(S_GEEX0600_BP_SEPEXC)
+	R_GEEX0600_SCOEXC(S_GEEX0600_BP_SCOEXC)
+	R_GEEX0600_TRTEXC(S_GEEX0600_BP_TRTEXC)
+	R_GEEX0600_CODPAL(S_GEEX0600_BP_CODPAL)
+	R_GEEX0600_MOTIMM(tGEEX0600_MOTIMM)
+	R_GEEX0600_CODTRT(tGEEX0600_CODTRT)
+	R_GEEX0600_NUMPAL(S_GEEX0600_BP_NUMPAL)
+	R_GEEX0600_DATMVT(S_GEEX0600_BP_DATMVT)
+	R_GEEX0600_CODLOT(S_GEEX0600_BP_CODLOT)
+	R_GEEX0600_CODACT(S_GEEX0600_BP_CODACT)
+	R_GEEX0600_CODCLI(S_GEEX0600_BP_CODCLI)
+	R_GEEX0600_CODPRO(S_GEEX0600_BP_CODPRO)
+	R_GEEX0600_VALPRO(S_GEEX0600_BP_VALPRO)
+	R_GEEX0600_DATFVI(S_GEEX0600_BP_DATFVI)
+	R_GEEX0600_EDIPRO(S_GEEX0600_BP_EDIPRO)
+	R_GEEX0600_DATIMM2(S_GEEX0600_BP_DATIMM2)
+	R_GEEX0600_HEUIMM2(S_GEEX0600_BP_HEUIMM2)
+	R_GEEX0600_PCBPRO(S_GEEX0600_BP_PCBPRO)
+	R_GEEX0600_CODDDO(S_GEEX0600_BP_CODDDO)
+	R_GEEX0600_MLTSIT(S_GEEX0600_BP_MLTSIT)
+	R_GEEX0600_REFBKL(S_GEEX0600_BP_REFBKL)
+	R_GEEX0600_HEUTRT(S_GEEX0600_BP_HEUTRT)
+	R_GEEX0600_CODUTI(S_GEEX0600_BP_CODUTI)
+	R_GEEX0600_IDEMSG(tGEEX0600_IDEMSG)
+	R_GEEX0600_DISEXC(S_GEEX0600_BP_DISEXC)
+
+	flush(0,0,NL) >> tFileOutTempBP
+endfunction
+
+!===========================================================

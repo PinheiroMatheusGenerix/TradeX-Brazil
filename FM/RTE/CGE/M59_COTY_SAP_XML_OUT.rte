@@ -1,0 +1,339 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+schema "XML/FMBrasil/SHP_STS-FMLOG-SAP-IWAY_INP - v01.xsd" validating
+message "XML/FMBrasil/SHP_STS-FMLOG-SAP-IWAY_INP.dtd" building
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M59_COTY_SAP_OUT"
+#include "include/generix_func.inc"
+#include "include/M59.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    pXML.INCONVOUT := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCOTY"]
+
+		
+		
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+endbegin
+
+line(1:"00.00")
+ 
+endline
+
+
+
+line(1:"59.00")
+
+tS_5900_CODEXC := ""
+tS_5900_SEPEXC := ""
+tS_5900_SCOEXC := ""
+tS_5900_TRTEXC := ""
+tS_5900_NUMTOU := ""
+tS_5900_DATLIV := ""
+tS_5900_TOULIV := ""
+tS_5900_NSTLIV := ""
+tS_5900_ETATOU := ""
+tS_5900_DATPRP := ""
+tS_5900_NUMVAG := ""
+tS_5900_CUMCDE := ""
+tS_5900_CUMPOI := ""
+tS_5900_CUMVOL := ""
+tS_5900_CUMCOL := ""
+tS_5900_CUMLIG := ""
+tS_5900_CUMPRD := ""
+tS_5900_CUMPRP := ""
+tS_5900_CUMEQP := ""
+tS_5900_CODBAS := ""
+tS_5900_DISEXC := ""
+
+
+
+
+tS_5900_CODEXC := S_5900_CODEXC
+tS_5900_SEPEXC := S_5900_SEPEXC
+tS_5900_SCOEXC := S_5900_SCOEXC
+tS_5900_TRTEXC := S_5900_TRTEXC
+tS_5900_NUMTOU := S_5900_NUMTOU
+tS_5900_DATLIV := S_5900_DATLIV
+tS_5900_TOULIV := S_5900_TOULIV
+tS_5900_NSTLIV := S_5900_NSTLIV
+tS_5900_ETATOU := S_5900_ETATOU
+tS_5900_DATPRP := S_5900_DATPRP
+tS_5900_NUMVAG := S_5900_NUMVAG
+tS_5900_CUMCDE := S_5900_CUMCDE
+tS_5900_CUMPOI := S_5900_CUMPOI
+tS_5900_CUMVOL := S_5900_CUMVOL
+tS_5900_CUMCOL := S_5900_CUMCOL
+tS_5900_CUMLIG := S_5900_CUMLIG
+tS_5900_CUMPRD := S_5900_CUMPRD
+tS_5900_CUMPRP := S_5900_CUMPRP
+tS_5900_CUMEQP := S_5900_CUMEQP
+tS_5900_CODBAS := S_5900_CODBAS
+tS_5900_DISEXC := S_5900_DISEXC
+
+ 
+
+endline
+
+
+line("99.00")
+
+nMessageID := cMessageID
+	
+	tFileOut := build(sHOME,"/rte/FM",tToInfologPrefixFilename,"SHS_",nMessageID:R010,"_",time("now" ,"%Y_%m_%d_%H_%M_%S"),".xml")
+	tFileOut := build(sHOME,"/rte/TempAPAGARFM",tToInfologPrefixFilename,"SHS_",nMessageID:R010,"_",time("now" ,"%Y_%m_%d_%H_%M_%S"),".xml")
+    tFileOutTemp := build(sHOME,"/rte/Temp/FM",tToInfologPrefixFilename,"SHS_",nMessageID:R010,"_",time("now" ,"%Y_%m_%d_%H_%M_%S"),".xml")
+	
+	tNameOut := build("FM",tToInfologPrefixFilename,"SHS_",nMessageID:R010,"_",time("now" ,"%Y_%m_%d_%H_%M_%S"),".xml")
+
+	
+	
+	tfEscreveeGoodsxMLm()
+	
+nTempLinhas := 1
+while nTempLinhas  <= nLinha do
+   tfEscreveeGoodsxMLmDetail()
+   nTempLinhas++
+endwhile
+
+   if valid(MESSAGE) then
+
+			print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOutTemp
+				 print(MESSAGE) > tFileOutTemp
+				 
+				 close(tFileOutTemp)
+				 
+				 
+
+
+
+
+
+			close(tFileOutTemp)
+			copy(tFileOutTemp,tFileOut)
+				close(tFileOutTemp)
+				remove(tFileOutTemp)
+					close(tFileOut)
+					
+				
+			bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")	
+			close(tFileOut)
+
+
+   else
+         print("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>",NL) > tFileOutTemp
+		print(MESSAGE) > tFileOutTemp
+		close(tFileOutTemp)      
+       tErroTraducao := build("Schema not matched",NL)
+       bfMajtrace("Erro de Traducao","1",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Orders",build("Schema not matched ",NL))
+          
+      close(tFileOutTemp)
+   
+     
+  
+
+endif
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+
+
+	exit(0)
+endend
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "COTY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "STATUS PEDIDO"
+   TRACE.NUMDOC := build("ESTOQUE",tData,tHora)
+   TRACE.DATDOC := tfConvertDate(taDATMVT[nTempLinhas],"YYYYMMDD" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		   if tMensagemErrro = build("Schema not matched ",NL) then
+              edierrordump(MESSAGE) >> TRACE.Detail
+           endif
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+
+close(tFileOut)
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+
+
+
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+!===========================================================
+function tfEscreveeGoodsxMLm()
+
+
+segment SSHP_STS-FMLOG-SAP-IWAY_INP gGSHP_STS-FMLOG-SAP-IWAY_INP     ! M 1/1 
+  ! eAxsi:noNamespaceSchemaLocation   ! C  
+  ! eAxsi:schemaLocation   ! C  
+
+endsegment
+
+! Group gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG : M 1/1 
+segment STrnNam gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnNam  := "SHIPPING_STATUS" ! C  
+
+endsegment
+
+segment STrnVer gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnVer := "1.0"  ! C  
+
+endsegment
+
+segment SSrcEnv gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+  ! eESrcEnv   ! C  
+
+endsegment
+
+segment SSrcTransactionId gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+  ! eESrcTransactionId   ! C  
+
+endsegment
+
+segment STrnTyp gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG     ! C 1/1 
+   eETrnTyp := "CHG"   ! C  
+
+endsegment
+
+
+endfunction
+
+function tfEscreveeGoodsxMLmDetail()
+
+
+
+
+! Group gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG : M 1/unbound 
+segment SDeliveryNumber gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEDeliveryNumber  := "ZZZ" ! C  
+
+endsegment
+
+segment SProcess_Status gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEProcess_Status  := "ZZZ" ! C  
+
+endsegment
+
+segment SStatus_Date gGSHP_STS-FMLOG-SAP-IWAY_INP,gGCTRL_SEG,gGDELIVERY_SEG     ! C 1/1 
+   eEStatus_Date := "ZZZ"  ! C  
+
+endsegment
+
+
+
+endfunction
+

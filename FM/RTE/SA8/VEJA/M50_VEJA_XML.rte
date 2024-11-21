@@ -1,0 +1,802 @@
+%@(#)  M50_VEJA_XML.rte     modif:30/11/2023
+!==============================================================================
+% File          : M50_VEJA_XML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 30/11/2023  XX  Creation
+! 30/11/2023  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+message "XML/FMBrasil/VEJA/VEJA_M50.dtd" receiving, passthru
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "M50_VEJA_XML"
+#include "include/generix_func.inc"
+#include "include/GEEXM50.inc"
+#include "include/GEEXM20.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA8"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", \
+                    "1", \
+                    "", \
+                    time("now","%Y-%m-%d"), \
+                    tFileOut, \
+                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+endbegin
+
+!===========================================================
+
+segment Swarehouse gGpickticket,gGpickticket_header
+    ! QUERY tCODACT
+        tQuery := build("SELECT CODACT", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEACT", NL," "\
+                        "WHERE EDIACT = '",eEwarehouse,"'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)					
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        bQueryResult := FALSE
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+            tCODACT := taDb2Array["CODACT"]
+            bQueryResult := TRUE
+
+            remove(taDb2Array)
+        endwhile
+
+        if bQueryResult = FALSE then
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("O valor ",eEwarehouse," da tag <warehouse> não corresponde a nenhum EDIACT da GEACT"))
+            exit(1)
+        endif
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    ! FIM QUERY tCODACT
+endsegment
+
+segment Spon gGpickticket,gGpickticket_header
+    tREFCLI := eEpon
+endsegment
+
+segment Spo_date gGpickticket,gGpickticket_header
+    tDTILIV := eEpo_date
+endsegment
+
+segment Spicking_reference gGpickticket,gGpickticket_header
+    tREFLIV := eEpicking_reference
+endsegment
+
+segment Srequested_ship_date gGpickticket,gGpickticket_header
+    tDATEXP := eErequested_ship_date
+endsegment
+
+segment Spriority gGpickticket,gGpickticket_header
+    tORDLIV := eEpriority
+endsegment
+
+segment Sshipping_via gGpickticket,gGpickticket_header
+    tCODTRA := eEshipping_via
+    tCRILIV := eEshipping_via
+endsegment
+
+segment Slock_type gGpickticket,gGpickticket_header
+    tLock_type := eElock_type
+endsegment
+
+segment Schannel gGpickticket,gGpickticket_header
+    ! QUERY tCODTLI
+        tQuery := build("SELECT  VALCLE", NL," "\
+                "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU", NL," "\
+                "WHERE CODFIC = 'GEZTLI'", NL," "\
+                "AND TYPRUB = '2'", NL," "\
+                "AND CODRUB = 'EDI'", NL," "\
+                "AND VALRUB = '",eEchannel,"'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)					
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+            tCODTLI := peel(taDb2Array["VALCLE"], " ")
+            bCODTLI_EC := FALSE
+            if compare(tCODTLI, "*EC*") then
+                bCODTLI_EC := TRUE
+            endif
+
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    ! FIM QUERY tCODTLI
+
+    ! QUERY tCODMOP
+        tQuery := build("SELECT  VALRUB", NL," "\
+                "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU", NL," "\
+                "WHERE CODFIC = 'GEZTLI'", NL," "\
+                "AND CODRUB = 'CMOP'", NL," "\
+                "AND VALCLE = '",tCODTLI,"'")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)					
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+            tCODMOP := peel(taDb2Array["VALRUB"], " ")
+
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+    ! FIM QUERY tCODMOP
+
+    if tLock_type = "B" then
+        tMSGPRP1 := "Entrega: AREA DE ESPERA"
+    else
+        ! QUERY tMSGPRP1
+            tQuery := build("SELECT  VALRUB", NL," "\
+                            "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU", NL," "\
+                            "WHERE CODFIC = 'GEZTLI'", NL," "\
+                            "AND CODRUB = 'MSGE'", NL," "\
+                            "AND VALCLE = '",tCODTLI,"'")
+
+            log("------------------------------------------------------------", NL)
+            log(tQuery,NL)
+            log("------------------------------------------------------------", NL)
+
+            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                print("FATAL ", tfSqlErrorStr())
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                exit(1)					
+            endif
+
+            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                print("FATAL ", tfSqlErrorStr())
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                exit(1)
+            endif
+
+            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+                tMSGPRP1 := peel(taDb2Array["VALRUB"], " ")
+
+                remove(taDb2Array)
+            endwhile
+
+            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                print("FATAL", tfSqlErrorStr())
+                bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileOut,build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                exit(1)
+            endif
+        ! FIM QUERY tMSGPRP1
+    endif
+endsegment
+
+segment Sdelivery_type gGpickticket,gGpickticket_header
+    tDelivery_type := eEdelivery_type
+endsegment
+
+segment Snotes gGpickticket,gGpickticket_header
+    tNotes := eEnotes
+endsegment
+
+! SHIP_TO
+    segment Sclient_code gGpickticket,gGpickticket_header,gGship_to
+        tCLILIV_SHIP := tfRetiraAcento(eEclient_code)
+        tCODCLI_SHIP := tfRetiraAcento(eEclient_code)
+    endsegment
+
+    segment Scontact_phone gGpickticket,gGpickticket_header,gGship_to
+        tTELCLI_SHIP := eEcontact_phone
+    endsegment
+
+    segment Sname gGpickticket,gGpickticket_header,gGship_to
+        tNOMCLI_SHIP := tfRetiraAcento(eEname)
+    endsegment
+
+    segment Sname1 gGpickticket,gGpickticket_header,gGship_to
+        tLIBCPL_SHIP := tfRetiraAcento(eEname1)
+    endsegment
+
+    segment Saddress gGpickticket,gGpickticket_header,gGship_to
+        tAD1CLI_AD2CLI_SHIP := tfRetiraAcento(eEaddress)
+    endsegment
+
+    segment Snumber gGpickticket,gGpickticket_header,gGship_to
+        tNUMBER_SHIP := eEnumber
+    endsegment
+
+    segment Saddress2 gGpickticket,gGpickticket_header,gGship_to
+        tAD3CLI_SHIP := tfRetiraAcento(eEaddress2)
+    endsegment
+
+    segment Sadditional_address gGpickticket,gGpickticket_header,gGship_to
+        tADDITIONAL_ADDRESS := tfRetiraAcento(eEadditional_address)
+    endsegment
+
+    segment Scity gGpickticket,gGpickticket_header,gGship_to
+        tVILCLI_SHIP := tfRetiraAcento(eEcity)
+        tCITY := tfRetiraAcento(eEcity)
+    endsegment
+
+    segment Scountry gGpickticket,gGpickticket_header,gGship_to
+        tPAYCLI_SHIP := tfRetiraAcento(eEcountry)
+    endsegment
+
+    segment Sstate gGpickticket,gGpickticket_header,gGship_to
+        tVILCLI_SHIP := build(tVILCLI_SHIP, "/", tfRetiraAcento(eEstate))
+        tCODRGT := tfRetiraAcento(eEstate)
+        tSTATE := tfRetiraAcento(eEstate)
+    endsegment
+
+    segment Szip gGpickticket,gGpickticket_header,gGship_to
+        tCPICLI_SHIP := eEzip
+    endsegment
+! FIM SHIP_TO
+
+! SOLD_TO
+    segment Sclient_code gGpickticket,gGpickticket_header,gGsold_to
+        tCODCLI_SOLD := tfRetiraAcento(eEclient_code)
+    endsegment
+
+    segment Scontact_phone gGpickticket,gGpickticket_header,gGsold_to
+        tTELCLI_SOLD := eEcontact_phone
+    endsegment
+
+    segment Sname gGpickticket,gGpickticket_header,gGsold_to
+        tNOMCLI_SOLD := tfRetiraAcento(eEname)
+    endsegment
+
+    segment Sname1 gGpickticket,gGpickticket_header,gGsold_to
+        tLIBCPL_SOLD := tfRetiraAcento(eEname1)
+    endsegment
+
+    segment Saddress gGpickticket,gGpickticket_header,gGsold_to
+        tAD1CLI_AD2CLI_SOLD := tfRetiraAcento(eEaddress)
+    endsegment
+
+    segment Saddress1 gGpickticket,gGpickticket_header,gGsold_to
+        tAD3CLI_SOLD := tfRetiraAcento(eEaddress1)
+    endsegment
+
+    segment Scity gGpickticket,gGpickticket_header,gGsold_to
+        tVILCLI_SOLD := tfRetiraAcento(eEcity)
+    endsegment
+
+    segment Scountry gGpickticket,gGpickticket_header,gGsold_to
+        tPAYCLI_SOLD := eEcountry
+    endsegment
+
+    segment Sstate gGpickticket,gGpickticket_header,gGsold_to
+        tVILCLI_SOLD := build(tVILCLI_SOLD, "/", tfRetiraAcento(eEstate))
+    endsegment
+
+    segment Szip gGpickticket,gGpickticket_header,gGsold_to
+        tCPICLI_SOLD := eEzip
+    endsegment
+! FIM SOLD_TO
+
+! SKU
+segment Sbarcode_sku gGpickticket,gGpickticket_header,gGpickticket_body,gGpieces,gGsku
+    nCountLine++
+    taCODPRO[nCountLine] := eEbarcode_sku
+endsegment
+
+segment Sslot gGpickticket,gGpickticket_header,gGpickticket_body,gGpieces,gGsku
+    if tLock_type = "B" then
+        tPTYDES := "90"
+    else
+        if tLock_type <> "B" and compare(eEslot, "*EC*") = FALSE then
+            tPTYDES := "50"
+        else
+            if tLock_type <> "B" and compare(eEslot, "*EC*") = TRUE then
+                tPTYDES := "50"
+            endif
+        endif
+    endif
+    
+    tCODCLI_5005 := substr(eEslot, length(eEslot) - 1, 2)
+
+    if substr(eEslot, 1, 2) <> "Q1" then
+        tCODMOP := build("V", substr(eEslot, 1, 2))
+    endif
+endsegment
+
+segment Sprimary_reference gGpickticket,gGpickticket_header,gGpickticket_body,gGpieces,gGsku,gGorder_line
+    taDIPLIV[nCountLine] := eEprimary_reference
+endsegment
+
+segment Squantity gGpickticket,gGpickticket_header,gGpickticket_body,gGpieces,gGsku,gGorder_line
+    taUVCCDE[nCountLine] := eEquantity
+endsegment
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+    tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+    tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+    tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+
+    R_GEEX0000_CODEXC("00")
+    R_GEEX0000_SEPEXC(".")
+    R_GEEX0000_SCOEXC("00")
+    R_GEEX0000_EMTEXC("FM") 
+    R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+    R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+    R_GEEX0000_NUMEXC("0000000")
+    R_GEEX0000_ACQEXC("0")
+    R_GEEX0000_VEREXC("5.00") 
+    R_GEEX0000_NOMDTQ("M40")
+    R_GEEX0000_LIBEXC(build(nMessageID:R010))
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    ! SHIP_TO
+        R_GEEX2000_CODEXC("20")
+        R_GEEX2000_SEPEXC(".")
+        R_GEEX2000_SCOEXC("00")
+        R_GEEX2000_CODACT(tCODACT)
+        R_GEEX2000_TELCLI(tTELCLI_SHIP)
+        R_GEEX2000_AD1CLI(substr(tAD1CLI_AD2CLI_SHIP, 1, 30))
+        R_GEEX2000_AD2CLI(substr(tAD1CLI_AD2CLI_SHIP, 31, 30))
+        R_GEEX2000_VILCLI(tVILCLI_SHIP)
+        R_GEEX2000_PAYCLI(tPAYCLI_SHIP)
+        R_GEEX2000_CATCLI("STD")
+        if bCODTLI_EC = TRUE then
+            R_GEEX2000_CODCLI(tNOMCLI_SHIP)
+            R_GEEX2000_NOMCLI(tLIBCPL_SHIP)
+        else
+            R_GEEX2000_NOMCLI(tNOMCLI_SHIP)
+            R_GEEX2000_CODCLI(tCODCLI_SHIP)
+        endif
+
+        flush(0,0,NL) >> tFileOutTemp
+
+        R_GEEX2001_CODEXC("20")
+        R_GEEX2001_SEPEXC(".")
+        R_GEEX2001_SCOEXC("01")
+        R_GEEX2001_CODACT(tCODACT)
+        R_GEEX2001_CPICLI(tCPICLI_SHIP)
+        if bCODTLI_EC = TRUE then
+            R_GEEX2001_CODCLI(tNOMCLI_SHIP)
+        else
+            R_GEEX2001_CODCLI(tCODCLI_SHIP)
+        endif
+
+        flush(0,0,NL) >> tFileOutTemp
+
+        R_GEEX2003_CODEXC("20")
+        R_GEEX2003_SEPEXC(".")
+        R_GEEX2003_SCOEXC("03")
+        R_GEEX2003_CODACT(tCODACT)
+        if bCODTLI_EC = TRUE then
+            R_GEEX2003_CODCLI(tNOMCLI_SHIP)
+        else
+            R_GEEX2003_CODCLI(tCODCLI_SHIP)
+            R_GEEX2003_LIBCPL(tLIBCPL_SHIP)
+        endif
+
+        flush(0,0,NL) >> tFileOutTemp
+
+        R_GEEX2004_CODEXC("20")
+        R_GEEX2004_SEPEXC(".")
+        R_GEEX2004_SCOEXC("04")
+        R_GEEX2004_CODACT(tCODACT)
+        if bCODTLI_EC = TRUE then
+            R_GEEX2004_CODCLI(tNOMCLI_SHIP)
+        else
+            R_GEEX2004_CODCLI(tCODCLI_SHIP)
+        endif
+        R_GEEX2004_AD1CLI(substr(tAD1CLI_AD2CLI_SHIP, 1, 38))
+        R_GEEX2004_AD2CLI(substr(tAD1CLI_AD2CLI_SHIP, 39, 38))
+        R_GEEX2004_AD3CLI(substr(tAD3CLI_SHIP, 1, 38))
+
+        flush(0,0,NL) >> tFileOutTemp
+    ! FIM SHIP_TO
+
+    R_GEEX5000_CODEXC("50")
+    R_GEEX5000_SEPEXC(".")
+    R_GEEX5000_SCOEXC("00")
+    R_GEEX5000_CODACT(tCODACT)
+    R_GEEX5000_CODTLI(tCODTLI)
+    R_GEEX5000_CODCLI(tCODCLI_5005)
+    R_GEEX5000_CODMOP(tCODMOP)
+    R_GEEX5000_CODTRA(tCODTRA)
+    R_GEEX5000_REFLIV(tREFLIV)
+    R_GEEX5000_DTILIV(tDTILIV)
+    R_GEEX5000_MSGPRP1(tMSGPRP1)
+    R_GEEX5000_MSGLIV1(tMSGPRP1)
+    R_GEEX5000_ORDLIV(tORDLIV)
+    R_GEEX5000_CODRGT(tCODRGT)
+    if bCODTLI_EC = TRUE then
+        R_GEEX5000_CLILIV(tNOMCLI_SHIP)
+    else
+        R_GEEX5000_CLILIV(tCLILIV_SHIP)
+    endif
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5001_CODEXC("50")
+    R_GEEX5001_SEPEXC(".")
+    R_GEEX5001_SCOEXC("01")
+    R_GEEX5001_CODACT(tCODACT)
+    R_GEEX5001_CODCLI(tCODCLI_5005)
+    R_GEEX5001_REFLIV(tREFLIV)
+    R_GEEX5001_DATEXP(tDATEXP)
+    R_GEEX5001_REFCLI(tREFCLI)
+    R_GEEX5001_CRILIV(tCRILIV)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("*GM1")
+    R_GEEX5005_VALRUB(build(tCODTLI, " - FALTA NF"))
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("SOLD")
+    R_GEEX5005_VALRUB(tCODCLI_SOLD)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("TSRV")
+    R_GEEX5005_VALRUB(tNotes)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("STAD")
+    R_GEEX5005_VALRUB(tAD1CLI_AD2CLI_SHIP)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("STNU")
+    R_GEEX5005_VALRUB(tNUMBER_SHIP)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("STEC")
+    R_GEEX5005_VALRUB(tADDITIONAL_ADDRESS)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("STCI")
+    R_GEEX5005_VALRUB(tCITY)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("STES")
+    R_GEEX5005_VALRUB(tSTATE)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5005_CODEXC("50")
+    R_GEEX5005_SEPEXC(".")
+    R_GEEX5005_SCOEXC("05")
+    R_GEEX5005_CODACT(tCODACT)
+    R_GEEX5005_REFLIV(tREFLIV)
+    R_GEEX5005_CODCLI(tCODCLI_5005)
+    R_GEEX5005_CODRUB("DTYP")
+    R_GEEX5005_VALRUB(tDelivery_type)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5010_CODEXC("50")
+    R_GEEX5010_SEPEXC(".")
+    R_GEEX5010_SCOEXC("10")
+    R_GEEX5010_CODACT(tCODACT)
+    R_GEEX5010_REFLIV(tREFLIV)
+    R_GEEX5010_CODCLI(tCODCLI_5005)
+    R_GEEX5010_AD1CLI(substr(tAD1CLI_AD2CLI_SHIP, 1, 30))
+    R_GEEX5010_CPICLI(tCPICLI_SHIP)
+    R_GEEX5010_VILCLI(tVILCLI_SHIP)
+
+    flush(0,0,NL) >> tFileOutTemp
+
+    R_GEEX5011_CODEXC("50")
+    R_GEEX5011_SEPEXC(".")
+    R_GEEX5011_SCOEXC("11")
+    R_GEEX5011_CODACT(tCODACT)
+    R_GEEX5011_REFLIV(tREFLIV)
+    R_GEEX5011_CODCLI(tCODCLI_5005)
+    R_GEEX5011_AD2CLI(substr(tAD1CLI_AD2CLI_SHIP, 39, 38))
+    R_GEEX5011_AD1CLI(substr(tAD1CLI_AD2CLI_SHIP, 1, 38))
+    R_GEEX5011_AD3CLI(substr(tAD3CLI_SHIP, 1, 38))
+
+    flush(0,0,NL) >> tFileOutTemp
+    
+    while tIndex in taCODPRO do
+        R_GEEX5020_CODEXC("50")
+        R_GEEX5020_SEPEXC(".")
+        R_GEEX5020_SCOEXC("20")
+        R_GEEX5020_CODACT(tCODACT)
+        R_GEEX5020_REFLIV(tREFLIV)
+        R_GEEX5020_CODCLI(tCODCLI_5005)
+        R_GEEX5020_CODPRO(taCODPRO[tIndex])
+        R_GEEX5020_UVCCDE(taUVCCDE[tIndex])
+        R_GEEX5020_NLILIV(tIndex)
+        R_GEEX5020_TYPSTK("2")
+
+        flush(0,0,NL) >> tFileOutTemp
+
+        R_GEEX5021_CODEXC("50")
+        R_GEEX5021_SEPEXC(".")
+        R_GEEX5021_SCOEXC("21")
+        R_GEEX5021_CODACT(tCODACT)
+        R_GEEX5021_CODCLI(tCODCLI_5005)
+        R_GEEX5021_REFLIV(tREFLIV)
+        R_GEEX5021_DIPLIV(taDIPLIV[tIndex])
+        R_GEEX5021_NLILIV(tIndex)
+
+        flush(0,0,NL) >> tFileOutTemp
+
+        R_GEEX5025_CODEXC("50")
+        R_GEEX5025_SEPEXC(".")
+        R_GEEX5025_SCOEXC("25")
+        R_GEEX5025_CODACT(tCODACT)
+        R_GEEX5025_CODCLI(tCODCLI_5005)
+        R_GEEX5025_REFLIV(tREFLIV)
+        R_GEEX5025_CODRUB("PREF")
+        R_GEEX5025_VALRUB(taDIPLIV[tIndex])
+        R_GEEX5025_NLILIV(tIndex)
+
+        flush(0,0,NL) >> tFileOutTemp
+    endwhile
+
+    R_GEEX5099_CODEXC("50")
+    R_GEEX5099_SEPEXC(".")
+    R_GEEX5099_SCOEXC("99")
+    R_GEEX5099_CODACT(tCODACT)
+    R_GEEX5099_REFLIV(tREFLIV)
+    R_GEEX5099_CODCLI(tCODCLI_5005)
+
+    flush(0,0,NL) >> tFileOutTemp
+    
+    R_GEEX9900_CODEXC("99")
+	R_GEEX9900_SEPEXC(".")
+	R_GEEX9900_SCOEXC("00")
+	R_GEEX9900_EMTEXC("FM")
+	R_GEEX9900_DATEXC(time("now", "%Y%m%d"))
+	R_GEEX9900_HEUEXC(time("now", "H%M%S"))
+
+    flush(0,0,NL) >> tFileOutTemp
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,tFileOut)
+	close(tFileOutTemp)
+	remove(tFileOutTemp)
+	close(tFileOut)
+
+    bfMajtrace("Recebida", \
+                "0", \
+                tREFLIV, \
+                time("now","%Y-%m-%d"), \
+                tFileOut, \
+                "")
+
+    bfSqlClose(tDbBase)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "VEJA"
+	TRACE.MENSAGEM := "M50"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if substr(tStatus,1,13) = "Erro de Tradu" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+endfunction
+
+!===========================================================
+
+function tfRetiraAcento(tValue)
+    tValue_FUNC := tValue
+    tValue_FUNC := replace(tValue_FUNC, "Á", "A")
+    tValue_FUNC := replace(tValue_FUNC, "É", "E")
+    tValue_FUNC := replace(tValue_FUNC, "Í", "I")
+    tValue_FUNC := replace(tValue_FUNC, "Ó", "O")
+    tValue_FUNC := replace(tValue_FUNC, "Ú", "U")
+
+    tValue_FUNC := replace(tValue_FUNC, "Ã", "A")
+    tValue_FUNC := replace(tValue_FUNC, "Õ", "O")
+
+    tValue_FUNC := replace(tValue_FUNC, "Â", "A")
+    tValue_FUNC := replace(tValue_FUNC, "Ê", "E")
+    tValue_FUNC := replace(tValue_FUNC, "Ô", "O")
+
+    tValue_FUNC := replace(tValue_FUNC, "á", "a")
+    tValue_FUNC := replace(tValue_FUNC, "é", "e")
+    tValue_FUNC := replace(tValue_FUNC, "í", "i")
+    tValue_FUNC := replace(tValue_FUNC, "ó", "o")
+    tValue_FUNC := replace(tValue_FUNC, "ú", "u")
+
+    tValue_FUNC := replace(tValue_FUNC, "ã", "a")
+    tValue_FUNC := replace(tValue_FUNC, "õ", "o")
+
+    tValue_FUNC := replace(tValue_FUNC, "â", "a")
+    tValue_FUNC := replace(tValue_FUNC, "ê", "e")
+    tValue_FUNC := replace(tValue_FUNC, "ô", "o")
+
+    tValue_FUNC := replace(tValue_FUNC, "ç", "c")
+    tValue_FUNC := replace(tValue_FUNC, "Ç", "C")
+
+    return tValue_FUNC
+endfunction
+
+!===========================================================

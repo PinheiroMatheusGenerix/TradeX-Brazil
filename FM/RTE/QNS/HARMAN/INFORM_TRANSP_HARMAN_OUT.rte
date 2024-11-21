@@ -1,0 +1,605 @@
+%@(#)  source_filename.rte     modif:26-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 26-12-2017  XX  Creation
+! 26-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_inftransp_harman/fmbrasil_inftransp_harman.cfg" fmbrasil_inftransp_harman
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M51_HARMAN_PED_CSV_OUT"
+#include "include/generix_func.inc"
+#include "include/M51InforTranspHARMAN.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+  nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+
+  
+
+    
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHARMAN"]
+		tSNDPORHARMAN := taPARAM["SNDPORHARMAN"]
+		tRCVPRNHARMAN := taPARAM["RCVPRNHARMAN"]
+		tRCVPORHARMAN  := taPARAM["RCVPORHARMAN"]
+
+		tDbBase			:= "FMWMS"
+		tDbBase2			:= "FMWMS2"
+		tDbBase3			:= "FMWMS3"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	bfSqlInit()
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+   
+  
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nContador5100 := 0
+    
+nMainIndex := 0
+tCODTRA_Query2Anterior := "0"
+
+
+tCODRGT := ""
+bFezHeaderInfTransp := FALSE
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+	tLIBACTSelect := ""
+	tQuery := build("SELECT TRIM(LIBACT) LIBACT FROM FGE50FM",tToInfologPrefixFilename,".GEACT "\
+					"WHERE CODACT= 'HAR'")
+							
+	log("tQuery ",tQuery,NL)
+
+
+	if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+				 log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+				 bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+		
+	endif
+
+	if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+		 log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+		  bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+	endif
+
+	
+	while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			
+		
+		tLIBACTSelect := peel(taDb2Array["LIBACT"]," ")
+		
+		
+		
+		
+		remove(taDb2Array)
+
+	endwhile
+	
+	
+
+	if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+		log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+		 bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+	endif
+	
+	
+	
+	
+	
+	
+	!-------------------------------------------------------------
+	
+	tQuery := build("SELECT C.CODTRA ", NL," "\
+	"       ,CASE WHEN B.VALRUB IS NULL THEN C.REFLIV  ELSE B.VALRUB END VAL_REFLIV ", NL," "\
+	"       ,CASE WHEN E.VALRUB IS NULL THEN 0  ELSE E.VALRUB END VAL_SERIE ", NL," "\
+	"       ,CASE WHEN F.VALRUB IS NULL THEN RIGHT(C.DATLIV,2)||'/'||SUBSTR(C.DATLIV,5,2)||'/'||LEFT(C.DATLIV,4)  ELSE LEFT(LPAD(F.VALRUB,8,0),2)||'/'||SUBSTR(LPAD(F.VALRUB,8,0),3,2)||'/'||RIGHT(LPAD(F.VALRUB,8,0),4) END DATA_EMI ", NL," "\
+	"       ,C.NOMTRA ", NL," "\
+	"       ,C.NOMCLI ", NL," "\
+	"       ,C.CLILIV ", NL," "\
+	"       ,CASE WHEN H.VALRUB IS NULL THEN 0  ELSE cast(H.VALRUB AS NUMERIC(15,2)) END VALOR_NF ", NL," "\
+	"       ,TRIM(SUBSTR(TRIM(L.AD3CLI),INSTR(TRIM(L.AD3CLI),'/',1)+1,10)) UF ", NL," "\
+	"       ,TRIM(LEFT(TRIM(L.AD3CLI),INSTR(TRIM(L.AD3CLI),'/',1)-1)) MUNIC ", NL," "\
+	"       ,CASE WHEN I.VALRUB IS NULL THEN L.CUMPOI  ELSE CAST(I.VALRUB AS NUMERIC(15,3)) END PESO_B ", NL," "\
+	"       ,CASE WHEN J.VALRUB IS NULL THEN L.CUMCOL  ELSE J.VALRUB END VOLUMES ", NL," "\
+	"       ,CASE WHEN K.VALRUB IS NULL THEN TO_CHAR(L.CUMVOL)  ELSE K.VALRUB END CUBAGEM ", NL," "\
+	"       ,L.CRILIV ", NL," "\
+	"FROM ", NL," "\
+	"( ", NL," "\
+	"	SELECT  A.DATLIV ", NL," "\
+	"	       ,A.REFLIV ", NL," "\
+	"	       ,A.CODTRA ", NL," "\
+	"	       ,A.NUMLIV ", NL," "\
+	"	       ,A.CODCLI ", NL," "\
+	"	       ,A.NOMTRA ", NL," "\
+	"	       ,A.NOMCLI ", NL," "\
+	"	       ,A.CLILIV ", NL," "\
+	"	       ,A.VILCLI ", NL," "\
+	"	       ,A.CRILIV ", NL," "\
+	"	FROM FGE50FM", tToInfologPrefixFilename, ".GELIVE A ", NL," "\
+	"	WHERE NUMLIV NOT IN ( SELECT NUMLIV FROM FGE50FM", tToInfologPrefixFilename, ".GETOUD) ", NL," "\
+	"	AND CODCLI NOT IN ('MASSIFICATION', 'MASSIFICAÇÃO', 'MASSIFICACAO') ", NL," "\
+	"	UNION ALL ", NL," "\
+	"	SELECT  C.DATLIV ", NL," "\
+	"	       ,C.REFLIV ", NL," "\
+	"	       ,C.CODTRA ", NL," "\
+	"	       ,C.NUMLIV ", NL," "\
+	"	       ,C.CODCLI ", NL," "\
+	"	       ,C.NOMTRA ", NL," "\
+	"	       ,C.NOMCLI ", NL," "\
+	"	       ,C.CLILIV ", NL," "\
+	"	       ,C.VILCLI ", NL," "\
+	"	       ,C.CRILIV ", NL," "\
+	"	FROM FGE50FM", tToInfologPrefixFilename, ".GELIVE C ", NL," "\
+	"	WHERE NUMLIV IN ( SELECT NUMLIV FROM FGE50FM", tToInfologPrefixFilename, ".GESUPE WHERE ETASUP<50) ", NL," "\
+	"	AND CODCLI NOT IN ('MASSIFICATION', 'MASSIFICAÇÃO', 'MASSIFICACAO') ", NL," "\
+	") C ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB B ", NL," "\
+	"ON B.NUMLIV=C.NUMLIV AND B.CODRUB='NF01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB E ", NL," "\
+	"ON C.NUMLIV=E.NUMLIV AND E.CODRUB='SE01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB F ", NL," "\
+	"ON C.NUMLIV=F.NUMLIV AND F.CODRUB='DT01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB H ", NL," "\
+	"ON C.NUMLIV=H.NUMLIV AND H.CODRUB='VL01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB I ", NL," "\
+	"ON C.NUMLIV=I.NUMLIV AND I.CODRUB='PS01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB J ", NL," "\
+	"ON C.NUMLIV=J.NUMLIV AND J.CODRUB='VO01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIRUB K ", NL," "\
+	"ON C.NUMLIV=K.NUMLIV AND K.CODRUB='VC01' ", NL," "\
+	"LEFT JOIN FGE50FM", tToInfologPrefixFilename, ".GELIVE L ", NL," "\
+	"ON C.NUMLIV=L.NUMLIV ", NL," "\
+	"ORDER BY CODTRA, VAL_REFLIV ")
+ 
+
+							
+	log("tQuery ",tQuery,NL)
+
+
+	if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+				 log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+				 bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+		
+	endif
+
+	if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+		 log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+		  bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+
+	endif
+
+	nContRegistosQuery2 := 0
+	while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		
+		
+		
+		if length(peel(taDb2Array["CODTRA"]," ")) > 0  then
+			nContRegistosQuery2++
+			taCODTRA_Query2[nContRegistosQuery2] := peel(taDb2Array["CODTRA"]," ")
+			taVAL_REFLIV_Query2[nContRegistosQuery2] := peel(taDb2Array["VAL_REFLIV"]," ")
+			taVAL_SERIE_Query2[nContRegistosQuery2] := peel(taDb2Array["VAL_SERIE"]," ")
+			taDATA_EMI_Query2[nContRegistosQuery2] := peel(taDb2Array["DATA_EMI"]," ")
+			taNOMTRA_Query2[nContRegistosQuery2] := peel(taDb2Array["NOMTRA"]," ")
+			taNOMCLI_Query2[nContRegistosQuery2] := peel(taDb2Array["NOMCLI"]," ")
+			taCLILIV_Query2[nContRegistosQuery2] := peel(taDb2Array["CLILIV"]," ")
+			taVALOR_NF_Query2[nContRegistosQuery2] := peel(taDb2Array["VALOR_NF"]," ")
+			taUF_Query2[nContRegistosQuery2] := peel(taDb2Array["UF"]," ")
+			taMUNIC_Query2[nContRegistosQuery2] := peel(taDb2Array["MUNIC"]," ")
+			taPESO_B_Query2[nContRegistosQuery2] := peel(taDb2Array["PESO_B"]," ")
+			taVOLUMES_Query2[nContRegistosQuery2] := peel(taDb2Array["VOLUMES"]," ")
+			taCUBAGEM_Query2[nContRegistosQuery2] := peel(taDb2Array["CUBAGEM"]," ")
+			taCRILIV_Query2[nContRegistosQuery2] := peel(taDb2Array["CRILIV"]," ")
+			baRegistroDuplicado[nContRegistosQuery2] := FALSE									
+		
+		endif
+		
+		remove(taDb2Array)
+
+	endwhile
+	
+	
+
+	if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+		log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+		 bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+	endif
+	
+	
+	
+	
+	
+	
+	
+	!elimina duplicados e consolida
+	
+	
+	
+	
+	nTempNumeroLinha := 1
+	while nTempNumeroLinha  <= nContRegistosQuery2 do
+	   nTempNumeroLinha2 := nTempNumeroLinha+1
+	   while nTempNumeroLinha2  <= nContRegistosQuery2 do
+		
+		  
+	
+		  if taVAL_REFLIV_Query2[nTempNumeroLinha2] = taVAL_REFLIV_Query2[nTempNumeroLinha] and taVAL_SERIE_Query2[nTempNumeroLinha2] = taVAL_SERIE_Query2[nTempNumeroLinha] then
+				baRegistroDuplicado[nTempNumeroLinha2] := TRUE
+				taCUBAGEM_Query2[nTempNumeroLinha] := build(number(taCUBAGEM_Query2[nTempNumeroLinha])+ number(taCUBAGEM_Query2[nTempNumeroLinha2]))
+				
+		  endif
+
+		  nTempNumeroLinha2++
+	   endwhile
+	   
+	   nTempNumeroLinha++
+	endwhile
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	nTempContRegistosQuery2 := 1
+	
+	
+	while nTempContRegistosQuery2 <= nContRegistosQuery2 do 
+
+		if baRegistroDuplicado[nTempContRegistosQuery2] = FALSE then
+	
+			
+	
+		if nTempContRegistosQuery2 = 1 or taCODTRA_Query2[nTempContRegistosQuery2] <> tCODTRA_Query2Anterior then
+
+			
+			
+			
+			if nTempContRegistosQuery2 > 1 then
+										!envia anterior
+										fmbrasil_inftransp_harman := find(build(sHOME,"/fmbrasil_inftransp_harman"),CODTRA=taCODTRA_Query2[(nTempContRegistosQuery2-1)])
+										if valid(fmbrasil_inftransp_harman) then
+											tTOEMAILbat := fmbrasil_inftransp_harman.TOEMAIL
+											tCCEMAILbat := fmbrasil_inftransp_harman.CCEMAIL
+											tBEGINSUBJbat := fmbrasil_inftransp_harman.BEGINSUBJ
+											bNaoFazEsteTransp := FALSE
+										else
+											bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Nao existe na tabela fmbrasil_inftransp_harman os valores CODTRA= ",taCODTRA_Query2[(nTempContRegistosQuery2-1)]," "))
+											!exit(0)
+											bNaoFazEsteTransp := TRUE
+										endif
+									   
+									   if bNaoFazEsteTransp = FALSE then
+									   
+										   bfMajtraceCSV("Recebida","0",build(tNumeroPedido),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+											close(tFileOutTempCSV)
+											copy(tFileOutTempCSV,tFileOutCSV)
+											close(tFileOutTempCSV)
+											remove(tFileOutTempCSV)
+											close(tFileOutCSV)
+											
+											
+											tPrefixoSubjectEmail := tBEGINSUBJbat
+													
+															
+															
+															
+																	
+																	
+											tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_INFORM_TRANSP_",replace(taNOMTRA_Query2[(nTempContRegistosQuery2-1)]," ","_"))
+											tNameEMAIL := build(tToInfologPrefixFilename,"HAR_INF_TRANSP_",tCODTRA,"_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+											tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILbat," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILbat," ",""),";",",")," EmailResumo ",tFileOutCSV)
+											log("executing command ",tCmdEmailErro,NL)
+											nRet := system(tCmdEmailErro)
+											close(tFileOutCSV)				
+											remove(tFileOutCSV)
+									
+										endif
+			
+			
+			endif
+			
+			
+			
+
+				nMessageID := cMessageID
+				 tFileOutCSV := build(sHOME,"/EmailsAEnviar/",tToInfologPrefixFilename,"HAR_INF_TRANSP_",taCODTRA_Query2[nTempContRegistosQuery2],"_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				 tFileOutTempCSV := build(sHOME,"/FMBR_AS2/Temp/",tToInfologPrefixFilename,"HAR_INF_TRANSP_",taCODTRA_Query2[nTempContRegistosQuery2],"_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				tNameOutCSV := build(tToInfologPrefixFilename,"HAR_INF_TRANSP_",taCODTRA_Query2[nTempContRegistosQuery2],"_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+
+
+
+				R_Header_Titulo("INFORMATIVO TRANSPORTE")								
+				   R_Header_Cliente(tLIBACTSelect)
+				   R_Header_DataInterface(time("now","%d/%m/%Y"))
+				   
+				   print(taHeader[1],";",taHeader[2],";",taHeader[3], NL) >> tFileOutTempCSV
+				   remove(taHeader)
+				   
+				   
+				   
+				   print("SERIE;NOTA_FISCAL;DATA_EMISSAO;TRANSPORTADORA;NOME;CNPJ;VALOR_NOTAL_FISCAL;ESTADO_DESTINO;CIDADE;PESO_BRUTO;QTD_EMBALAGEM;VOLUME_M3;CARGA_AGENDADA", NL) >> tFileOutTempCSV
+
+				   
+   
+  
+		endif
+  
+  
+  
+						
+						
+						
+					  
+					   
+					   
+					   
+					  
+					   
+					   R_Detalhe_Serie(taVAL_SERIE_Query2[nTempContRegistosQuery2])
+					   R_Detalhe_NotaFiscal(taVAL_REFLIV_Query2[nTempContRegistosQuery2])
+					   R_Detalhe_DataEmissao(taDATA_EMI_Query2[nTempContRegistosQuery2])
+					   R_Detalhe_Transportadora(taNOMTRA_Query2[nTempContRegistosQuery2])
+					   R_Detalhe_Nome(taNOMCLI_Query2[nTempContRegistosQuery2])
+					   R_Detalhe_CNPJ(taCLILIV_Query2[nTempContRegistosQuery2])
+					   tAuxxxxxxx := peel(build(number(taVALOR_NF_Query2[nTempContRegistosQuery2]):R10.2)," ")
+					   R_Detalhe_ValorNotaFiscal(replace(tAuxxxxxxx,".",","))
+					  
+						R_Detalhe_EstadoDestino(taUF_Query2[nTempContRegistosQuery2])
+						R_Detalhe_Cidade(taMUNIC_Query2[nTempContRegistosQuery2])
+					   
+					   
+					   
+					   tAuxxxxxxx := peel(build(number(taPESO_B_Query2[nTempContRegistosQuery2]):R10.4)," ")
+					   R_Detalhe_PesoBruto(replace(tAuxxxxxxx,".",","))
+					   
+					   
+					   
+					   R_Detalhe_QtdEmbalagem(taVOLUMES_Query2[nTempContRegistosQuery2])
+					   tAuxxxxxxx := peel(build(number(taCUBAGEM_Query2[nTempContRegistosQuery2]):R10.4)," ")
+					   R_Detalhe_VolumeM3(replace(tAuxxxxxxx,".",","))
+					   
+					   
+					   print(taDetalhe[1],";",taDetalhe[2],";",taDetalhe[3],";",taDetalhe[4],";", \
+						  taDetalhe[5],";",taDetalhe[6],";",taDetalhe[7],";",taDetalhe[8],";", \
+						  taDetalhe[9],";",taDetalhe[10],";",taDetalhe[11],";",taDetalhe[12],";",taCRILIV_Query2[nTempContRegistosQuery2], NL) >> tFileOutTempCSV
+					   remove(taDetalhe)
+					   
+					   
+					   
+					   
+   
+   tCODTRA_Query2Anterior := taCODTRA_Query2[nTempContRegistosQuery2]
+    endif	
+   nTempContRegistosQuery2++
+  endwhile
+   
+   
+   
+   
+   
+   
+   
+   
+   !envia ultimo
+	fmbrasil_inftransp_harman := find(build(sHOME,"/fmbrasil_inftransp_harman"),CODTRA=taCODTRA_Query2[(nTempContRegistosQuery2-1)])
+	if valid(fmbrasil_inftransp_harman) then
+		tTOEMAILbat := fmbrasil_inftransp_harman.TOEMAIL
+		tCCEMAILbat := fmbrasil_inftransp_harman.CCEMAIL
+		tBEGINSUBJbat := fmbrasil_inftransp_harman.BEGINSUBJ
+	else
+		bfMajtraceCSV("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Nao existe na tabela fmbrasil_inftransp_harman os valores CODTRA= ",taCODTRA_Query2[(nTempContRegistosQuery2-1)]," "))
+		exit(0)
+	endif
+	
+	
+	bfMajtraceCSV("Recebida","0",build(tNumeroPedido),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+	close(tFileOutTempCSV)
+	copy(tFileOutTempCSV,tFileOutCSV)
+	close(tFileOutTempCSV)
+	remove(tFileOutTempCSV)
+	close(tFileOutCSV)
+	
+	
+	tPrefixoSubjectEmail := tBEGINSUBJbat
+			
+					
+					
+					
+							
+							
+	tSubjectEmail := build("[",tPrefixoSubjectEmail,"]_INFORM_TRANSP_",replace(taNOMTRA_Query2[(nTempContRegistosQuery2-1)]," ","_"))
+	tNameEMAIL := build(tToInfologPrefixFilename,"HAR_INF_TRANSP_",tCODTRA,"_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+	tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EMAIL.RCPT=",replace(replace(tTOEMAILbat," ",""),";",",")," EMAIL.CC=",replace(replace(tCCEMAILbat," ",""),";",",")," EmailResumo ",tFileOutCSV)
+	log("executing command ",tCmdEmailErro,NL)
+	nRet := system(tCmdEmailErro)
+	close(tFileOutCSV)				
+	remove(tFileOutCSV)
+   
+   
+   
+   
+   
+   
+   
+   
+						
+						
+						
+	
+
+
+		
+   
+   bfSqlClose(tDbBase)
+   
+   
+exit(0)
+endbegin
+!===========================================================
+
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+   
+   
+   
+   
+   
+   
+   
+   bfSqlClose(tDbBase)
+   
+   
+exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtraceCSV(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "HARMAN"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO - INF TRANSP"
+   TRACE.NUMDOC := taNOMTRA_Query2[(nTempContRegistosQuery2-1)]
+   !if number(tData) > 0 then
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+!   endif
+   TRACE.MESSAGEID := build(nMessageID:R010)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOutCSV
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOutCSV,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  print("Foi determinado na tabela FMBRASIL_INFTRANSP_HARMAN o CODTRA: ",taCODTRA_Query2[(nTempContRegistosQuery2-1)],NL) >> TRACE.Detail
+	print("Enviando email para ",tTOEMAILbat," com cópia para: ",tCCEMAILbat,NL) >> TRACE.Detail
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+close(tFileOutTempCSV)
+copy(tFileOutTempCSV,TRACE.Out)
+close(tFileOutTempCSV)
+close(TRACE.Out)
+
+
+flush(TRACE)
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+

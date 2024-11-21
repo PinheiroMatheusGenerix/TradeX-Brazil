@@ -1,0 +1,990 @@
+%@(#) $Id:  M51_SIGNIFY_ASCII_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M51_SIGNIFY_ASCII_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M51_SIGNIFY_ASCII_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M51_SIGNIFY_ASCII_OUT
+!
+!===========================================================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define PROG_NAME "$RCSfile: $"
+#define PROG_VER  "$Revision: $"
+#define PROG_DATE "$Date: $"
+#define TX_PROG_INFO "M51_SIGNIFY_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M51_SIGNIFY_OUT.inc"
+#include "include/M51.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+
+    
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSIGNIFY"]
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	
+    
+nMainIndex := 0
+
+
+
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+
+
+
+endbegin
+
+!===========================================================
+
+
+
+
+line(1:"00.00")
+ !  tCentroCusto := S_00HEADER_EDISIT
+tData00DATEXC := S_0000HEADER_DATEXC
+tData00HEUEXC := S_0000HEADER_HEUEXC
+
+bEscreveuLinhaZERO := FALSE
+tAntNumLivLido := ""
+tTempoLido := time("now" ,"%Y%m%d%H%M%S")
+nNumeroLinhda5100 := 0
+endline
+
+line(1:"51.00")
+
+
+nNumeroLinhda5100++
+
+
+
+
+tMSGEXP1 := ""
+
+
+tQuery := 	build("SELECT MSGEXP1 FROM FGE50FM",tToInfologPrefixFilename,".GETOUE WHERE NUMTOU='",S_5100ORDERHEADER_NUMTOU,"'")   
+
+
+log("tQuery ",tQuery,NL)	
+
+
+if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			 print("FATAL ", tfSqlErrorStr())
+			 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+	
+endif
+
+if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+	 print("FATAL ", tfSqlErrorStr())
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+
+endif
+while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+	
+	tMSGEXP1 := peel(taDb2Array["MSGEXP1"]," ")
+
+	remove(taDb2Array)
+
+endwhile
+
+
+
+if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+	print("FATAL", tfSqlErrorStr())
+	 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+endif
+
+
+
+									tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"FM_",tMSGEXP1,"_",tTempoLido,".dat")
+									tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"FM_",tMSGEXP1,"_",tTempoLido,".dat")
+								   tNameOut := build("FM",tToInfologPrefixFilename,"FM_",tMSGEXP1,"_",tTempoLido,".dat")
+									
+tNumeroDocumento := S_5100ORDERHEADER_NUMLIV
+
+
+		bGeraMsg := TRUE
+								
+	
+
+	
+	
+	
+	tCodigoCliente := S_5100ORDERHEADER_CODCLI
+	tNumeroPedido := S_5100ORDERHEADER_REFLIV
+	tRota := S_5100ORDERHEADER_TOULIV
+tNumLivLido := S_5100ORDERHEADER_NUMLIV
+	tData := S_5100ORDERHEADER_DATEXP
+	
+	if length(S_5100ORDERHEADER_HEUEXP) = 4 then
+		tHora := build(S_5100ORDERHEADER_HEUEXP,"00")
+	else
+		tHora := S_5100ORDERHEADER_HEUEXP
+	endif
+   
+   
+
+   
+ 
+   
+   if bEscreveuLinhaZERO = FALSE then
+		bEscreveuLinhaZERO := TRUE
+   
+   
+		   R_HEADER1_TPREGISTRO("000")
+			R_HEADER1_NMINTERFACE("INTDNE")
+			R_HEADER1_VERSAO("4.0C")
+			R_HEADER1_REMETENTE("FM")
+			R_HEADER1_DESTINATARIO("PHILIPS")
+
+		flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+	endif
+
+
+
+
+
+
+tQuery := 	build("SELECT CRILIV FROM FGE50FM",tToInfologPrefixFilename,".GELIVE WHERE NUMLIV='",S_5100ORDERHEADER_NUMLIV,"'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tCRILIV := peel(taDb2Array["CRILIV"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+
+if nNumeroLinhda5100 = 1 or tCRILIV <> tCRILIVAnt then
+
+	R_HEADER2_TPREGISTRO("060")
+	R_HEADER2_FLOPERACAO("A")
+
+	
+
+	R_HEADER2_CDROMANEIO(build("M",tCRILIV))
+	if S_5100ORDERHEADER_CODACT = "SIG" then
+		R_HEADER2_CHAVERESPFRETE("22555787000433")
+	endif
+	R_HEADER2_DTEMBARQUE(tfConvertDate(tData, "YYYYMMDD" , "DD/MM/YYYY"))
+	R_HEADER2_HREMBARQUE(substr(tHora,1,4))
+	R_HEADER2_CDTRANSPORTADORA(S_5100ORDERHEADER_CODTRA)
+	R_HEADER2_CDREMESSA(substr(tMSGEXP1,1,35))
+	R_HEADER2_CDZONMAIORDISTANCIA("")
+	R_HEADER2_NMCIDMAIORDISTANCIA("")
+	R_HEADER2_CDUFMAIORDISTANCIA("")
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",S_5100ORDERHEADER_NUMLIV,"' AND CODRUB='PS01'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+
+
+	tContAux := build(number(tVALRUB) * 1000)
+	R_HEADER2_VRTOTALPESO(build(peel(build(number(tContAux):R015)," ")))
+	R_HEADER2_VRTOTALKM("")
+	R_HEADER2_CDEQUIPAMENTO(S_5100ORDERHEADER_CODCAM)
+	R_HEADER2_DSPLACAVEICULO(S_5100ORDERHEADER_NUMCNT)
+	tNOMCHF := ""
+	tQuery := 	build("SELECT NOMCHF FROM FGE50FM",tToInfologPrefixFilename,".GEZCHF WHERE CODCHF='",S_5100ORDERHEADER_CODCHF,"'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tNOMCHF := peel(taDb2Array["NOMCHF"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_HEADER2_NMMOTORISTA(tNOMCHF)
+	R_HEADER2_TXOBSERVACAO("")
+	tDIPLIV := ""
+	!SELECT DIPLIV FROM FGE50FM0A5/GELIVE WHERE NUMLIV="51.00 - NUMLIV"
+	
+	
+	tQuery := 	build("SELECT DIPLIV FROM FGE50FM",tToInfologPrefixFilename,".GELIVE WHERE NUMLIV='",S_5100ORDERHEADER_NUMLIV,"'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tDIPLIV := peel(taDb2Array["DIPLIV"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	
+	R_HEADER2_TPVIAGEM(tDIPLIV)
+	R_HEADER2_STEXCLUIREFEXT("")
+	R_HEADER2_QTEMBTRANSP("")
+		
+	flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+ 
+endif 
+ tCRILIVAnt:= tCRILIV
+   
+ tCodACT5100 :=   S_5100ORDERHEADER_CODACT
+ tNUMLIV5100 :=     S_5100ORDERHEADER_NUMLIV
+   
+
+  tCODTRA5100 :=     S_5100ORDERHEADER_CODTRA
+   
+   tNUMTOU5100 :=     S_5100ORDERHEADER_NUMTOU
+   tAntNumLivLido := tNumLivLido
+   
+   
+   
+   
+   
+   
+!valida se tem NF01
+   
+   
+tVALRUB := ""
+tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='NF01'")   
+
+
+				log("tQuery ",tQuery,NL)	
+
+			   
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+							 print("FATAL ", tfSqlErrorStr())
+							 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+					
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					 print("FATAL ", tfSqlErrorStr())
+					  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+
+				endif
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+					
+					tVALRUB := peel(taDb2Array["VALRUB"]," ")
+				
+					remove(taDb2Array)
+
+				endwhile
+				
+				
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+				endif
+   
+   
+if length(tVALRUB) > 0 then   !se tiver NF01
+
+
+	R_DETAIL_TPREGISTRO("140")
+	R_DETAIL_FLOPERACAO("A")
+	R_DETAIL_TPDOCUMENTO("1")
+	if tCodACT5100 = "SIG" then
+		R_DETAIL_PARCEIROCOMERCIAL("22555787000433")
+	endif
+
+
+	R_DETAIL_CDNOTA(tVALRUB)
+
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='SE01'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_DETAIL_CDSERIE(tVALRUB)
+
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='DT01'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_DETAIL_DTEMISSAOX(tVALRUB)
+	R_DETAIL_DTEMBARQUE(tfConvertDate(tData, "YYYYMMDD" , "DD/MM/YYYY"))
+	R_DETAIL_TPENTRADASAIDAX("2")
+	R_DETAIL_PARDESTREMET(tCodigoCliente)
+	R_DETAIL_CDMEIOTRANSPORTEX(tDIPLIV)
+	R_DETAIL_CDROMANEIO(build("M",tCRILIV))
+	R_DETAIL_CDTRANSPORTADORA(tCODTRA5100)
+
+
+
+	flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+
+
+endif	   
+   
+   
+   
+   
+
+
+
+ 
+   
+!valida se tem NF02
+   
+   
+tVALRUB := ""
+tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='NF02'")   
+
+
+				log("tQuery ",tQuery,NL)	
+
+			   
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+							 print("FATAL ", tfSqlErrorStr())
+							 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+					
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					 print("FATAL ", tfSqlErrorStr())
+					  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+
+				endif
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+					
+					tVALRUB := peel(taDb2Array["VALRUB"]," ")
+				
+					remove(taDb2Array)
+
+				endwhile
+				
+				
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+				endif
+   
+   
+if length(tVALRUB) > 0 then   !se tiver NF02
+
+
+	R_DETAIL_TPREGISTRO("140")
+	R_DETAIL_FLOPERACAO("A")
+	R_DETAIL_TPDOCUMENTO("1")
+	if tCodACT5100 = "SIG" then
+		R_DETAIL_PARCEIROCOMERCIAL("22555787000433")
+	endif
+
+
+	R_DETAIL_CDNOTA(tVALRUB)
+
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='SE02'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_DETAIL_CDSERIE(tVALRUB)
+
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='DT02'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_DETAIL_DTEMISSAOX(tVALRUB)
+	R_DETAIL_DTEMBARQUE(tfConvertDate(tData, "YYYYMMDD" , "DD/MM/YYYY"))
+	R_DETAIL_TPENTRADASAIDAX("2")
+	R_DETAIL_PARDESTREMET(tCodigoCliente)
+	R_DETAIL_CDMEIOTRANSPORTEX(tDIPLIV)
+	R_DETAIL_CDROMANEIO(build("M",tCRILIV))
+	R_DETAIL_CDTRANSPORTADORA(tCODTRA5100)
+
+
+
+	flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+
+
+endif	   
+   
+   
+   
+   
+ 
+
+
+
+
+
+
+ 
+   
+!valida se tem NF03
+   
+   
+tVALRUB := ""
+tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='NF03'")   
+
+
+				log("tQuery ",tQuery,NL)	
+
+			   
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+							 print("FATAL ", tfSqlErrorStr())
+							 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+					
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					 print("FATAL ", tfSqlErrorStr())
+					  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+
+				endif
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+					
+					tVALRUB := peel(taDb2Array["VALRUB"]," ")
+				
+					remove(taDb2Array)
+
+				endwhile
+				
+				
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+				endif
+   
+   
+if length(tVALRUB) > 0 then   !se tiver NF02
+
+
+	R_DETAIL_TPREGISTRO("140")
+	R_DETAIL_FLOPERACAO("A")
+	R_DETAIL_TPDOCUMENTO("1")
+	if tCodACT5100 = "SIG" then
+		R_DETAIL_PARCEIROCOMERCIAL("22555787000433")
+	endif
+
+
+	R_DETAIL_CDNOTA(tVALRUB)
+
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='SE03'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_DETAIL_CDSERIE(tVALRUB)
+
+
+
+	tVALRUB := ""
+	tQuery := 	build("SELECT VALRUB FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV='",tNUMLIV5100,"' AND CODRUB='DT03'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+
+						
+						tVALRUB := peel(taDb2Array["VALRUB"]," ")
+					
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+	R_DETAIL_DTEMISSAOX(tVALRUB)
+	R_DETAIL_DTEMBARQUE(tfConvertDate(tData, "YYYYMMDD" , "DD/MM/YYYY"))
+	R_DETAIL_TPENTRADASAIDAX("2")
+	R_DETAIL_PARDESTREMET(tCodigoCliente)
+	R_DETAIL_CDMEIOTRANSPORTEX(tDIPLIV)
+	R_DETAIL_CDROMANEIO(build("M",tCRILIV))
+	R_DETAIL_CDTRANSPORTADORA(tCODTRA5100)
+
+
+
+	flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+
+
+endif	   
+   
+    
+   
+   
+   
+endline
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+line(1:"99.00")
+ 
+
+	   
+	   bfMajtrace("Recebida","0",build(tNumeroPedido),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+	   
+		
+
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+			close(tFileOut)
+			
+	
+
+
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+bfSqlClose(tDbBase)
+
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "SIGNIFY"
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO"
+   TRACE.NUMDOC := tNUMTOU5100
+   !if number(tData) > 0 then
+	TRACE.DATDOC := tfConvertDate(build(tData00DATEXC), "YYYYMMDD" , "YYYY-MM-DD") 
+!   endif
+   TRACE.MESSAGEID := build(nMessageID:R010)
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+	if bGeraMsg = TRUE then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+ print(build("Ficheiro de Saida: "),tFileOutRECORD,NL,NL) >> TRACE.Detail
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	endif
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+
+
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+
+

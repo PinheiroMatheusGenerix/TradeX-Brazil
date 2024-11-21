@@ -1,0 +1,400 @@
+%@(#)  source_filename.rte     modif:17-09-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-09-2018  XX  Creation
+! 17-09-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+#define TX_PROG_INFO "M97_COTY_SAP_OUT"
+#include "include/generix_func.inc"
+#include "include/SERIEHARMAN.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+   
+
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHARMAN"]
+
+		
+		tDbBase			:= "FMWMS"
+		tDbBase2			:= "FMWMS2"
+		tDbBase3			:= "FMWMS3"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+
+	
+	
+bfSqlInit()
+
+
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtraceSerie("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+   
+ 
+
+	
+	
+	
+	
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+
+
+
+bFazPED := FALSE
+
+
+
+
+
+! SCO----------------------------------------------------------------
+!CONFIMACAO SEPARACAO
+
+
+
+
+
+							!gera arquivo CONFIMACAO SERIE
+								
+						
+									tCODACTLido := "HAR"
+								
+									bFezMsgSerie := FALSE
+									
+									nMessageID := cMessageID
+									tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLido,"_",time("now" ,"%Y%m%d%H%M%S"),"CNS_SERIE_EXP_DIA_AUT.csv")
+									tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLido,"_",time("now" ,"%Y%m%d%H%M%S"),"CNS_SERIE_EXP_DIA_AUT.csv")
+									tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLido,"_",time("now" ,"%Y%m%d%H%M%S"),"CNS_SERIE_EXP_DIA_AUT.csv")
+									
+									
+!QNSHAR_AAAAMMDDHHmmssCNS_SERIE_EXP_DIA_AUT.csv
+							
+									
+											
+											
+										 tQuery := build("SELECT CODPRO, CODSER "\
+															"FROM FGE50FM",tToInfologPrefixFilename,".GESERI  "\
+															"WHERE NUMLIV='",tNUMLIV,"'")
+
+
+
+								tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, A.REFLIV NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP "\
+								"from FGE50FM",tToInfologPrefixFilename,".geseri a  "\
+								"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV  "\
+								"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),3,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP  "\
+								", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP "\
+								", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV "\
+								"where C.DT_EXP= '23/12/2020'")
+								
+								!"where C.DT_EXP= '",time("now - 1d","%d/%m/%Y"),"'")
+								
+								
+								
+								
+								tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, A.REFLIV NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP "\
+"from FGE50FM",tToInfologPrefixFilename,".geseri a  "\
+"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV "\
+"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),3,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP "\
+", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP "\
+", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV "\
+"where C.DT_EXP= '",time("now - 1d","%d/%m/%Y"),"'")
+
+
+
+								tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, A.REFLIV NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP "\
+"from FGE50FM",tToInfologPrefixFilename,".geseri a  "\
+"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV "\
+"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),7,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP "\
+", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP "\
+", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV "\
+"where C.DT_EXP= '",time("now - 1d","%d/%m/%Y"),"'")
+
+
+
+
+								tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, A.REFLIV NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP "\
+"from FGE50FM",tToInfologPrefixFilename,".geseri a  "\
+"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV "\
+"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),7,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP "\
+", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP "\
+", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV "\
+"where C.DT_EXP= '",time("now - 1d","%d/%m/%Y"),"'") 
+
+
+
+
+								tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, A.REFLIV NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP  "\
+"from FGE50FM",tToInfologPrefixFilename,".geseri a   "\
+"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV  "\
+"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),7,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP  "\
+", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP  "\
+", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV  "\
+"where C.DT_EXP= '",time("now - 1d","%d/%m/%Y"),"'") 
+
+
+
+
+
+
+								tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, SUBSTR(A.REFLIV,1,LOCATE ('.', A.REFLIV)-1) NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP  "\
+"from FGE50FM",tToInfologPrefixFilename,".geseri a   "\
+"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi   "\
+"from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV  "\
+"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),7,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP  "\
+", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP  "\
+", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV  "\
+"where C.DT_EXP='",time("now - 1d","%d/%m/%Y"),"'  ")
+	
+
+!"where C.DT_EXP= '23/12/2020'")
+											
+!"where C.DT_EXP= '",time("now - 1d","%d/%m/%Y"),"'")										
+									
+									log(NL,tQuery,NL)
+									
+									! 1a passagem para determinar volumas
+									
+									if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+											print("FATAL ", tfSqlErrorStr())
+											bfMajtraceSerie("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+											exit(1)
+										
+									endif
+
+									if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+										 print("FATAL ", tfSqlErrorStr())
+										 bfMajtraceSerie("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+
+									endif
+									
+									nContadorResultadosQuery := 0
+									tVolumeAnterior := ""
+									while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+										nContadorResultadosQuery++
+										taCODPROSerie[nContadorResultadosQuery] := peel(taDb2Array["PRODUTO"]," ")
+										taCODSERSerie[nContadorResultadosQuery] := build(" ",peel(taDb2Array["NUM_SERIE"]," "))
+										taNFSerie[nContadorResultadosQuery] := peel(taDb2Array["NF"]," ")
+										
+										
+										remove(taNumNFSerie)
+										split(taNFSerie[nContadorResultadosQuery],taNumNFSerie,".")
+										
+										taDT_EMISerie[nContadorResultadosQuery] := peel(taDb2Array["DT_EMI"]," ")
+										taDT_EXPSerie[nContadorResultadosQuery] := peel(taDb2Array["DT_EXP"]," ")
+										
+										bFezMsgSerie := TRUE
+										
+										
+										if nContadorResultadosQuery = 1 then
+											print(build("Produto;\"Numero de serie\";\"Nota fiscal\";\"Data Emissao\";\"Data Expedicao\"",NL))		 >> tFileOutTemp					
+										endif
+										
+											R_SERIE_Produto(taCODPROSerie[nContadorResultadosQuery])
+										   R_SERIE_NumeroSerie(taCODSERSerie[nContadorResultadosQuery])
+										   R_SERIE_NotaFiscal(taNumNFSerie[1])
+										   R_SERIE_DataEmissao(taDT_EMISerie[nContadorResultadosQuery]) 
+										   R_SERIE_DatExpedicao(taDT_EXPSerie[nContadorResultadosQuery])
+										   
+										   
+										   print(taSERIE[1],";",taSERIE[2],";",taSERIE[3],";",taSERIE[4],";",taSERIE[5], NL) >> tFileOutTemp
+										   remove(taSERIE)
+										
+										
+									
+										remove(taDb2Array)
+							
+									endwhile
+									
+
+									if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+										print("FATAL", tfSqlErrorStr())
+										 bfMajtraceSerie("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+									endif
+									
+									
+									if bFezMsgSerie = TRUE then
+										close(tFileOutTemp)
+										bfMajtraceSerie("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+											
+										close(tFileOutTemp)
+										copy(tFileOutTemp,tFileOut)
+										close(tFileOutTemp)
+										remove(tFileOutTemp)
+										close(tFileOut)
+										
+										
+										
+										
+										
+										tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/",tNameOut)
+										copy(tFileOut,tArquivoEmailErro)
+										close(tFileOut)
+										close(tArquivoEmailErro)
+										
+										tSubjectEmail := build("[",tNameOut,"]_SERIE") 
+										tNameEMAIL := build("SERIE_",time("now","%Y%m%d%H%M%S"),".csv")
+										tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL,"  EmailSerie ",tArquivoEmailErro)
+										log("executing command ",tCmdEmailErro,NL)
+										nRet := system(tCmdEmailErro)
+										close(tArquivoEmailErro)				
+										remove(tArquivoEmailErro)
+										
+										
+										
+										
+										
+										
+										
+									endif
+							
+							
+				
+				
+				
+				
+			
+			
+			
+	
+bfSqlClose(tDbBase)
+
+	exit(0)
+
+
+endbegin
+ 
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+bfSqlClose(tDbBase)
+
+	exit(0)
+endend
+
+
+
+!===========================================================
+
+
+
+!===========================================================
+
+
+function bfMajtraceSerie(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   
+		TRACE.PERFIL := "HARMAN"
+	
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONF SERIE"
+   TRACE.NUMDOC := time("now - 1d","%d/%m/%Y")
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R06)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+		
+		   
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+flush(TRACE)
+
+
+
+close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+
+
+system("sleep 1")
+
+endfunction
+

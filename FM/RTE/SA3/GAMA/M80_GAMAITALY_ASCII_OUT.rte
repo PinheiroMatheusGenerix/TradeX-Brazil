@@ -1,0 +1,631 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_clientespedloreal/fmbrasil_clientespedloreal.cfg" fmbrasil_clientespedloreal
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M80_GAMAITALY_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M80.inc"
+#include "include/M50.inc"
+#include "include/ERPFMviaCSV.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+ 
+    
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameGAMAITALY"]
+
+		
+		
+
+    
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	
+	
+	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+    
+nMainIndex := 0
+nLinha := 0
+nLinhaQuery := 0
+
+nLinhaWM := 0
+
+endbegin
+
+!===========================================================
+
+
+
+
+line(1:"00.00")
+ !   tCentroCusto := S_0000_EDISIT
+    tData := S_0000FILEHEADER_DATEXC
+    tHora := S_0000FILEHEADER_HEUEXC   
+
+
+    !log("S_0000_EDISIT - ",S_0000_EDISIT,NL)
+endline
+
+
+line(1:"80.00")
+bConsidera := FALSE
+bConsidera_WM := FALSE
+
+
+	
+	tCODACTLido := S_GEEX8000_CODACT
+	if  tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
+	tCODACTLidoConvertido := "GAM"
+endif
+	
+	
+	
+	
+	
+		if S_GEEX8000_SENMVT = "-"  and S_GEEX8000_MOTMVT = "WM" then
+			nLinhaWM++
+			taDTILIV_WM[nLinhaWM] := S_GEEX8000_DATMVT
+			taHEUMVT_WM[nLinhaWM] := S_GEEX8000_HEUMVT
+			taCODPAL_WM[nLinhaWM] := S_GEEX8000_CODPAL
+			
+			taCODPRO8000_WM[nLinhaWM] := S_GEEX8000_CODPRO
+			
+			taDATFVI_WM[nLinhaWM] := S_GEEX8000_DATFVI
+			taUVCMVT_WM[nLinhaWM] := S_GEEX8000_UVCMVT
+			taCODLOT8000_WM[nLinhaWM] := S_GEEX8000_CODLOT
+			taCODACT_WM[nLinhaWM] := S_GEEX8000_CODACT
+			bConsidera_WM := TRUE
+		endif
+	
+endline
+
+
+line(1:"80.01")
+if bConsidera = TRUE then
+	taDIPLIV[nLinha] := build(taDIPLIV[nLinha],build(substr(S_GEEX8001_FAMPRO,1,1)):1, build(substr(taCODLOT8000[nLinha],1,9)):9)	
+endif
+
+if bConsidera_WM = TRUE then
+	taPDBMVT_WM[nLinhaWM] := build(number(S_GEEX8001_PDBMVT)/1000)
+endif
+endline
+
+line("99.00")
+   
+
+
+! -----------------------------------------------------------
+! -----------------------------------------------------------
+
+
+				
+				
+		! PED/IND
+			  nTempLinhaWM := 1
+		      while nTempLinhaWM <= nLinhaWM do
+		
+		
+					    tFileOutPEDIND := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"PED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+						tFileOutTempPEDIND := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"PED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+						tNameOutPEDIND := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"PED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+		
+				
+		
+		
+					tQuery := 	build("SELECT CODFOU FROM FGE50FM",tToInfologPrefixFilename,".GEPAL WHERE CODPAL='",taCODPAL_WM[nTempLinhaWM],"'")
+
+
+									  
+									  
+									  ! 18100002  "\
+
+					log("tQuery ",tQuery,NL)
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		
+						
+						tCODFOU_PEDIND := peel(taDb2Array["CODFOU"]," ")
+						
+						
+						
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+		
+					
+		
+			
+				
+																
+							   if length(tCODFOU_PEDIND) > 0 then
+							   fmbrasil_clientespedloreal := find(build(sHOME,"/fmbrasil_clientespedloreal"),CODCLI=tCODFOU_PEDIND,CODACT=taCODACT_WM[nTempLinhaWM])
+							   if valid(fmbrasil_clientespedloreal) then
+									! segue processo normalmente
+									if length(fmbrasil_clientespedloreal.CODIGOFABRICANTE) > 0 and length(fmbrasil_clientespedloreal.CODERP) > 0 and length(fmbrasil_clientespedloreal.CODACT) > 0 then
+										bFazPED := TRUE
+									endif
+								else
+									
+									fmbrasil_clientespedloreal := find(build(sHOME,"/fmbrasil_clientespedloreal"),CNPJ=tCODFOU_PEDIND,CODACT=taCODACT_WM[nTempLinhaWM])
+									if valid(fmbrasil_clientespedloreal) then
+									! segue processo normalmente
+										if length(fmbrasil_clientespedloreal.CODIGOFABRICANTE) > 0 and length(fmbrasil_clientespedloreal.CODERP) > 0 and length(fmbrasil_clientespedloreal.CODACT) > 0 then
+											bFazPED := TRUE
+										endif
+									else
+								!		bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Cliente: ",tCODFOU_PEDIND,"  e CODACT: ",taCODACT_WM[nTempLinhaWM]," nao existe na tabela fmbrasil_clientespedloreal!"))
+									
+								!		exit(1)
+									endif
+							   endif
+							   else
+								 ! 	  bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Cliente (CODCLI) nao preenchido no M51!"))
+									
+								!  exit(1)
+							   endif
+									
+							   R_HEADER_TIPO_REGISTRO("1")
+							   R_HEADER_ID("")
+							   R_HEADER_STATUS_INT("P")
+							   R_HEADER_DATACRIACAO(tfConvertDate(taDTILIV_WM[nTempLinhaWM], "YYYYMMDD" , "DD/MM/YYYY") )
+							   R_HEADER_DTHRABSORCAO("")
+							   if taCODACT_WM[nTempLinhaWM] = "580" or taCODACT_WM[nTempLinhaWM] = "581" or taCODACT_WM[nTempLinhaWM] = "583" or taCODACT_WM[nTempLinhaWM] = "602" then
+								R_HEADER_TIPODOCUMENTO("PED")
+							   endif
+							   if taCODACT_WM[nTempLinhaWM] = "58P" or taCODACT_WM[nTempLinhaWM] = "600" then
+								R_HEADER_TIPODOCUMENTO("IND")
+							   endif
+							   R_HEADER_TIPO("S")
+							   R_HEADER_NUMEROMOV(taHEUMVT_WM[nTempLinhaWM])
+							   R_HEADER_CPFCNPJ(build(number(fmbrasil_clientespedloreal.CNPJ):R014))
+							   R_HEADER_NOME(fmbrasil_clientespedloreal.NOME) !ver tabela codcli
+							   R_HEADER_RUA(fmbrasil_clientespedloreal.RUA) !ver tabela codcli
+							   R_HEADER_NUMERO(fmbrasil_clientespedloreal.NUMERO) !ver tabela codcli
+							   R_HEADER_COMPLEMENTO(fmbrasil_clientespedloreal.COMPLEMENTO) !ver tabela codcli
+							   R_HEADER_BAIRRO(fmbrasil_clientespedloreal.BAIRRO) !ver tabela codcli
+							   R_HEADER_CIDADE(fmbrasil_clientespedloreal.CIDADE) !ver tabela codcli
+							   R_HEADER_CODETD(fmbrasil_clientespedloreal.CODETD) !ver tabela codcli
+							   R_HEADER_CEP(fmbrasil_clientespedloreal.CEP) !ver tabela codcli
+							   R_HEADER_TELEFONE(fmbrasil_clientespedloreal.TELEFONE) !ver tabela codcli
+							   R_HEADER_EMAIL(fmbrasil_clientespedloreal.EMAIL) !ver tabela codcli
+							   R_HEADER_CNPJFILIAL(build(number(fmbrasil_clientespedloreal.CNPJFILIAL):R014)) !ver tabela codcli
+							   R_HEADER_SERIE("PED")
+							   R_HEADER_DATAEMISSAO(tfConvertDate(taDTILIV_WM[nTempLinhaWM], "YYYYMMDD" , "DD/MM/YYYY") )
+							   R_HEADER_DATASAIDA(tfConvertDate(taDTILIV_WM[nTempLinhaWM], "YYYYMMDD" , "DD/MM/YYYY") )
+							   R_HEADER_DATAENTREGA(tfConvertDate(taDTILIV_WM[nTempLinhaWM], "YYYYMMDD" , "DD/MM/YYYY"))
+							   R_HEADER_VALORBRUTO("")
+							   R_HEADER_VALORLIQUIDO("")
+							   R_HEADER_VALORFRETE("")
+							   R_HEADER_VALORDESPESAS("")
+							   R_HEADER_OBSERVACAO("FALTA NA IMOBILIZACAO")
+							   R_HEADER_CAMPOLIVRE1(fmbrasil_clientespedloreal.CODERP)
+							   R_HEADER_CAMPOLIVRE2(build(taDTILIV_WM[nTempLinhaWM],taHEUMVT_WM[nTempLinhaWM]))
+							   R_HEADER_ORIGEM("A")
+							   
+							   
+							   
+							   
+							   
+							   tCont := peel(build(number(taPDBMVT_WM[nTempLinhaWM]):R15.4)," ")
+							   R_HEADER_PESOLIQUIDO(replace(tCont,".",","))
+							   tCont := peel(build(number(taPDBMVT_WM[nTempLinhaWM]):R15.4)," ")
+							   R_HEADER_PESOBRUTO(replace(tCont,".",","))
+							   R_HEADER_RECCREATEDBY("")
+							   R_HEADER_RECCREATEDON("")
+							   R_HEADER_RECMODIFIEDBY("")
+							   R_HEADER_RECMODIFIEDON("")
+							   R_HEADER_CAMPOLIVRE3("")
+							   R_HEADER_MOVGERADO("")
+							   R_HEADER_DADOSADICIONAIS("")
+							   R_HEADER_CNPJTRANSPORTADORA("")
+							   R_HEADER_IDNAT("")
+							   R_HEADER_CODTRA("")
+							   R_HEADER_PESSOAFISOUJUR("")
+							   R_HEADER_CONTRIBUINTE("")
+							   R_HEADER_REGIMEESPECIAL("")
+							   R_HEADER_INSCRESTADUAL(fmbrasil_clientespedloreal.INSCRESTADUAL) !ver tabela codcli
+							   R_HEADER_FRETECIFOUFOB("")
+							   R_HEADER_ESPECIE("PALETE")  !adicionar aqui a especie de volumes
+							   
+							   
+
+
+
+					tQuery := 	build("SELECT CODFOU FROM FGE50FM",tToInfologPrefixFilename,".GEPAL WHERE CODPAL='",taCODPAL_WM[nTempLinhaWM],"'")
+
+
+					tQuery := 	build("SELECT "\
+									  "CASE  "\
+									  "WHEN CEILING(('",taUVCMVT_WM[nTempLinhaWM],"')/((COLCOU1*COUPAL1)*PCBPRO))>=1 THEN CEILING(('",taUVCMVT_WM[nTempLinhaWM],"')/((COLCOU1*COUPAL1)*PCBPRO)) "\
+									  "ELSE 1 "\
+									  "END VOLUMES "\
+									  "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO "\
+									  "WHERE CODPRO='",taCODPRO8000_WM[nTempLinhaWM],"' "\
+									  "AND CODACT='",taCODACT_WM[nTempLinhaWM],"'")
+									  
+									 
+
+					log("tQuery ",tQuery,NL)
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		
+						
+						tVOLUMES := peel(taDb2Array["VOLUMES"]," ")
+						
+						
+						
+						remove(taDb2Array)
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+		
+					
+							   
+							   
+							   R_HEADER_VOLUMES(build(number(tVOLUMES))) !adicionar aqui a quantidade de paletes
+							   R_HEADER_NUMERODELIVERY(build(taDTILIV_WM[nTempLinhaWM],taHEUMVT[nTempLinhaWM]))
+							   R_HEADER_CONSUMIDORFINAL("")
+							   R_HEADER_VALORICMS("")
+							   R_HEADER_BASEICMS("")
+							   R_HEADER_BASEICMSST("")
+							   R_HEADER_VALORICMSST("")
+							   R_HEADER_DT_AGENDAMENTO("")
+							   R_HEADER_CFV_COD("")
+							   R_HEADER_IDESTRANGEIRO("")
+							   R_HEADER_CODTDO("NFE")
+							   R_HEADER_UFDESEMBARACO("")
+							   R_HEADER_LOCALDESEMBARACO("")
+							   
+							  
+							   
+							   
+							   print(taHEADER[1],";",taHEADER[2],";",taHEADER[3],";",taHEADER[4],";",taHEADER[5],";",taHEADER[6],";",taHEADER[7],";",taHEADER[8],";",taHEADER[9],";",taHEADER[10],";",taHEADER[11],";",taHEADER[12], \
+								  ";",taHEADER[13],";",taHEADER[14],";",taHEADER[15],";",taHEADER[ \
+								  16],";",taHEADER[17],";",taHEADER[18],";",taHEADER[19],";", \
+								  taHEADER[20],";",taHEADER[21],";",taHEADER[22],";",taHEADER[23],";" \
+								  ,taHEADER[24],";",taHEADER[25],";",taHEADER[26],";",taHEADER[27], \
+								  ";",taHEADER[28],";",taHEADER[29],";",taHEADER[30],";",taHEADER[ \
+								  31],";",taHEADER[32],";",taHEADER[33],";",taHEADER[34],";", \
+								  taHEADER[35],";",taHEADER[36],";",taHEADER[37],";",taHEADER[38],";" \
+								  ,taHEADER[39],";",taHEADER[40],";",taHEADER[41],";",taHEADER[42], \
+								  ";",taHEADER[43],";",taHEADER[44],";",taHEADER[45],";",taHEADER[ \
+								  46],";",taHEADER[47],";",taHEADER[48],";",taHEADER[49],";", \
+								  taHEADER[50],";",taHEADER[51],";",taHEADER[52],";",taHEADER[53],";",taHEADER[54],";",taHEADER[55],";",taHEADER[56],";",taHEADER[57], \
+								  ";",taHEADER[58],";",taHEADER[59],";",taHEADER[60],";",taHEADER[ \
+								  61],";",taHEADER[62],";",taHEADER[63], NL)   >> tFileOutTempPEDIND
+							   remove(taHEADER) 
+							   nContador5120PED := 0
+						
+		
+									
+						   R_DETAIL_TIPO_REGISTRO("2")
+						   R_DETAIL_ID("")
+						   nContador5120PED++
+						   R_DETAIL_NUMEROSEQUENCIAL(build(nContador5120PED:R05))
+						   if number(taCODPRO8000_WM[nTempLinhaWM]) = 0 then
+								R_DETAIL_CODIGOPRD(taCODPRO8000_WM[nTempLinhaWM])
+						   else
+								R_DETAIL_CODIGOPRD(build("00",number(taCODPRO8000_WM[nTempLinhaWM]):R016))
+						   endif
+						   R_DETAIL_QUANTIDADE(taUVCMVT_WM[nTempLinhaWM])
+						   R_DETAIL_PRECOUNITARIO("")
+						   
+						   
+						   tQuery := 	build("SELECT  DS1PRO "\
+									  "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO "\
+									  "WHERE CODPRO='",taCODPRO8000_WM[nTempLinhaWM],"' "\
+									  "AND CODACT='",taCODACT_WM[nTempLinhaWM],"'")
+									  
+									 
+
+							log("tQuery ",tQuery,NL)
+						   
+							if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+										 print("FATAL ", tfSqlErrorStr())
+										 bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+								
+							endif
+
+							if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								  bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+
+							endif
+
+							while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				
+								
+								tDS1PRO := peel(taDb2Array["DS1PRO"]," ")
+								
+								
+								
+								remove(taDb2Array)
+
+							endwhile
+							
+							
+
+							if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+								print("FATAL", tfSqlErrorStr())
+								 bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+							endif
+						   
+						   
+						   R_DETAIL_DESCRICAOPROD(tDS1PRO) !por resultado select
+						   R_DETAIL_UND("UN")
+						   R_DETAIL_CODFABRICANTE(fmbrasil_clientespedloreal.CODIGOFABRICANTE) !ver tabela codcli
+						   R_DETAIL_IDLOTE("")
+						   R_DETAIL_RECCREATEDBY("")
+						   R_DETAIL_RECCREATEDON("")
+						   R_DETAIL_RECMODIFIEDBY("")
+						   R_DETAIL_RECMODIFIEDON("")
+						   R_DETAIL_CODIGOBARRAS("")
+						   R_DETAIL_CODIFFISCAL("")
+						   R_DETAIL_PROCMERCADORIA("")
+						   R_DETAIL_NRREFERENCIA("")
+						   R_DETAIL_SERIE("")
+						   R_DETAIL_IDNAT("")
+						   R_DETAIL_CODCOLIGADA("")
+						   R_DETAIL_QTDFALTA("")
+						   R_DETAIL_TIPOPRD("")
+						   R_DETAIL_USOECONSUMO("")
+						   R_DETAIL_NUMEROCCF("")
+						   R_DETAIL_ALIQICMS("")
+						   R_DETAIL_VALORICMS("")
+						   R_DETAIL_BASEICMS("")
+						   R_DETAIL_ALIQICMSST("")
+						   R_DETAIL_BASEICMSST("")
+						   R_DETAIL_VALORICMSST("")
+						   R_DETAIL_ALIQIVA("")
+						   if length(taCODLOT8000_WM[nTempLinhaWM]) > 0 then
+							R_DETAIL_OBSERVACAO(build("Lote: ",taCODLOT8000_WM[nTempLinhaWM]))
+						   endif
+						   R_DETAIL_CODIGOCEST("")
+						   
+						   !
+						   print(taDETAIL[1],";",taDETAIL[2],";",taDETAIL[3],";",taDETAIL[4],";",taDETAIL[5],";",taDETAIL[6],";",taDETAIL[7],";",taDETAIL[8],";",taDETAIL[9],";",taDETAIL[10],";",taDETAIL[11],";",taDETAIL[12], \
+							  ";",taDETAIL[13],";",taDETAIL[14],";",taDETAIL[15],";",taDETAIL[ \
+							  16],";",taDETAIL[17],";",taDETAIL[18],";",taDETAIL[19],";", \
+							  taDETAIL[20],";",taDETAIL[21],";",taDETAIL[22],";",taDETAIL[23],";",taDETAIL[24],";",taDETAIL[25],";",taDETAIL[26],";",taDETAIL[27], \
+							  ";",taDETAIL[28],";",taDETAIL[29],";",taDETAIL[30],";",taDETAIL[ \
+							  31],";",taDETAIL[32],";",taDETAIL[33],";",taDETAIL[34], NL) >> tFileOutTempPEDIND
+						   remove(taDETAIL)
+		
+							
+									bfMajtracePEDIND("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+								
+								system("sleep 1")
+							 close(tFileOutTempPEDIND)
+						copy(tFileOutTempPEDIND,tFileOutPEDIND)
+							close(tFileOutTempPEDIND)
+							remove(tFileOutTempPEDIND)
+								close(tFileOutPEDIND)
+						
+						nTempLinhaWM++
+					 endwhile
+				
+
+
+
+
+exit(0)
+
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+bfSqlClose(tDbBase)
+
+
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+
+
+
+!===========================================================
+!===========================================================
+
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtracePEDIND(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "GAMA ITALY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "RETORNO REAL MOVIMENTO PED/IND"
+   TRACE.NUMDOC := build(taDTILIV_WM[nTempLinhaWM],taHEUMVT[nTempLinhaWM])
+   TRACE.DATDOC := tfConvertDate(taDTILIV_WM[nTempLinhaWM], "YYYYMMDD" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOutPEDIND
+ TRACE.LIBEXC := tLIBEXC
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOutPEDIND,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+if tError="0" then
+
+
+
+
+
+	close(tFileOutTempPEDIND)
+	copy(tFileOutTempPEDIND,TRACE.Out)
+	close(tFileOutTempPEDIND)
+	close(TRACE.Out)
+endif
+
+
+flush(TRACE)
+endfunction
+
+
+
+!===========================================================
+!===========================================================

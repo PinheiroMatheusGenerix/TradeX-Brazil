@@ -1,0 +1,145 @@
+%@(#) $Id:  Relatorio.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: Relatorio.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : Relatorio
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! Relatorio
+!
+!===========================================================================================================
+
+! base "../syslog/syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+
+#define TX_PROG_INFO "Relatorio"	
+#include "include/generix_func.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	nMessageID := cMessageID
+
+	tFileOut := build(sHOME,"/EmailsAEnviar/Relatorio_Semanal_TradeX_",time("now","%d-%m-%y"),".txt")
+	tNameOut := build("Relatorio_Semanal_TradeX_",time("now","%d-%m-%y"),".txt")
+endbegin
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+end
+    print("Relatorio Semanal TradeXpress - Carrefour", NL, NL) >> tFileOut
+    print("Trace:", NL) >> tFileOut
+    ! ***************************************************************************************
+    ! TOTAL TRACE
+    TRACE := find(build(sHOME,"/trace"), CREATED > time("now - 8d", "%d.%m.%y"))
+
+    nTotTrace := 0
+    while valid(TRACE) do
+        nTotTrace++
+        TRACE := find()
+    endwhile
+
+    print("Total Tracers Geral = ", nTotTrace, NL) >> tFileOut
+    ! ***************************************************************************************
+
+    ! TOTAL TRACE COM ERRO
+    TRACE := find(build(sHOME,"/trace"),CREATED > time("now - 8d", "%d.%m.%y"), ERRO = "1")
+
+    nTotTraceErr := 0
+    while valid(TRACE) do
+        nTotTraceErr++
+        TRACE := find()
+    endwhile
+
+    print("Total Tracers com Erro = ", nTotTraceErr, NL) >> tFileOut
+    ! ***************************************************************************************
+
+    ! TOTAL TRACE POR AMBIENTE
+    taAmbiente[1] := "CDA"
+    taAmbiente[2] := "CDX"
+    taAmbiente[3] := "CDDC"
+    taAmbiente[4] := "PTDC"
+    taAmbiente[5] := "CDCJ"
+    taAmbiente[6] := "CDMG"
+    taAmbiente[7] := "PTMG"
+    taAmbiente[8] := "PTSP"
+    taAmbiente[9] := "CDRS"
+    taAmbiente[10] := "CDPE"
+    taAmbiente[11] := "CDAM"
+    taAmbiente[12] := "PTAM"
+
+    while tIndex in taAmbiente do
+        TRACE := find(build(sHOME,"/trace"),CREATED > time("now - 8d", "%d.%m.%y"), PERFIL = taAmbiente[tIndex])
+
+        nTotTraceAMB := 0
+        while valid(TRACE) do
+            nTotTraceAMB++
+            TRACE := find()
+        endwhile
+        
+        print("Total Tracers ",taAmbiente[tIndex]," = ", nTotTraceAMB, NL) >> tFileOut
+
+    endwhile
+    ! ***************************************************************************************
+
+    print(NL, "Syslog:", NL) >> tFileOut
+    ! ***************************************************************************************
+    ! TOTAL DE SYSLOGS
+    SYSLOG := find(sSYSLOG, CREATED > time("now - 8d", "%d.%m.%y"))
+
+    nTotSyslog := 0
+    while valid(SYSLOG) do
+        nTotSyslog++
+        SYSLOG := find()
+    endwhile
+
+    print("Total Sylogs Geral = ", nTotSyslog, NL) >> tFileOut
+
+    ! ***************************************************************************************
+    ! ARQUIVOS COM ESPAÇO NO NOME
+    SYSLOG := find(sSYSLOG, INFO = "File does not exist", CREATED > time("now - 8d", "%d.%m.%y"))
+
+    nTotSyslogFDNE := 0
+    while valid(SYSLOG) do
+        nTotSyslogFDNE++
+        SYSLOG := find()
+    endwhile
+
+    print("Total Logs Arquivos com Espaco no Nome = ", nTotSyslogFDNE, NL) >> tFileOut
+
+    close(tFileOut)
+
+    remove(tArquivoEmail)
+    tArquivoEmail := build(sHOME,"/EmailsAEnviar/GNX_",tNameOut)
+    copy(tFileOut,tArquivoEmail)
+    close(tFileOut)
+    close(tArquivoEmail)
+
+    tEnviaEmail := build("edisend EMAIL.SUBJECT=Relatorio_Semanal_Carrefour EMAIL.NAME=",tNameOut," Email_Relatorio ", tArquivoEmail)
+    nRet := system(tEnviaEmail)
+    close(tArquivoEmail)				
+    remove(tFileOut)
+    remove(tArquivoEmail)
+endend
+
+!===========================================================

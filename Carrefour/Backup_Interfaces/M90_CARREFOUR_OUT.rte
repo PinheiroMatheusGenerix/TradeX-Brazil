@@ -1,0 +1,259 @@
+%@(#) $Id:  M90_CARREFOUR_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M90_CARREFOUR_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M90_CARREFOUR_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M90_CARREFOUR_OUT
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M90_CARREFOUR_OUT"
+
+#include "include/generix_func.inc"
+#include "include/GEEXM90.inc"
+#include "include/DADOS.inc" 
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+	tDbBase		:= "CRFWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]	
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	bPlataforma := FALSE
+endbegin
+
+!===========================================================
+
+line(1:"00.00")
+	tAmbiente := S_GEEX0000_EMTEXC
+	tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",substr(S_GEEX0000_EMTEXC, length(S_GEEX0000_EMTEXC) - 3, length(S_GEEX0000_EMTEXC)),"")]
+	tCODACT := substr(S_GEEX0000_EMTEXC,length(S_GEEX0000_EMTEXC) - 3, length(S_GEEX0000_EMTEXC))
+	if tAmbiente = "FGE50PTSP" or tAmbiente = "FGE50PTAM" or tAmbiente = "FGE50PTMG" or tAmbiente = "FGE50PTDC" then
+		bPlataforma := TRUE
+	else
+		bPlataforma := FALSE
+	endif
+
+	tFileOut := build(sHOME,"/Tibco/","PT",tAmbiente,"90",build(nMessageID:R015),".DAT")
+	tFileOutTemp := build(sHOME,"/Tibco/Temp/","PT",tAmbiente,"90",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"90",build(nMessageID:R015),".DAT")
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	if bPlataforma = TRUE then
+		tQuery := build("SELECT  '90.10 001 ' || RPAD(TRIM(A.CODPRO),13,' ') || ' ' || '00' || ' ' || '000000000' || LPAD( COALESCE(SUM(CASE WHEN A.MESPRO = '1' THEN COALESCE(B.UVCSTO,0) WHEN A.MESPRO = '2' THEN 0 END) - MAX(CASE WHEN A.MESPRO = '1' THEN COALESCE(UVCSTORCB,0) WHEN A.MESPRO = '2' THEN 0 END) ,0) ,09,'0') || '000000000' || '000000000' || LPAD(COALESCE( SUM(CASE WHEN A.MESPRO = '1' AND B.MOTIMM <> ' ' THEN COALESCE(B.UVCSTO,0) WHEN A.MESPRO = '2' THEN 0 END) - MAX(CASE WHEN A.MESPRO = '1' THEN COALESCE(UVCSTORCBIM,0) WHEN A.MESPRO = '2' THEN 0 END) ,0),09,'0') || '000000000' || LPAD(COALESCE( MAX(CASE WHEN A.MESPRO = '1' THEN COALESCE(UVCKAI,0) WHEN A.MESPRO = '2' THEN 0 END) ,0),09,'0') || TRIM(TO_CHAR(MIN(COALESCE(B.DATREC,0)),'00000000')) || TRIM(TO_CHAR(MAX(COALESCE(B.DATREC,0)),'00000000')) || TRIM(TO_CHAR(MIN(COALESCE(B.DATFVI,0)),'00000000')) || TRIM(TO_CHAR(MAX(COALESCE(B.DATFVI,0)),'00000000')) || LPAD(DECIMAL(COALESCE(SUM( CASE WHEN A.MESPRO = '1' THEN COALESCE(B.UVCSTO,0) WHEN A.MESPRO = '2' THEN COALESCE(B.PDBPAL,0) END) - MAX(CASE WHEN A.MESPRO = '1' THEN COALESCE(UVCSTORCB,0) WHEN A.MESPRO = '2' THEN COALESCE(PDBPALRCB,0) END) ,0) * 1000,11,0),11,'0') || '1' || LPAD(TRIM(MAX(A.PCBPRO)),5,'0') || ' ' || A.MESPRO || LPAD(DECIMAL(COALESCE(SUM(CASE WHEN A.MESPRO = '1' THEN 0 WHEN A.MESPRO = '2' AND B.MOTIMM <> ' ' THEN COALESCE(B.PDBPAL,0) END),0) * 1000,11,0),11,'0') || LPAD(DECIMAL(COALESCE(MAX(CASE WHEN A.MESPRO = '1' THEN 0 WHEN A.MESPRO = '2' THEN COALESCE(SUPKG,0) END),0) * 1000,11,0),11,'0') AS DADOS ", NL," "\
+		"FROM FGE50CA",tToInfologPrefixFilename,".GEPRO A ", NL," "\
+		"LEFT JOIN FGE50CA",tToInfologPrefixFilename,".GEPAL B ", NL," "\
+		"ON (A.CODPRO = B.CODPRO) ", NL," "\
+		"LEFT JOIN ", NL," "\
+		"( ", NL," "\
+		"	SELECT  C.CODPRO ", NL," "\
+		"	       ,COALESCE(SUM( CASE WHEN C.MESPRO = '1' THEN C.UVCLIV WHEN C.MESPRO = '2' THEN 0 END ),0) AS UVCKAI ", NL," "\
+		"	       ,COALESCE(SUM( CASE WHEN C.MESPRO = '1' THEN 0 WHEN C.MESPRO = '2' THEN C.PDNLIV END ),0) AS SUPKG ", NL," "\
+		"	FROM FGE50CA",tToInfologPrefixFilename,".GESUPD C ", NL," "\
+		"	INNER JOIN FGE50CA",tToInfologPrefixFilename,".GESUPE D ", NL," "\
+		"	ON (C.NUMSUP = D.NUMSUP) ", NL," "\
+		"	WHERE D.TYPSUP IN ('1') ", NL," "\
+		"	AND ( (D.ETASUP IN (30, 40)) OR (C.CODPRP <> '' AND D.ETASUP = 20 )) ", NL," "\
+		"	GROUP BY  C.CODPRO ", NL," "\
+		") X ", NL," "\
+		"ON (A.CODPRO = X.CODPRO) ", NL," "\
+		"LEFT JOIN ", NL," "\
+		"( ", NL," "\
+		"	SELECT  SUM(COALESCE(D.UVCSTO,0))                                    AS UVCSTORCB ", NL," "\
+		"	       ,SUM(CASE WHEN D.MOTIMM <> ' ' THEN COALESCE(D.UVCSTO,0) END) AS UVCSTORCBIM ", NL," "\
+		"	       ,SUM(CASE WHEN D.MOTIMM = ' ' THEN COALESCE(D.PDBPAL,0) END)  AS PDBPALRCB ", NL," "\
+		"	       ,SUM(CASE WHEN D.MOTIMM <> ' ' THEN COALESCE(D.PDBPAL,0) END) AS PDBPALRCBIM ", NL," "\
+		"	       ,D.CODPRO ", NL," "\
+		"	FROM FGE50CA",tToInfologPrefixFilename,".GEPAL D ", NL," "\
+		"	WHERE (D.NUMREC IN ( SELECT B.NUMREC FROM FGE50CA",tToInfologPrefixFilename,".GERECE B WHERE B.ETAREC < 50) OR D.NUMREC IS NULL) ", NL," "\
+		"	GROUP BY  D.CODPRO ", NL," "\
+		") D ", NL," "\
+		"ON (A.CODPRO = D.CODPRO) ", NL," "\
+		"GROUP BY  A.CODPRO ", NL," "\
+		"         ,A.MESPRO ", NL," "\
+		"HAVING ((SUM(COALESCE(B.UVCSTO, 0)) + MAX(COALESCE(UVCKAI, 0)) - MAX(COALESCE(UVCSTORCB, 0))) > 0 OR (SUM(COALESCE(B.PDBPAL, 0)) + MAX(COALESCE(SUPKG, 0)) - MAX(COALESCE(PDBPALRCB, 0))) > 0) ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		nContQuery := 0
+
+		while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			nContQuery++
+
+			taDADOS[nContQuery] := peel(taDb2Array["DADOS"]," ")
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		nContLinhasEscritas := 0
+		nCountProd := 0
+
+		! ESCRITA 00.00
+		R_GEEX0000_CODEXC("00")
+		R_GEEX0000_SEPEXC(".")
+		R_GEEX0000_SCOEXC("00")
+		R_GEEX0000_TRTEXC("2")
+		R_GEEX0000_EMTEXC("bib Infolog FGE50CDCJ")
+		R_GEEX0000_RCTEXC("TIBCO")
+		R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX0000_NUMEXC("0000000")
+		R_GEEX0000_ACQEXC("0")
+		R_GEEX0000_VEREXC("5.00")
+		R_GEEX0000_NOMDTQ("M93")
+		R_GEEX0000_BIBDTQ("bib Infolog FGE50CDCJ")
+		R_GEEX0000_IGLSIT("000")
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContLinhasEscritas++
+
+		while nCountProd < nContQuery do
+			nCountProd++
+
+			R_DADOS(taDADOS[nCountProd])
+
+			flush(0,0,NL) >> tFileOutTemp
+			nContLinhasEscritas++
+		endwhile
+
+		!ESCRITA 9900
+		R_GEEX9900_CODEXC("99")
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC("00")
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_NUMEXC("0000000")
+		R_GEEX9900_CPTEXC(build(nContLinhasEscritas))
+
+		flush(0,0,NL) >> tFileOutTemp
+		close(tFileOutTemp)
+
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"","")
+
+		bfSqlClose(tDbBase)
+		exit(0)
+	else
+		close(SYSLOG.a)
+		tFileOut := build(sHOME,"/Tibco/","CD",tAmbiente,"90",build(nMessageID:R015),".DAT")
+		log("copying file to ",tFileOut,NL)
+		copy(SYSLOG.a,tFileOut)
+		close(SYSLOG.a)
+		close(tFileOut)
+
+		bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"","")
+
+		exit(0)
+	endif
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := tCODACT
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M90"
+	TRACE.NUMDOC := "M90 BATIMENTO"
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+	flush(TRACE)
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+	system("sleep 1")
+endfunction
+
+!===========================================================

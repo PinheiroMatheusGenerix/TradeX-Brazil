@@ -1,0 +1,2844 @@
+%@(#) $Id:  UPDATE_SIGNIFY_CRNF_IN.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: UPDATE_SIGNIFY_CRNF_IN.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : UPDATE_SIGNIFY_CRNF_IN
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! UPDATE_SIGNIFY_CRNF_IN
+!
+!===========================================================================================================
+schema "XML/FMBrasil/schema0.xsd" validating
+message "XML/FMBrasil/StandardBusinessDocument.dtd" receiving,passthru
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_crnf_signify/fmbrasil_crnf_signify.cfg" fmbrasil_crnf_signify
+base "../fmbrasil_crnf_signify/fmbrasil_crnf_signify.cfg" fmbrasil_crnf_signifyvalidacao
+
+
+
+		
+!===========================================================
+
+! Input/output macros file
+
+
+
+
+#define PROG_NAME "$RCSfile: $"
+#define PROG_VER  "$Revision: $"
+#define PROG_DATE "$Date: $"
+#define PROG_INFO build(PROG_NAME,PROG_VER,PROG_DATE)
+#define TX_PROG_INFO build(PROG_NAME,PROG_VER,PROG_DATE)
+
+#include "include/generix_func.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+   
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSIGNIFY"]
+		
+		
+		
+	tDbUsernameUPDATES		:= taPARAM["WMSDBUSERUPDATES"]
+	tDbPasswordUPDATES		:= taPARAM["WMSDBPASSUPDATES"]
+	tDbUrlUPDATES		:= taPARAM["WMSDBURLUPDATES"]
+	
+bfSqlInit()
+
+   if not bfSqlJdbc(tDbBase2 , tDbUsernameUPDATES,tDbPasswordUPDATES,tDbUrlUPDATES) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+	
+
+    
+
+
+	
+    !tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+	nContadorHeader := 0
+	nContadorSHPHeader := 0
+	nContadorItems := 0
+	nMainIndex := 0
+	tQueryUpdadeAcumulado := ""
+	
+	
+	
+	 nNumeroItems := 0
+
+   
+   nQtdSomada := 0
+   nQtdSomadaPorVolumes := 0
+   bJaHouvePRPPIC5 := FALSE
+   tDiferencaPRPPIC5 := ""
+   
+   
+   
+   
+   close(SYSLOG.e)
+   
+   copy(SYSLOG.e, build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   
+   close(SYSLOG.e)
+   
+   
+   
+   !le os namesapeces
+   nNumeroNameSpace := 0
+   close(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   
+   
+   tLinhdaLida := read(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   while tLinhdaLida <> EOF do
+		if index(tLinhdaLida," xmlns:") > 0 then
+			nNumeroNameSpace++
+			tPrefixoNamespaceAux := substr(tLinhdaLida,(index(tLinhdaLida," xmlns:")+7),20)
+			taPrefixoNamespace[nNumeroNameSpace] := substr(tPrefixoNamespaceAux,1,(index(tPrefixoNamespaceAux,"=")-1))
+			log("taPrefixoNamespace[nNumeroNameSpace] ",taPrefixoNamespace[nNumeroNameSpace],NL)
+		endif
+		tLinhdaLida := read(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   endwhile
+   
+   
+   
+   
+   
+   
+   close(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   
+   
+   tLinhdaLida := read(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   while tLinhdaLida <> EOF do
+		bEncontrouNameSpNesLinha := FALSE
+		
+		nTempNumeroNameSpace := 1
+		while nTempNumeroNameSpace <= nNumeroNameSpace do
+			if index(tLinhdaLida,build("<",taPrefixoNamespace[nTempNumeroNameSpace],":")) > 0 then
+				tLinhdaLida := tfRetiraPatern(tLinhdaLida,build("<",taPrefixoNamespace[nTempNumeroNameSpace],":"),"<")
+			
+			
+			
+			endif
+			
+			if index(tLinhdaLida,build("</",taPrefixoNamespace[nTempNumeroNameSpace],":")) > 0 then
+				tLinhdaLida := tfRetiraPatern(tLinhdaLida,build("</",taPrefixoNamespace[nTempNumeroNameSpace],":"),"</")
+			
+			
+			
+			endif
+			
+			nTempNumeroNameSpace++
+		endwhile
+		
+		
+		print(tLinhdaLida,NL) >> build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml")
+		
+		tLinhdaLida := read(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   endwhile
+   
+   
+   
+   
+   close(build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml"))
+   close(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+   
+   redirect(INPUT,build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml"))
+   
+   
+   
+   
+   
+   
+   
+   
+endbegin
+
+
+! Group gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceIdentification : M 1/1 
+segment SuniqueCreatorIdentification gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceIdentification     ! M 1/1 
+   tSalesOrderNumber := eEuniqueCreatorIdentification   ! M  
+	log("tSalesOrderNumber ",tSalesOrderNumber,NL)
+endsegment
+
+
+segment SadditionalPartyIdentificationValue gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceIdentification,gGcontentOwner,gGadditionalPartyIdentification     ! M 1/1 
+   tAuxTipo := eEadditionalPartyIdentificationValue   ! M  
+
+endsegment
+
+segment SadditionalPartyIdentificationType gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceIdentification,gGcontentOwner,gGadditionalPartyIdentification     ! M 1/1 
+   if eEadditionalPartyIdentificationType= "FOR_INTERNAL_USE_12" then
+		tDocumentSeries := tAuxTipo   ! M  
+		tAuxTipo := ""
+		log("tDocumentSeries ",tDocumentSeries,NL)
+	endif
+
+endsegment
+
+
+
+! Group gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGconsignmentInformation,gGpackageInformation : M 1/1 
+segment SnumberOfUnits gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGconsignmentInformation,gGpackageInformation     ! M 1/1 
+   tNumeroVolumesNF := eEnumberOfUnits   ! M  
+	log("tNumeroVolumesNF ",tNumeroVolumesNF,NL)
+endsegment
+
+
+
+! Group gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGpurchaseConditions : M 1/1 
+segment SpurchaseConditions gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGpurchaseConditions     ! M 1/1 
+   tDocumentoDateNF := eAcreationDateTime   ! M  
+log("tDocumentoDateNF ",tDocumentoDateNF,NL)
+endsegment
+
+segment SuniqueCreatorIdentification gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGpurchaseConditions     ! M 1/1 
+   tDocumentoNumberNF := eEuniqueCreatorIdentification   ! M  
+log("tDocumentoNumberNF ",tDocumentoNumberNF,NL)
+endsegment
+
+
+segment SadditionalTradeItemIdentificationValue gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceLogisticUnitLineItem,gGdespatchAdviceItemContainmentLineItem,gGcontainedItemIdentification,gGadditionalTradeItemIdentification     ! M 1/1 
+   tAuxTipoProd := eEadditionalTradeItemIdentificationValue
+
+	
+endsegment
+!SUPPLIER_ASSIGNED
+
+segment SadditionalTradeItemIdentificationType gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceLogisticUnitLineItem,gGdespatchAdviceItemContainmentLineItem,gGcontainedItemIdentification,gGadditionalTradeItemIdentification     ! M 1/1 
+   if eEadditionalTradeItemIdentificationType = "SUPPLIER_ASSIGNED" then
+	nNumeroItems++
+
+	taProductCode[nNumeroItems] := tAuxTipoProd   ! M  
+	baProdutoDuplicado[nNumeroItems] := FALSE
+	tAuxTipoProd := ""
+	log("taProductCode[nNumeroItems] ",taProductCode[nNumeroItems],NL)
+	baProdutoQtdTotPreenchida[nNumeroItems] := FALSE
+	naQtdAcumuDesteProdutoNaTabVol[nNumeroItems] := 0
+  endif
+endsegment
+!SUPPLIER_ASSIGNED
+
+! Group gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceLogisticUnitLineItem,gGdespatchAdviceItemContainmentLineItem,gGquantityContained : M 1/1 
+segment Svalue gGStandardBusinessDocument,gGmessage,gGtransaction,gGcommand,gGdocumentCommand,gGdocumentCommandOperand,gGdespatchAdvice,gGdespatchAdviceLogisticUnitLineItem,gGdespatchAdviceItemContainmentLineItem,gGquantityContained     ! M 1/1 
+   taQTY[nNumeroItems] := build(number(eEvalue))   ! M  
+	taQTYConsolidada[nNumeroItems] := build(number(eEvalue))   ! M  
+	
+	taQTY[nNumeroItems] := build(number(taQTY[nNumeroItems]))
+	taQTYConsolidada[nNumeroItems] := build(number(taQTYConsolidada[nNumeroItems]))
+	taQTYConsolidadaRemanescente[nNumeroItems] := taQTYConsolidada[nNumeroItems]
+	taQTYConsolidadaRemanescUni[nNumeroItems] := taQTYConsolidada[nNumeroItems]
+	log("taQTY[nNumeroItems] ",taQTY[nNumeroItems],NL)
+	
+	
+	
+endsegment
+
+
+
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+
+	!consolidar quantidade
+	nTempNumeroItems := 1
+	while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+				nTempNumeroItems2 := nTempNumeroItems + 1
+				while nTempNumeroItems2 <= nNumeroItems do
+					if taProductCode[nTempNumeroItems2] = taProductCode[nTempNumeroItems] then
+						taQTYConsolidada[nTempNumeroItems] := build(number(taQTYConsolidada[nTempNumeroItems]) + number(taQTYConsolidada[nTempNumeroItems2]))
+						taQTYConsolidadaRemanescente[nTempNumeroItems] := taQTYConsolidada[nTempNumeroItems]
+						taQTYConsolidadaRemanescUni[nTempNumeroItems] := taQTYConsolidada[nTempNumeroItems]
+						baProdutoDuplicado[nTempNumeroItems2] := TRUE
+					endif
+					nTempNumeroItems2++
+				endwhile
+			endif
+		nQtdSomada := nQtdSomada + number(taQTY[nTempNumeroItems])
+		
+		
+		
+		
+		
+		
+		
+		nQtdSomadaPorVolumes := number(tNumeroVolumesNF)
+		
+		nTempNumeroItems++
+	endwhile
+
+
+
+
+
+	
+	
+	
+	
+	
+	
+
+	bEPrimeiraNF := TRUE
+	bESegundaNF := TRUE
+	bETerceiraNF := TRUE
+	
+	fmbrasil_crnf_signifyvalidacao := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber)
+	while valid(fmbrasil_crnf_signifyvalidacao) do
+		if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF) > 0  then
+			bEPrimeiraNF := FALSE
+		endif
+		
+		if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF2) > 0  then
+			bESegundaNF := FALSE
+		endif
+		
+		if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF3) > 0  then
+			bETerceiraNF := FALSE
+		endif
+		
+		fmbrasil_crnf_signifyvalidacao := find()
+	endwhile
+
+	if bEPrimeiraNF = TRUE then
+		log("E primeira NF",NL)
+	else
+		if bESegundaNF = TRUE then
+			log("E segunda NF",NL)
+		else
+			if bETerceiraNF = TRUE then
+				log("E terceira NF",NL)
+			endif
+		endif
+	endif
+	
+	
+	
+
+		
+				
+			
+bNFRepetida := FALSE	
+fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC <> "5", CODTLI <> "EX", CODTLI <> "MN",DOCUMENTNUMBERNF = tDocumentoNumberNF,DOCUMENTSERIES = tDocumentSeries)
+if valid(fmbrasil_crnf_signify) then
+	bNFRepetida := TRUE
+endif
+
+fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC <> "5", CODTLI <> "EX", CODTLI <> "MN",DOCUMENTNUMBERNF2 = tDocumentoNumberNF,DOCUMENTSERIES2 = tDocumentSeries)
+if valid(fmbrasil_crnf_signify) then
+	bNFRepetida := TRUE
+endif
+
+fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC <> "5", CODTLI <> "EX", CODTLI <> "MN",DOCUMENTNUMBERNF3 = tDocumentoNumberNF,DOCUMENTSERIES3 = tDocumentSeries)
+if valid(fmbrasil_crnf_signify) then
+	bNFRepetida := TRUE
+endif
+
+if bNFRepetida = FALSE	then	
+	log("NF nao repetida",NL)
+endif
+
+if bNFRepetida = TRUE	then	
+	log("NF nao repetida",NL)
+endif	
+			
+if bNFRepetida = FALSE	then	
+
+
+	nNumeroVolumeInicial := 1
+
+
+	nTempNumeroItems := 1
+	while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+				nQtdAcumuDesteProdutoNaTabela := 0
+				nQtdSobrou := 0
+				bPrimeiroRegDesteProduto := TRUE
+				
+				log("taQTYConsolidada[nTempNumeroItems] ",taQTYConsolidada[nTempNumeroItems],NL)
+				log("taProductCode[nTempNumeroItems] ",taProductCode[nTempNumeroItems],NL)
+				log("taSequencing[nTempNumeroItems] ",taSequencing[nTempNumeroItems],NL)
+				log("tSalesOrderNumber ",tSalesOrderNumber,NL)
+				log("===============              ===============",NL)
+
+				
+				
+				
+				
+				
+				fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber, CODTLI = "EX")aSEQUENCIASUPPORT
+				while valid(fmbrasil_crnf_signify) do
+					!fmbrasil_crnf_signify.DIPLIVNF1 := build(number(peel(taDb2Array["SEQUENCIA_SUPPORTE"]," ")):R05,"/" ,nNumeroTotalVolPorSalesOrder:R05,"/" ,  nNumeroTotalVolPorSalesOrder:R05,"/",build(number("000000"):R06),"/",build(number("000"):R03))
+					nIndexAuxTmp := index(fmbrasil_crnf_signify.DIPLIVNF1,"/000000/000")
+					fmbrasil_crnf_signify.DIPLIVNF1 := build(substr(fmbrasil_crnf_signify.DIPLIVNF1,1,nIndexAuxTmp),"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES):R03))
+					tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET DIPLIV='",fmbrasil_crnf_signify.DIPLIVNF1,"'   "\
+									"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+									"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+									"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"' AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+									
+									
+								fmbrasil_crnf_signify.MSGLIGNF2 := ""
+								fmbrasil_crnf_signify.ZONSPFNF3 := ""
+								log(NL,tQueryUpdade,NL)
+
+								tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+									
+									
+									
+									
+											if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(27)
+										   endif
+										   if not bfSqlExec(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(28)
+										   endif
+										   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(29)
+										   endif
+										   if not bfSqlFree(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(30)
+										   endif
+				
+				
+				
+				
+				
+				
+				
+					fmbrasil_crnf_signify := find()
+				endwhile
+				
+				
+				fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber, CODTLI = "MN")aSEQUENCIASUPPORT
+				while valid(fmbrasil_crnf_signify) do
+					!fmbrasil_crnf_signify.DIPLIVNF1 := build(number(peel(taDb2Array["SEQUENCIA_SUPPORTE"]," ")):R05,"/" ,nNumeroTotalVolPorSalesOrder:R05,"/" ,  nNumeroTotalVolPorSalesOrder:R05,"/",build(number("000000"):R06),"/",build(number("000"):R03))
+					nIndexAuxTmp := index(fmbrasil_crnf_signify.DIPLIVNF1,"/000000/000")
+					fmbrasil_crnf_signify.DIPLIVNF1 := build(substr(fmbrasil_crnf_signify.DIPLIVNF1,1,nIndexAuxTmp),"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES):R03))
+					tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET DIPLIV='",fmbrasil_crnf_signify.DIPLIVNF1,"'   "\
+									"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+									"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+									"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"' AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+									
+									
+								fmbrasil_crnf_signify.MSGLIGNF2 := ""
+								fmbrasil_crnf_signify.ZONSPFNF3 := ""
+								log(NL,tQueryUpdade,NL)
+
+								tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+									
+									
+									
+									
+											if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(27)
+										   endif
+										   if not bfSqlExec(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(28)
+										   endif
+										   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(29)
+										   endif
+										   if not bfSqlFree(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(30)
+										   endif
+				
+				
+				
+				
+				
+				
+				
+					fmbrasil_crnf_signify := find()
+				endwhile
+
+				
+				
+				
+				
+				
+				
+			
+				
+				
+				fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,PRPPIC <> "5", CODTLI <> "EX", CODTLI <> "MN")aSEQUENCIASUPPORT
+				while valid(fmbrasil_crnf_signify) do
+					log("fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL ",fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL,NL)
+					log("fmbrasil_crnf_signify.UNIDADESCAIXA ",fmbrasil_crnf_signify.UNIDADESCAIXA,NL)
+					log("fmbrasil_crnf_signify.PRODUCTCODE ",fmbrasil_crnf_signify.PRODUCTCODE,NL)
+					log("fmbrasil_crnf_signify.QUANTITY ",fmbrasil_crnf_signify.QUANTITY,NL)
+					log("fmbrasil_crnf_signify.QUANTITY2 ",fmbrasil_crnf_signify.QUANTITY2,NL)
+					log("taQTYConsolidadaRemanescUni[nTempNumeroItems] ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+					log("nQtdSomada ",nQtdSomada,NL)
+					
+				
+					if (number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL) * number(fmbrasil_crnf_signify.UNIDADESCAIXA)) = nQtdSomada and fmbrasil_crnf_signify.DESDOBRO <> "C"  and fmbrasil_crnf_signify.DESDOBRO <> "S" then
+					! só terá uma NF
+						bNaoEscreveTab := FALSE
+						log("aqui1",NL)
+						/*
+						
+						
+							- Somar a quantidade “Quantity” todas as linhas com o mesmo “Product code” dentro da interface
+							- Preencher o campo “QUANTITY1” com a soma da informação (CNRF arquivo, record type 2, posição 27) nas linhas da tabela SIGNIFY_CNRF para os produtos (CNRF arquivo, record type 2, posição 7) do “SALES_ORDER_NUMBER”
+							- O primeiro SKU da interface CNRF irá receber a informação de “VOLUME_INICIAL_NF1” 
+							- O Campo “QTD_VOL_SKU_NF1” deve ser igual ao campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+							- Os demais irão seguir a ordem somando +1 na linha “VOLUME_INICIAL_NF1” com o campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+								*lembrando que agora definimos o valor por suporte, onde temos o mesmo SKU em diversos suportes
+							- Deve preencher o campo “DOCUMENT_NUMBER_NF1” com o campo (CNRF arquivo, record type 1, posição 3)
+							- Deve preencher o campo “DOCUMENT_SERIES_NF1” com o campo (CNRF arquivo, record type 1, posição 6)
+							- Deve preencher o campo “GROSS_WEIGHT_NF1” com o campo (CNRF arquivo, record type 1, posição 486)
+							- Preencher o campo “DIPLIV_NF1” da tabela SIGNIFY_CNRF com as informações:
+							“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+
+						
+						*/
+						log("fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL *  PCB é igual a nQtdSomada",NL)
+						baProdutoQtdTotPreenchida[nTempNumeroItems] := TRUE
+						
+						tQtdUniRemanAnt := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+						
+						if bPrimeiroRegDesteProduto = TRUE then
+							bPrimeiroRegDesteProduto := FALSE
+							taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+						endif
+						if number(taQTYConsolidadaRemanescente[nTempNumeroItems]) >= number(fmbrasil_crnf_signify.QTDVOLSKU) then
+							taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QTDVOLSKU))
+							taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED))
+							fmbrasil_crnf_signify.QUANTITY := build(number(fmbrasil_crnf_signify.QTDVOLSKU))
+						else
+						
+								tCont1 := taQTYConsolidadaRemanescente[nTempNumeroItems]
+									   nPosicaoPonto := index(tCont1,".")
+									   if (nPosicaoPonto) > 0 then
+										  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+										  else
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+										  endif
+									   endif
+									   taQTYConsolidadaRemanescente[nTempNumeroItems] := tCont1
+							
+							if number(tCont1) = 0 then
+										bNaoEscreveTab := TRUE
+							endif
+							if bNaoEscreveTab = TRUE then
+										!nao faz nada
+							else
+								fmbrasil_crnf_signify.QUANTITY := tCont1
+							endif
+							
+							taQTYConsolidadaRemanescente[nTempNumeroItems] := "0"
+							taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+						endif
+						
+						
+						
+						if bNaoEscreveTab = TRUE then
+							!nao faz nada
+						else
+						
+							
+							fmbrasil_crnf_signify.VOLINICIAL := build(nNumeroVolumeInicial)
+							
+						
+							fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(nQtdSomadaPorVolumes:R05)
+							if fmbrasil_crnf_signify.PRPPIC <> "5" then
+								nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY)
+							else
+								if bJaHouvePRPPIC5 = FALSE then
+									bJaHouvePRPPIC5 := TRUE
+									!nao soma nada no nNumeroVolumeInicial
+								else
+									!nao soma nada no nNumeroVolumeInicial
+								endif
+							endif
+							
+							
+							if number(tQtdUniRemanAnt) > number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) then
+								fmbrasil_crnf_signify.QUANTITYUNI := fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED
+							else
+								fmbrasil_crnf_signify.QUANTITYUNI := build(tQtdUniRemanAnt)
+							endif
+							fmbrasil_crnf_signify.DOCUMENTNUMBERNF := tDocumentoNumberNF
+							fmbrasil_crnf_signify.DOCUMENTDATENF := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+							fmbrasil_crnf_signify.DOCUMENTSERIES := tDocumentSeries
+							
+							
+							!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+							fmbrasil_crnf_signify.DIPLIVNF1 := build(number(fmbrasil_crnf_signify.VOLINICIAL):R05,"/" ,number(fmbrasil_crnf_signify.QUANTITY):R05,"/" ,  nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES):R03))
+				
+							tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET DIPLIV='",fmbrasil_crnf_signify.DIPLIVNF1,"'   "\
+									"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+									"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+									"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"' AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+									
+									
+								fmbrasil_crnf_signify.MSGLIGNF2 := ""
+								fmbrasil_crnf_signify.ZONSPFNF3 := ""
+								log(NL,tQueryUpdade,NL)
+
+								tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+									
+									
+									
+									
+											if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(27)
+										   endif
+										   if not bfSqlExec(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(28)
+										   endif
+										   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(29)
+										   endif
+										   if not bfSqlFree(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(30)
+										   endif
+						endif			   
+									 
+						
+					else
+						log("aqui2",NL)
+						!terá 2 ou 4 NFs
+					
+						/*
+							- Realizar o mesmo passo acima; porém significa que existirá uma segunda NF
+						- Somar a quantidade “Quantity” todas as linhas com o mesmo “Product code” dentro da interface
+						- Preencher o campo “QUANTITY2” com soma da informação (CNRF arquivo, record type 2, posição 27) nas linhas da tabela SIGNIFY_CNRF para os produtos (CNRF arquivo, record type 2, posição 7) do “SALES_ORDER_NUMBER”
+							- O primeiro SKU da interface CNRF irá receber a informação de “VOLUME_INICIAL_NF2” 
+							- O Campo “QTD_VOL_SKU_NF2” deve ser igual ao campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+							- Os demais irão seguir a ordem somando +1 na linha “VOLUME_INICIAL_NF2” com o campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+								*lembrando que agora definimos o valor por suporte, onde temos o mesmo SKU em diversos suportes
+							- Deve preencher o campo “DOCUMENT_NUMBER_NF2” com o campo (CNRF arquivo, record type 1, posição 3)
+						- Deve preencher o campo “DOCUMENT_SERIES_NF2” com o campo (CNRF arquivo, record type 1, posição 6)
+						- Deve preencher o campo “GROSS_WEIGHT_NF2” com o campo (CNRF arquivo, record type 1, posição 486)
+						- Preencher o campo “MSGLIG_NF2” da tabela SIGNIFY_CNRF com as informações:
+						“VOLUME_INICIAL_NF2”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF2”+“/”+“DOCUMENT_SERIES_NF2”
+					
+					
+						*/
+						
+						if nQtdAcumuDesteProdutoNaTabela > number(taQTYConsolidada[nTempNumeroItems]) then  ! adicionar se a quantidade da linha nao tiver sido completa...ver como
+							!nao escreve
+							log("aqui3",NL)
+						else
+							log("aqui4",NL)
+							
+							!===========================================================
+							
+							! é NF1
+
+							!===========================================================
+							
+							
+							if bEPrimeiraNF = TRUE then
+								! é NF1
+								log("aqui5",NL)
+								bNaoEscreveTab := FALSE
+								
+								tQtdUniRemanAnt := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+								
+								
+								
+								
+								if bPrimeiroRegDesteProduto = TRUE then
+									bPrimeiroRegDesteProduto := FALSE
+									taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+									
+								   
+								endif
+								if number(taQTYConsolidadaRemanescente[nTempNumeroItems]) >= number(fmbrasil_crnf_signify.QTDVOLSKU) then
+									taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QTDVOLSKU))
+									taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED))
+									fmbrasil_crnf_signify.QUANTITY := build(number(fmbrasil_crnf_signify.QTDVOLSKU))
+								else
+								
+									tCont1 := taQTYConsolidadaRemanescente[nTempNumeroItems]
+									   nPosicaoPonto := index(tCont1,".")
+									   if (nPosicaoPonto) > 0 then
+										  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+										  else
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+										  endif
+									   endif
+									   taQTYConsolidadaRemanescente[nTempNumeroItems] := tCont1
+									
+									if number(tCont1) = 0 then
+										bNaoEscreveTab := TRUE
+									endif
+									
+									if bNaoEscreveTab = TRUE then
+										!nao faz nada
+									else
+										fmbrasil_crnf_signify.QUANTITY := tCont1
+									endif
+									taQTYConsolidadaRemanescente[nTempNumeroItems] := "0"
+									taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+								endif
+								
+								
+								if bNaoEscreveTab = TRUE then
+									!nao faz nada
+								else
+								
+									fmbrasil_crnf_signify.VOLINICIAL := build(nNumeroVolumeInicial)
+									
+									!fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(number(taQTYConsolidada[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA)) !fmbrasil_crnf_signify.QTDVOLSKU
+									fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(nQtdSomadaPorVolumes:R05)
+									if fmbrasil_crnf_signify.PRPPIC <> "5" then
+										nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY)
+									else
+										if bJaHouvePRPPIC5 = FALSE then
+											bJaHouvePRPPIC5 := TRUE
+											!nao soma nada no nNumeroVolumeInicial
+										else
+											!nao soma nada no nNumeroVolumeInicial
+										endif
+									endif
+									
+									
+									if number(tQtdUniRemanAnt) > number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) then
+											fmbrasil_crnf_signify.QUANTITYUNI := fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED
+									else
+											fmbrasil_crnf_signify.QUANTITYUNI := build(tQtdUniRemanAnt)
+									endif
+									
+									fmbrasil_crnf_signify.DOCUMENTNUMBERNF := tDocumentoNumberNF
+									fmbrasil_crnf_signify.DOCUMENTDATENF := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+									fmbrasil_crnf_signify.DOCUMENTSERIES := tDocumentSeries
+									
+									
+									 
+									
+									!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+									fmbrasil_crnf_signify.DIPLIVNF1 := build(number(fmbrasil_crnf_signify.VOLINICIAL):R05,"/" ,number(fmbrasil_crnf_signify.QUANTITY):R05,"/" ,   nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES):R03))
+					
+									tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET DIPLIV='",fmbrasil_crnf_signify.DIPLIVNF1,"'   "\
+										"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+										"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+										"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"'  AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+										
+										
+									fmbrasil_crnf_signify.MSGLIGNF2 := ""
+									fmbrasil_crnf_signify.ZONSPFNF3 := ""
+									log(NL,tQueryUpdade,NL)
+
+										tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+											
+											
+											
+											
+													if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(27)
+												   endif
+												   if not bfSqlExec(tDbBase2, "Updatedb2") then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(28)
+												   endif
+												   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(29)
+												   endif
+												   if not bfSqlFree(tDbBase2, "Updatedb2") then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(30)
+												   endif
+												   
+									
+									nQtdAcumuDesteProdutoNaTabela := nQtdAcumuDesteProdutoNaTabela + number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)
+									naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] := nQtdAcumuDesteProdutoNaTabela
+								endif
+							else
+							
+								
+								
+								!===========================================================
+								
+								! é NF2
+
+								!===========================================================
+								
+								
+								
+								if bESegundaNF = TRUE then
+									! é NF2
+									log("aqui6",NL)
+									bNaoEscreveTab := FALSE
+									
+									!fmbrasil_crnf_signify.QUANTITY2 := taQTYConsolidada[nTempNumeroItems]
+									!fmbrasil_crnf_signify.QUANTITY2 := build(number(fmbrasil_crnf_signify.QUANTITY2) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+									
+									
+									log("taQTYConsolidadaRemanescente[nTempNumeroItems] 1 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+									tQtdUniRemanAnt := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+									
+									if bPrimeiroRegDesteProduto = TRUE then
+										bPrimeiroRegDesteProduto := FALSE
+										taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+									endif
+									
+									if number(fmbrasil_crnf_signify.QTDVOLSKU) = number(fmbrasil_crnf_signify.QUANTITY) then
+										!nao faz nada
+									else
+										
+										
+										log("taQTYConsolidadaRemanescente[nTempNumeroItems] 2 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+										
+										
+										
+										if (number(taQTYConsolidadaRemanescente[nTempNumeroItems]) + number(fmbrasil_crnf_signify.QUANTITY)  ) > (number(fmbrasil_crnf_signify.QTDVOLSKU)) then
+												taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QTDVOLSKU)  + number(fmbrasil_crnf_signify.QUANTITY) )
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)  + number(fmbrasil_crnf_signify.QUANTITYUNI) )
+												fmbrasil_crnf_signify.QUANTITY2 := build(number(fmbrasil_crnf_signify.QTDVOLSKU) - number(fmbrasil_crnf_signify.QUANTITY))
+												log("taQTYConsolidadaRemanescente[nTempNumeroItems] 4 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+										else
+										
+												tCont1 := taQTYConsolidadaRemanescente[nTempNumeroItems]
+											   nPosicaoPonto := index(tCont1,".")
+											   if (nPosicaoPonto) > 0 then
+												  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+												  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+												  else
+												  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+												  endif
+											   endif
+											   taQTYConsolidadaRemanescente[nTempNumeroItems] := tCont1
+													log("taQTYConsolidadaRemanescente[nTempNumeroItems] 6 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+								
+												
+												if number(tCont1) = 0 then
+													bNaoEscreveTab := TRUE
+												endif
+												
+												if bNaoEscreveTab = TRUE then
+													!nao faz nada
+												else
+													fmbrasil_crnf_signify.QUANTITY2 := tCont1
+												endif			
+											
+											!	fmbrasil_crnf_signify.QUANTITY2 := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems])  )
+												taQTYConsolidadaRemanescente[nTempNumeroItems] := "0"
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+												log("taQTYConsolidadaRemanescente[nTempNumeroItems] 7 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+												
+												
+										endif
+										
+										if bNaoEscreveTab = TRUE then
+											!nao faz nada
+										else
+											log("taQTYConsolidadaRemanescente[nTempNumeroItems] 9 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+											
+											fmbrasil_crnf_signify.VOLINICIAL2 := build(nNumeroVolumeInicial)
+											
+											
+											fmbrasil_crnf_signify.QTDVOLSKUNF2 := build(nQtdSomadaPorVolumes:R05)
+											if fmbrasil_crnf_signify.PRPPIC <> "5" then
+												nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY2)
+											else
+												if bJaHouvePRPPIC5 = FALSE then
+													bJaHouvePRPPIC5 := TRUE
+													!nao soma nada no nNumeroVolumeInicial
+												else
+													!nao soma nada no nNumeroVolumeInicial
+												endif
+											endif
+											
+											
+											
+											
+											if number(tQtdUniRemanAnt) > number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) then
+												fmbrasil_crnf_signify.QUANTITYUNI2 := fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED
+											else
+												fmbrasil_crnf_signify.QUANTITYUNI2 := build(tQtdUniRemanAnt)
+											endif
+											
+											fmbrasil_crnf_signify.DOCUMENTNUMBERNF2 := tDocumentoNumberNF
+											fmbrasil_crnf_signify.DOCUMENTDATENF2 := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+											fmbrasil_crnf_signify.DOCUMENTSERIES2 := tDocumentSeries
+											
+											
+											!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+											fmbrasil_crnf_signify.MSGLIGNF2 := build(number(fmbrasil_crnf_signify.VOLINICIAL2):R05,"/" ,number(fmbrasil_crnf_signify.QUANTITY2):R05,"/" ,   nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF2):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES2):R03))
+								
+											tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET  MSGLIG='",fmbrasil_crnf_signify.MSGLIGNF2,"'  "\
+													"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+													"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+													"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"'  AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+													
+													
+												
+										
+												log(NL,tQueryUpdade,NL)
+
+												tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+													
+													
+													
+													
+															if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(27)
+														   endif
+														   if not bfSqlExec(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(28)
+														   endif
+														   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(29)
+														   endif
+														   if not bfSqlFree(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(30)
+														   endif
+										nQtdAcumuDesteProdutoNaTabela := nQtdAcumuDesteProdutoNaTabela + number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)
+										naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] := nQtdAcumuDesteProdutoNaTabela
+									endif
+									endif
+								else	
+								
+									
+									
+									!===========================================================
+									
+									! é NF3
+
+									!===========================================================
+									
+									if bETerceiraNF = TRUE  then
+										! é NF3
+										bNaoEscreveTab := FALSE
+										log("aqui7",NL)
+										log("taQTYConsolidadaRemanescente[nTempNumeroItems] 1 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+										
+										if bPrimeiroRegDesteProduto = TRUE then
+											bPrimeiroRegDesteProduto := FALSE
+											taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+										endif
+										tQtdUniRemanAnt := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+										log("tfmbrasil_crnf_signify.QTDVOLSKU 1 ",fmbrasil_crnf_signify.QTDVOLSKU,NL)
+										log("tfmbrasil_crnf_signify.QUANTITY 1 ",fmbrasil_crnf_signify.QUANTITY,NL)
+										log("tfmbrasil_crnf_signify.QUANTITY2 1 ",fmbrasil_crnf_signify.QUANTITY2,NL)
+										
+										if number(fmbrasil_crnf_signify.QTDVOLSKU) = (number(fmbrasil_crnf_signify.QUANTITY) + number(fmbrasil_crnf_signify.QUANTITY2)) then
+											!nao faz nada
+										else
+											log("taQTYConsolidadaRemanescente[nTempNumeroItems] 2 ",taQTYConsolidadaRemanescente[nTempNumeroItems],NL)
+											if (number(taQTYConsolidadaRemanescente[nTempNumeroItems]) + number(fmbrasil_crnf_signify.QUANTITY) + number(fmbrasil_crnf_signify.QUANTITY2) ) > (number(fmbrasil_crnf_signify.QTDVOLSKU)) then
+												taQTYConsolidadaRemanescente[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QTDVOLSKU)  + number(fmbrasil_crnf_signify.QUANTITY) + number(fmbrasil_crnf_signify.QUANTITY2))
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)  + number(fmbrasil_crnf_signify.QUANTITYUNI) + number(fmbrasil_crnf_signify.QUANTITYUNI2))
+												fmbrasil_crnf_signify.QUANTITY3 := build(number(fmbrasil_crnf_signify.QTDVOLSKU) - number(fmbrasil_crnf_signify.QUANTITY) - number(fmbrasil_crnf_signify.QUANTITY2))
+											else
+													tCont1 := taQTYConsolidadaRemanescente[nTempNumeroItems]
+												   nPosicaoPonto := index(tCont1,".")
+												   if (nPosicaoPonto) > 0 then
+													  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+													  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+													  else
+													  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+													  endif
+												   endif
+												   taQTYConsolidadaRemanescente[nTempNumeroItems] := tCont1
+												
+												if number(tCont1) = 0 then
+													bNaoEscreveTab := TRUE
+												endif
+												
+												if bNaoEscreveTab = TRUE then
+													!nao faz nada
+												else
+													fmbrasil_crnf_signify.QUANTITY3 := tCont1
+												endif		
+												
+												
+												!fmbrasil_crnf_signify.QUANTITY3 := build(number(taQTYConsolidadaRemanescente[nTempNumeroItems]))
+												taQTYConsolidadaRemanescente[nTempNumeroItems] := "0"
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+												
+											endif
+											
+											if bNaoEscreveTab = TRUE then
+											
+											else
+											
+												fmbrasil_crnf_signify.VOLINICIAL3 := build(nNumeroVolumeInicial)
+												
+												
+												fmbrasil_crnf_signify.QTDVOLSKUNF3 := build(nQtdSomadaPorVolumes:R05)
+												if fmbrasil_crnf_signify.PRPPIC <> "5" then
+													nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY3)
+												else
+													if bJaHouvePRPPIC5 = FALSE then
+														bJaHouvePRPPIC5 := TRUE
+														!nao soma nada no nNumeroVolumeInicial
+													else
+														!nao soma nada no nNumeroVolumeInicial
+													endif
+												endif
+												
+												
+												
+												
+												if number(tQtdUniRemanAnt) > number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) then
+													fmbrasil_crnf_signify.QUANTITYUNI3 := fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED
+												else
+													fmbrasil_crnf_signify.QUANTITYUNI3 := build(tQtdUniRemanAnt)
+												endif
+												fmbrasil_crnf_signify.DOCUMENTNUMBERNF3 := tDocumentoNumberNF
+												fmbrasil_crnf_signify.DOCUMENTDATENF3 := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+												fmbrasil_crnf_signify.DOCUMENTSERIES3 := tDocumentSeries
+												
+												
+												!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+												fmbrasil_crnf_signify.ZONSPFNF3 := build(number(fmbrasil_crnf_signify.VOLINICIAL3):R05,"/" ,number(fmbrasil_crnf_signify.QUANTITY3):R05,"/" ,   nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF3):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES3):R03))
+									
+												tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET ZONSPF='",fmbrasil_crnf_signify.ZONSPFNF3,"' "\
+														"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+														"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+														"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"'  AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+														
+														
+													
+											
+													log(NL,tQueryUpdade,NL)
+
+													tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+														
+														
+														
+														
+																if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(27)
+															   endif
+															   if not bfSqlExec(tDbBase2, "Updatedb2") then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(28)
+															   endif
+															   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(29)
+															   endif
+															   if not bfSqlFree(tDbBase2, "Updatedb2") then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(30)
+															   endif
+												nQtdAcumuDesteProdutoNaTabela := nQtdAcumuDesteProdutoNaTabela + number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)
+												naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] := nQtdAcumuDesteProdutoNaTabela
+										endif
+										endif
+									
+									endif
+								endif
+							
+							endif
+						endif
+						
+					
+					endif
+					
+
+					
+					fmbrasil_crnf_signify := find()
+						
+				endwhile
+		endif
+		nTempNumeroItems++
+	endwhile
+	
+	endif
+	bTemPRPIC5 := FALSE
+	
+	
+	
+	! ================================================================================
+	! ================================================================================
+	
+	!segunda passagem para PRPPIC = 5
+	
+	! ================================================================================
+	! ================================================================================
+	
+	
+	
+	!validar para PRPIC = 5
+
+fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC = "5", CODTLI <> "EX", CODTLI <> "MN",DOCUMENTNUMBERNF = tDocumentoNumberNF,DOCUMENTSERIES = tDocumentSeries)
+if valid(fmbrasil_crnf_signify) then
+	bNFRepetida := TRUE
+endif
+
+fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC = "5", CODTLI <> "EX", CODTLI <> "MN",DOCUMENTNUMBERNF2 = tDocumentoNumberNF,DOCUMENTSERIES2 = tDocumentSeries)
+if valid(fmbrasil_crnf_signify) then
+	bNFRepetida := TRUE
+endif
+
+fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC = "5", CODTLI <> "EX", CODTLI <> "MN",DOCUMENTNUMBERNF3 = tDocumentoNumberNF,DOCUMENTSERIES3 = tDocumentSeries)
+if valid(fmbrasil_crnf_signify) then
+	bNFRepetida := TRUE
+endif
+
+if bNFRepetida = FALSE	then	
+	log("NF nao repetida",NL)
+endif
+
+if bNFRepetida = TRUE	then	
+	log("NF nao repetida",NL)
+endif
+	
+
+if bNFRepetida = FALSE	then
+	nTempNumeroItems := 1
+	while nTempNumeroItems <= nNumeroItems do
+	
+		
+		
+		
+		
+		
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE  and baProdutoQtdTotPreenchida[nTempNumeroItems] = FALSE then
+				
+				log("PRPPIC = 5",NL)
+				
+				log("taQTYConsolidada[nTempNumeroItems] ",taQTYConsolidada[nTempNumeroItems],NL)
+				log("naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] ",naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems],NL)
+				log("taProductCode[nTempNumeroItems] ",taProductCode[nTempNumeroItems],NL)
+				log("taSequencing[nTempNumeroItems] ",taSequencing[nTempNumeroItems],NL)
+				log("tSalesOrderNumber ",tSalesOrderNumber,NL)
+				
+				log("===============              ===============",NL)
+
+				
+				
+				fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,PRPPIC = "5", CODTLI <> "EX", CODTLI <> "MN")aSEQUENCIASUPPORT
+				while valid(fmbrasil_crnf_signify) do
+				 
+					log("fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL ",fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL,NL)
+					log("fmbrasil_crnf_signify.UNIDADESCAIXA ",fmbrasil_crnf_signify.UNIDADESCAIXA,NL)
+					log("fmbrasil_crnf_signify.PRODUCTCODE ",fmbrasil_crnf_signify.PRODUCTCODE,NL)
+					log("fmbrasil_crnf_signify.QUANTITY ",fmbrasil_crnf_signify.QUANTITY,NL)
+					log("fmbrasil_crnf_signify.QUANTITY2 ",fmbrasil_crnf_signify.QUANTITY2,NL)
+					log("nQtdSomada ",nQtdSomada,NL)
+					
+				
+					if (number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL) * number(fmbrasil_crnf_signify.UNIDADESCAIXA)) = nQtdSomada and fmbrasil_crnf_signify.DESDOBRO <> "C"  and fmbrasil_crnf_signify.DESDOBRO <> "S" then
+					! só terá uma NF
+						bNaoEscreveTab := FALSE
+						log("aqui1",NL)
+						/*
+						
+						
+							- Somar a quantidade “Quantity” todas as linhas com o mesmo “Product code” dentro da interface
+							- Preencher o campo “QUANTITY1” com a soma da informação (CNRF arquivo, record type 2, posição 27) nas linhas da tabela SIGNIFY_CNRF para os produtos (CNRF arquivo, record type 2, posição 7) do “SALES_ORDER_NUMBER”
+							- O primeiro SKU da interface CNRF irá receber a informação de “VOLUME_INICIAL_NF1” 
+							- O Campo “QTD_VOL_SKU_NF1” deve ser igual ao campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+							- Os demais irão seguir a ordem somando +1 na linha “VOLUME_INICIAL_NF1” com o campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+								*lembrando que agora definimos o valor por suporte, onde temos o mesmo SKU em diversos suportes
+							- Deve preencher o campo “DOCUMENT_NUMBER_NF1” com o campo (CNRF arquivo, record type 1, posição 3)
+							- Deve preencher o campo “DOCUMENT_SERIES_NF1” com o campo (CNRF arquivo, record type 1, posição 6)
+							- Deve preencher o campo “GROSS_WEIGHT_NF1” com o campo (CNRF arquivo, record type 1, posição 486)
+							- Preencher o campo “DIPLIV_NF1” da tabela SIGNIFY_CNRF com as informações:
+							“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+
+						
+						*/
+						log("fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL *  PCB é igual a nQtdSomada",NL)
+						
+						!fmbrasil_crnf_signify.QUANTITY := taQTYConsolidada[nTempNumeroItems]
+						!fmbrasil_crnf_signify.QUANTITY := build(number(fmbrasil_crnf_signify.QUANTITY) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+						
+						if bPrimeiroRegDesteProduto = TRUE then
+							bPrimeiroRegDesteProduto := FALSE
+							
+						endif
+						if number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) >= number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) then
+							taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED))
+							fmbrasil_crnf_signify.QUANTITYUNI := build(number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED))
+						else
+						
+								tCont1 := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+									   nPosicaoPonto := index(tCont1,".")
+									   if (nPosicaoPonto) > 0 then
+										  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+										  else
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+										  endif
+									   endif
+									   taQTYConsolidadaRemanescUni[nTempNumeroItems] := tCont1
+							
+							if number(tCont1) = 0 then
+										bNaoEscreveTab := TRUE
+							endif
+							if bNaoEscreveTab = TRUE then
+										!nao faz nada
+							else
+								fmbrasil_crnf_signify.QUANTITYUNI := tCont1
+							endif
+							
+							taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+						endif
+						
+						
+						
+						
+						if bNaoEscreveTab = TRUE then
+							!nao faz nada
+						else
+						
+							
+							fmbrasil_crnf_signify.VOLINICIAL := build(nNumeroVolumeInicial)
+							
+							!fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(number(taQTYConsolidada[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA)) !fmbrasil_crnf_signify.QTDVOLSKU
+							fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(nQtdSomadaPorVolumes:R05)
+							if fmbrasil_crnf_signify.PRPPIC <> "5" then
+								nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY)
+							else
+								if bJaHouvePRPPIC5 = FALSE then
+									bJaHouvePRPPIC5 := TRUE
+									!nao soma nada no nNumeroVolumeInicial
+								else
+									!nao soma nada no nNumeroVolumeInicial
+								endif
+							endif
+							
+							fmbrasil_crnf_signify.DOCUMENTNUMBERNF := tDocumentoNumberNF
+							fmbrasil_crnf_signify.DOCUMENTDATENF := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+							fmbrasil_crnf_signify.DOCUMENTSERIES := tDocumentSeries
+							
+							
+							!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+							if number(fmbrasil_crnf_signify.QTDVOLSKUNF1) < number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL) then
+								tDiferencaPRPPIC5 := build(number(fmbrasil_crnf_signify.QTDVOLSKUNF1))
+							else
+								tDiferencaPRPPIC5 := build(number(fmbrasil_crnf_signify.QTDVOLSKUNF1) - number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL))
+							endif
+							fmbrasil_crnf_signify.DIPLIVNF1 := build(number(fmbrasil_crnf_signify.VOLINICIAL):R05,"/" ,number(tDiferencaPRPPIC5):R05,"/" ,  nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES):R03))
+				
+							tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET DIPLIV='",fmbrasil_crnf_signify.DIPLIVNF1,"'   "\
+									"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+									"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+									"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"' AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+									
+									
+								fmbrasil_crnf_signify.MSGLIGNF2 := ""
+								fmbrasil_crnf_signify.ZONSPFNF3 := ""
+								log(NL,tQueryUpdade,NL)
+								bTemPRPIC5 := TRUE
+								tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+									
+									
+									
+									
+											if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(27)
+										   endif
+										   if not bfSqlExec(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(28)
+										   endif
+										   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(29)
+										   endif
+										   if not bfSqlFree(tDbBase2, "Updatedb2") then
+											  log(tfSqlErrorStr(), NL)
+											  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+											  exit(30)
+										   endif
+						endif			   
+									 
+						
+					else
+						log("aqui2",NL)
+						!terá 2 ou 4 NFs
+					
+						/*
+							- Realizar o mesmo passo acima; porém significa que existirá uma segunda NF
+						- Somar a quantidade “Quantity” todas as linhas com o mesmo “Product code” dentro da interface
+						- Preencher o campo “QUANTITY2” com soma da informação (CNRF arquivo, record type 2, posição 27) nas linhas da tabela SIGNIFY_CNRF para os produtos (CNRF arquivo, record type 2, posição 7) do “SALES_ORDER_NUMBER”
+							- O primeiro SKU da interface CNRF irá receber a informação de “VOLUME_INICIAL_NF2” 
+							- O Campo “QTD_VOL_SKU_NF2” deve ser igual ao campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+							- Os demais irão seguir a ordem somando +1 na linha “VOLUME_INICIAL_NF2” com o campo “QTD_VOL_SKU” da linha da tabela SIGNIFY_CNRF
+								*lembrando que agora definimos o valor por suporte, onde temos o mesmo SKU em diversos suportes
+							- Deve preencher o campo “DOCUMENT_NUMBER_NF2” com o campo (CNRF arquivo, record type 1, posição 3)
+						- Deve preencher o campo “DOCUMENT_SERIES_NF2” com o campo (CNRF arquivo, record type 1, posição 6)
+						- Deve preencher o campo “GROSS_WEIGHT_NF2” com o campo (CNRF arquivo, record type 1, posição 486)
+						- Preencher o campo “MSGLIG_NF2” da tabela SIGNIFY_CNRF com as informações:
+						“VOLUME_INICIAL_NF2”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF2”+“/”+“DOCUMENT_SERIES_NF2”
+					
+					
+						*/
+						
+						if naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] > number(taQTYConsolidada[nTempNumeroItems]) then  ! adicionar se a quantidade da linha nao tiver sido completa...ver como
+							!nao escreve
+							log("aqui3",NL)
+						else
+							log("aqui4",NL)
+							
+							!===========================================================
+							
+							! é NF1
+
+							!===========================================================
+							
+							
+							if bEPrimeiraNF = TRUE then
+								! é NF1
+								log("aqui5",NL)
+								bNaoEscreveTab := FALSE
+								!fmbrasil_crnf_signify.QUANTITY := taQTYConsolidada[nTempNumeroItems]
+								!fmbrasil_crnf_signify.QUANTITY := build(number(fmbrasil_crnf_signify.QUANTITY) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+								
+								
+								if bPrimeiroRegDesteProduto = TRUE then
+									bPrimeiroRegDesteProduto := FALSE
+									
+								   
+								endif
+								if number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) >= number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) then
+									taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED))
+									fmbrasil_crnf_signify.QUANTITYUNI := build(number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED))
+								else
+								
+									tCont1 := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+									   nPosicaoPonto := index(tCont1,".")
+									   if (nPosicaoPonto) > 0 then
+										  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+										  else
+										  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+										  endif
+									   endif
+									   taQTYConsolidadaRemanescUni[nTempNumeroItems] := tCont1
+									
+									if number(tCont1) = 0 then
+										bNaoEscreveTab := TRUE
+									endif
+									
+									if bNaoEscreveTab = TRUE then
+										!nao faz nada
+									else
+										fmbrasil_crnf_signify.QUANTITYUNI := tCont1
+									endif
+									taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+								endif
+								
+								
+								
+								
+								
+								if bNaoEscreveTab = TRUE then
+									!nao faz nada
+								else
+								
+									fmbrasil_crnf_signify.VOLINICIAL := build(nNumeroVolumeInicial)
+									
+									!fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(number(taQTYConsolidada[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA)) !fmbrasil_crnf_signify.QTDVOLSKU
+									fmbrasil_crnf_signify.QTDVOLSKUNF1 := build(nQtdSomadaPorVolumes:R05)
+									if fmbrasil_crnf_signify.PRPPIC <> "5" then
+										nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY)
+									else
+										if bJaHouvePRPPIC5 = FALSE then
+											bJaHouvePRPPIC5 := TRUE
+											!nao soma nada no nNumeroVolumeInicial
+										else
+											!nao soma nada no nNumeroVolumeInicial
+										endif
+									endif
+									
+									
+									fmbrasil_crnf_signify.DOCUMENTNUMBERNF := tDocumentoNumberNF
+									fmbrasil_crnf_signify.DOCUMENTDATENF := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+									fmbrasil_crnf_signify.DOCUMENTSERIES := tDocumentSeries
+									
+									
+									 
+									
+									if number(fmbrasil_crnf_signify.QTDVOLSKUNF1) < number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL) then
+										tDiferencaPRPPIC5 := build(number(fmbrasil_crnf_signify.QTDVOLSKUNF1))
+									else
+										tDiferencaPRPPIC5 := build(number(fmbrasil_crnf_signify.QTDVOLSKUNF1) - number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL))
+									endif
+									
+									!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+									fmbrasil_crnf_signify.DIPLIVNF1 := build(number(fmbrasil_crnf_signify.VOLINICIAL):R05,"/" ,number(tDiferencaPRPPIC5):R05,"/" ,   nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES):R03))
+									bTemPRPIC5 := TRUE
+									tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET DIPLIV='",fmbrasil_crnf_signify.DIPLIVNF1,"'   "\
+										"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+										"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+										"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"'  AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+										
+										
+									fmbrasil_crnf_signify.MSGLIGNF2 := ""
+									fmbrasil_crnf_signify.ZONSPFNF3 := ""
+									log(NL,tQueryUpdade,NL)
+
+										tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+											
+											
+											
+											
+													if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(27)
+												   endif
+												   if not bfSqlExec(tDbBase2, "Updatedb2") then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(28)
+												   endif
+												   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(29)
+												   endif
+												   if not bfSqlFree(tDbBase2, "Updatedb2") then
+													  log(tfSqlErrorStr(), NL)
+													  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+													  exit(30)
+												   endif
+												   
+									
+									naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] := naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] + number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)
+								endif
+							else
+							
+								
+								
+								!===========================================================
+								
+								! é NF2
+
+								!===========================================================
+								
+								
+								
+								if bESegundaNF = TRUE then
+									! é NF2
+									log("aqui6",NL)
+									bNaoEscreveTab := FALSE
+									
+									!fmbrasil_crnf_signify.QUANTITY2 := taQTYConsolidada[nTempNumeroItems]
+									!fmbrasil_crnf_signify.QUANTITY2 := build(number(fmbrasil_crnf_signify.QUANTITY2) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))
+									
+									
+									log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 1 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+									
+									if bPrimeiroRegDesteProduto = TRUE then
+										bPrimeiroRegDesteProduto := FALSE
+										
+									endif
+									
+									if 1 = 2 then
+										!nao faz nada
+									else
+										
+										
+										log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 2 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+										
+										
+										
+										if (number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) + number(fmbrasil_crnf_signify.QUANTITYUNI)  ) > (number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)) then
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)  + number(fmbrasil_crnf_signify.QUANTITYUNI) )
+												fmbrasil_crnf_signify.QUANTITYUNI2 := build(number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) - number(fmbrasil_crnf_signify.QUANTITYUNI))
+												log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 4 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+										else
+										
+												tCont1 := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+											   nPosicaoPonto := index(tCont1,".")
+											   if (nPosicaoPonto) > 0 then
+												  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+												  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+												  else
+												  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+												  endif
+											   endif
+											   taQTYConsolidadaRemanescUni[nTempNumeroItems] := tCont1
+													log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 6 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+								
+												
+												if number(tCont1) = 0 then
+													bNaoEscreveTab := TRUE
+												endif
+												
+												if bNaoEscreveTab = TRUE then
+													!nao faz nada
+												else
+													fmbrasil_crnf_signify.QUANTITYUNI2 := tCont1
+												endif			
+											
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+												log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 7 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+												
+												
+										endif
+										
+										
+										
+										
+										if bNaoEscreveTab = TRUE then
+											!nao faz nada
+										else
+											log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 9 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+											
+											fmbrasil_crnf_signify.VOLINICIAL2 := build(nNumeroVolumeInicial)
+											
+											!fmbrasil_crnf_signify.QTDVOLSKUNF2 := build(number(taQTYConsolidada[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA)) !fmbrasil_crnf_signify.QTDVOLSKU
+											fmbrasil_crnf_signify.QTDVOLSKUNF2 := build(nQtdSomadaPorVolumes:R05)
+											if fmbrasil_crnf_signify.PRPPIC <> "5" then
+												nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY2)
+											else
+												if bJaHouvePRPPIC5 = FALSE then
+													bJaHouvePRPPIC5 := TRUE
+													!nao soma nada no nNumeroVolumeInicial
+												else
+													!nao soma nada no nNumeroVolumeInicial
+												endif
+											endif
+											
+											fmbrasil_crnf_signify.QUANTITYUNI2 := build(nQtdSomada)
+											fmbrasil_crnf_signify.DOCUMENTNUMBERNF2 := tDocumentoNumberNF
+											fmbrasil_crnf_signify.DOCUMENTDATENF2 := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+											fmbrasil_crnf_signify.DOCUMENTSERIES2 := tDocumentSeries
+											
+											
+											
+											
+											if (number(fmbrasil_crnf_signify.QTDVOLSKUNF1)+number(fmbrasil_crnf_signify.QTDVOLSKUNF2)) < number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL) then
+												tDiferencaPRPPIC5 := build(number(fmbrasil_crnf_signify.QTDVOLSKUNF1)+number(fmbrasil_crnf_signify.QTDVOLSKUNF2))
+											else
+												tDiferencaPRPPIC5 := build((number(fmbrasil_crnf_signify.QTDVOLSKUNF1)+number(fmbrasil_crnf_signify.QTDVOLSKUNF2)) - number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL))
+											endif
+											
+											
+											!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+											fmbrasil_crnf_signify.MSGLIGNF2 := build(number(fmbrasil_crnf_signify.VOLINICIAL2):R05,"/" ,number(tDiferencaPRPPIC5):R05,"/" ,   nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF2):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES2):R03))
+											bTemPRPIC5 := TRUE
+											tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET  MSGLIG='",fmbrasil_crnf_signify.MSGLIGNF2,"'  "\
+													"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+													"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+													"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"'  AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+													
+													
+												
+										
+												log(NL,tQueryUpdade,NL)
+
+												tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+													
+													
+													
+													
+															if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(27)
+														   endif
+														   if not bfSqlExec(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(28)
+														   endif
+														   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(29)
+														   endif
+														   if not bfSqlFree(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+															  exit(30)
+														   endif
+										naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] := naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] + number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)
+									endif
+									endif
+								else	
+								
+									
+									
+									!===========================================================
+									
+									! é NF3
+
+									!===========================================================
+									
+									if bETerceiraNF = TRUE  then
+										! é NF3
+										bNaoEscreveTab := FALSE
+										log("aqui7",NL)
+										log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 1 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+										
+										if bPrimeiroRegDesteProduto = TRUE then
+											bPrimeiroRegDesteProduto := FALSE
+											
+										endif
+										
+										log("tfmbrasil_crnf_signify.QTDVOLSKU 1 ",fmbrasil_crnf_signify.QTDVOLSKU,NL)
+										log("tfmbrasil_crnf_signify.QUANTITY 1 ",fmbrasil_crnf_signify.QUANTITY,NL)
+										log("tfmbrasil_crnf_signify.QUANTITY2 1 ",fmbrasil_crnf_signify.QUANTITY2,NL)
+										
+										if 1 = 2 then
+											!nao faz nada
+										else
+											log("taQTYConsolidadaRemanescUni[nTempNumeroItems] 2 ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+											if (number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) + number(fmbrasil_crnf_signify.QUANTITYUNI) + number(fmbrasil_crnf_signify.QUANTITYUNI2) ) > (number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)) then
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) - number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)  + number(fmbrasil_crnf_signify.QUANTITYUNI) + number(fmbrasil_crnf_signify.QUANTITYUNI2))
+												fmbrasil_crnf_signify.QUANTITYUNI3 := build(number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED) - number(fmbrasil_crnf_signify.QUANTITYUNI) - number(fmbrasil_crnf_signify.QUANTITYUNI2))
+											else
+													tCont1 := taQTYConsolidadaRemanescUni[nTempNumeroItems]
+												   nPosicaoPonto := index(tCont1,".")
+												   if (nPosicaoPonto) > 0 then
+													  if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+													  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+													  else
+													  tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+													  endif
+												   endif
+												   taQTYConsolidadaRemanescUni[nTempNumeroItems] := tCont1
+												
+												if number(tCont1) = 0 then
+													bNaoEscreveTab := TRUE
+												endif
+												
+												if bNaoEscreveTab = TRUE then
+													!nao faz nada
+												else
+													fmbrasil_crnf_signify.QUANTITYUNI3 := tCont1
+												endif		
+												
+												
+												!fmbrasil_crnf_signify.QUANTITYUNI3 := build(number(taQTYConsolidadaRemanescUni[nTempNumeroItems]))
+												taQTYConsolidadaRemanescUni[nTempNumeroItems] := "0"
+												
+												
+											endif
+											
+											
+											
+											
+											if bNaoEscreveTab = TRUE then
+											
+											else
+											
+												fmbrasil_crnf_signify.VOLINICIAL3 := build(nNumeroVolumeInicial)
+												
+												!fmbrasil_crnf_signify.QTDVOLSKUNF3 := build(number(taQTYConsolidada[nTempNumeroItems]) /  number(fmbrasil_crnf_signify.UNIDADESCAIXA))  !fmbrasil_crnf_signify.QTDVOLSKU
+												fmbrasil_crnf_signify.QTDVOLSKUNF3 := build(nQtdSomadaPorVolumes:R05)
+												if fmbrasil_crnf_signify.PRPPIC <> "5" then
+													nNumeroVolumeInicial := nNumeroVolumeInicial + number(fmbrasil_crnf_signify.QUANTITY3)
+												else
+													if bJaHouvePRPPIC5 = FALSE then
+														bJaHouvePRPPIC5 := TRUE
+														!nao soma nada no nNumeroVolumeInicial
+													else
+														!nao soma nada no nNumeroVolumeInicial
+													endif
+												endif
+												
+												fmbrasil_crnf_signify.QUANTITYUNI3 := build(nQtdSomada)
+												fmbrasil_crnf_signify.DOCUMENTNUMBERNF3 := tDocumentoNumberNF
+												fmbrasil_crnf_signify.DOCUMENTDATENF3 := tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY")
+												fmbrasil_crnf_signify.DOCUMENTSERIES3 := tDocumentSeries
+												
+												if (number(fmbrasil_crnf_signify.QTDVOLSKUNF1)+number(fmbrasil_crnf_signify.QTDVOLSKUNF2)+number(fmbrasil_crnf_signify.QTDVOLSKUNF3)) < number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL) then
+													tDiferencaPRPPIC5 := build(number(fmbrasil_crnf_signify.QTDVOLSKUNF1)+number(fmbrasil_crnf_signify.QTDVOLSKUNF2)+number(fmbrasil_crnf_signify.QTDVOLSKUNF3))
+												else
+													tDiferencaPRPPIC5 := build((number(fmbrasil_crnf_signify.QTDVOLSKUNF1)+number(fmbrasil_crnf_signify.QTDVOLSKUNF2)+number(fmbrasil_crnf_signify.QTDVOLSKUNF3)) - number(fmbrasil_crnf_signify.NUMBEROFVOLUMESTOTAL))
+												endif
+												!“VOLUME_INICIAL_NF1”+“/”+“QTD_VOL_SKU”+“NUMBER_OF_VOLUMES”+“/”+“DOCUMENT_NUMBER_NF1”+“/”+“DOCUMENT_SERIES_NF1”
+												fmbrasil_crnf_signify.ZONSPFNF3 := build(number(fmbrasil_crnf_signify.VOLINICIAL3):R05,"/" ,number(tDiferencaPRPPIC5):R05,"/" ,   nQtdSomadaPorVolumes:R05,"/",build(number(fmbrasil_crnf_signify.DOCUMENTNUMBERNF3):R06),"/",build(number(fmbrasil_crnf_signify.DOCUMENTSERIES3):R03))
+												bTemPRPIC5 := TRUE
+												tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD SET ZONSPF='",fmbrasil_crnf_signify.ZONSPFNF3,"' "\
+														"WHERE NUMSUP='",fmbrasil_crnf_signify.SUPORTE,"'   "\
+														"AND CODPRO='",fmbrasil_crnf_signify.PRODUCTCODE,"'  "\
+														"AND UVCLIV='",fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED,"'  AND SEQSUP='",fmbrasil_crnf_signify.SEQUENCIASUPPORT,"' WITH NONE")
+														
+														
+													
+											
+													log(NL,tQueryUpdade,NL)
+
+													tQueryUpdadeAcumulado := build(tQueryUpdadeAcumulado,tQueryUpdade,NL)
+														
+														
+														
+														
+																if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(27)
+															   endif
+															   if not bfSqlExec(tDbBase2, "Updatedb2") then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(28)
+															   endif
+															   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(29)
+															   endif
+															   if not bfSqlFree(tDbBase2, "Updatedb2") then
+																  log(tfSqlErrorStr(), NL)
+																  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+																  exit(30)
+															   endif
+												naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] := naQtdAcumuDesteProdutoNaTabVol[nTempNumeroItems] + number(fmbrasil_crnf_signify.QUANTITYPICKEDSHIPPED)
+										endif
+										endif
+									
+									endif
+								endif
+							
+							endif
+						endif
+						
+					
+					endif
+					
+
+					
+					fmbrasil_crnf_signify := find()
+						
+				endwhile
+		endif
+	
+		
+		
+		log("final taQTYConsolidadaRemanescUni[nTempNumeroItems] ",taQTYConsolidadaRemanescUni[nTempNumeroItems],NL)
+		log("final taQTYConsolidada[nTempNumeroItems] ",taQTYConsolidada[nTempNumeroItems],NL)
+		if number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) > 0 and number(taQTYConsolidadaRemanescUni[nTempNumeroItems]) < number(taQTYConsolidada[nTempNumeroItems]) then !aqui
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber, CODTLI <> "EX", CODTLI <> "MN")aSEQUENCIASUPPORT
+			while valid(fmbrasil_crnf_signify) do
+				fmbrasil_crnf_signify.QTDSUPALOCADA := "1"
+				fmbrasil_crnf_signify := find()
+			
+			endwhile
+			
+		endif
+		
+		
+		
+		nTempNumeroItems++
+	endwhile
+endif
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+!descobre o gross weigth
+nPesoTotalUnidade := 0
+
+	if bEPrimeiraNF = TRUE  then
+		nTempNumeroItems := 1
+		while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,DOCUMENTNUMBERNF=tDocumentoNumberNF)aSEQUENCIASUPPORT
+			if valid(fmbrasil_crnf_signify) then
+					
+					tQuery := 	build("SELECT PDBUVC FROM FGE50FM",tToInfologPrefixFilename,".GEPRO WHERE CODPRO='",taProductCode[nTempNumeroItems],"'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+						nPesoTotalUnidade := nPesoTotalUnidade + (number(peel(taDb2Array["PDBUVC"]," ")) * number(fmbrasil_crnf_signify.QUANTITYUNI))
+						
+						
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+
+
+
+		
+				!fmbrasil_crnf_signify := find()
+			endif
+			endif
+			nTempNumeroItems++
+		endwhile
+		
+		
+		nTempNumeroItems := 1
+		while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,DOCUMENTNUMBERNF=tDocumentoNumberNF)aSEQUENCIASUPPORT
+			while valid(fmbrasil_crnf_signify) do
+					
+					
+				fmbrasil_crnf_signify.GROSSWEIGHT := build(nPesoTotalUnidade)
+
+
+
+		
+				fmbrasil_crnf_signify := find()
+			endwhile
+			endif
+			nTempNumeroItems++
+		endwhile
+		
+	endif	
+	
+	
+	
+	
+	if bESegundaNF = TRUE  then
+		nTempNumeroItems := 1
+		while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,DOCUMENTNUMBERNF2=tDocumentoNumberNF)aSEQUENCIASUPPORT
+			if valid(fmbrasil_crnf_signify) then
+					
+					tQuery := 	build("SELECT PDBUVC FROM FGE50FM",tToInfologPrefixFilename,".GEPRO WHERE CODPRO='",taProductCode[nTempNumeroItems],"'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+						nPesoTotalUnidade := nPesoTotalUnidade + (number(peel(taDb2Array["PDBUVC"]," ")) * number(fmbrasil_crnf_signify.QUANTITYUNI2))
+						
+						
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+
+
+
+		
+				!fmbrasil_crnf_signify := find()
+			endif
+			endif
+			nTempNumeroItems++
+		endwhile
+		
+		
+		nTempNumeroItems := 1
+		while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,DOCUMENTNUMBERNF2=tDocumentoNumberNF)aSEQUENCIASUPPORT
+			while valid(fmbrasil_crnf_signify) do
+					
+					
+				fmbrasil_crnf_signify.GROSSWEIGHT2 := build(nPesoTotalUnidade)
+
+
+
+		
+				fmbrasil_crnf_signify := find()
+			endwhile
+			endif
+			nTempNumeroItems++
+		endwhile
+		
+	endif
+
+
+
+	if bETerceiraNF = TRUE  then
+		nTempNumeroItems := 1
+		while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,DOCUMENTNUMBERNF3=tDocumentoNumberNF)aSEQUENCIASUPPORT
+			if valid(fmbrasil_crnf_signify) then
+					
+					tQuery := 	build("SELECT PDBUVC FROM FGE50FM",tToInfologPrefixFilename,".GEPRO WHERE CODPRO='",taProductCode[nTempNumeroItems],"'")   
+
+
+					log("tQuery ",tQuery,NL)	
+
+				   
+					if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+						
+					endif
+
+					if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+					endif
+					while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+						nPesoTotalUnidade := nPesoTotalUnidade + (number(peel(taDb2Array["PDBUVC"]," ")) * number(fmbrasil_crnf_signify.QUANTITYUNI3))
+						
+						
+
+					endwhile
+					
+					
+
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+					endif
+
+
+
+
+		
+				!fmbrasil_crnf_signify := find()
+			endif
+			endif
+			nTempNumeroItems++
+		endwhile
+		
+		nTempNumeroItems := 1
+		while nTempNumeroItems <= nNumeroItems do
+			if baProdutoDuplicado[nTempNumeroItems] = FALSE then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),PRODUCTCODE=taProductCode[nTempNumeroItems],SALESORDERNUMBER=tSalesOrderNumber,DOCUMENTNUMBERNF3=tDocumentoNumberNF)aSEQUENCIASUPPORT
+			while valid(fmbrasil_crnf_signify) do
+					
+					
+				fmbrasil_crnf_signify.GROSSWEIGHT3 := build(nPesoTotalUnidade)
+
+
+
+		
+				fmbrasil_crnf_signify := find()
+			endwhile
+			endif
+			nTempNumeroItems++
+		endwhile
+		
+		
+	endif	
+	
+	
+	
+	
+	tGrossWeight := build(nPesoTotalUnidade)
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+	tNUMBEROFVOLUMESTOTALPrim := "0"
+	nAcumulador := 0
+
+	fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber)
+	if valid(fmbrasil_crnf_signify) then
+		tSHIPMENTNUMBERLido := fmbrasil_crnf_signify.SHIPMENTNUMBER
+		
+		fmbrasil_crnf_signifyvalidacao := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,QTDSUPALOCADA <> "1")
+		while valid(fmbrasil_crnf_signifyvalidacao) do
+			nAcumulador := nAcumulador + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI2) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI3)
+			tNUMBEROFVOLUMESTOTALPrim := build(number(tNUMBEROFVOLUMESTOTALPrim) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYPICKEDSHIPPED))
+			fmbrasil_crnf_signifyvalidacao := find()
+		endwhile
+		
+		log("tNUMBEROFVOLUMESTOTALPrim ",tNUMBEROFVOLUMESTOTALPrim,NL)	
+		log("nAcumulador ",nAcumulador,NL)
+						
+		if 	number(tNUMBEROFVOLUMESTOTALPrim) > 0 and 	nAcumulador > 0 and nAcumulador = number(tNUMBEROFVOLUMESTOTALPrim) then
+			/*
+			UPDATE FGE50FM",tToInfologPrefixFilename,".GELIVE SET BLOPRP='0'
+			WHERE "QTD_TOTAL_SKU_NF1" + "QTD_TOTAL_SKU_NF2" + "QTD_TOTAL_SKU_NF3" = "TOTAL_ VOLUMES_DELIVERY"
+			 AND REFLIV = "ORDEM DE CARGA" + "." + "DELIVERY"
+			*/
+			
+			tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GELIVE  SET BLOPRP='0'  "\
+								"WHERE REFLIV = '",fmbrasil_crnf_signify.SALESORDERNUMBER,"'  WITH NONE")
+								
+								
+							
+							log(NL,tQueryUpdade,NL)
+
+						
+								
+								
+								
+								
+										if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+										  log(tfSqlErrorStr(), NL)
+										  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+										  exit(27)
+									   endif
+									   if not bfSqlExec(tDbBase2, "Updatedb2") then
+										  log(tfSqlErrorStr(), NL)
+										  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+										  exit(28)
+									   endif
+									   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+										  log(tfSqlErrorStr(), NL)
+										  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+										  exit(29)
+									   endif
+									   if not bfSqlFree(tDbBase2, "Updatedb2") then
+										  log(tfSqlErrorStr(), NL)
+										  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+										  exit(30)
+									   endif
+			endif
+									   
+		endif
+		
+		
+			
+			
+			
+			
+			
+			
+			
+	!validar ordem de carga
+
+	tNUMBEROFVOLUMESTOTALPrim := "0"
+	nAcumulador := 0
+
+	fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SHIPMENTNUMBER=tSHIPMENTNUMBERLido)
+	if valid(fmbrasil_crnf_signify) then
+		
+		nCont := 0
+		tSalesOrderNumberAnttt := "NAAA"
+		fmbrasil_crnf_signifyvalidacao := find(build(sHOME,"/fmbrasil_crnf_signify"),SHIPMENTNUMBER=tSHIPMENTNUMBERLido,QTDSUPALOCADA <> "1")aSALESORDERNUMBER
+		while valid(fmbrasil_crnf_signifyvalidacao) do
+			!nCont++
+			!if nCont = 1 or fmbrasil_crnf_signifyvalidacao.SALESORDERNUMBER <> tSalesOrderNumberAnttt then
+				tNUMBEROFVOLUMESTOTALPrim := build(number(tNUMBEROFVOLUMESTOTALPrim) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYPICKEDSHIPPED))
+			!endif
+			
+			nAcumulador := nAcumulador + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI2) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI3)
+			!tSalesOrderNumberAnttt := fmbrasil_crnf_signifyvalidacao.SALESORDERNUMBER
+			fmbrasil_crnf_signifyvalidacao := find()
+		endwhile
+		
+		log("tNUMBEROFVOLUMESTOTALPrim ",tNUMBEROFVOLUMESTOTALPrim,NL)	
+		log("nAcumulador ",nAcumulador,NL)			
+		if 	number(tNUMBEROFVOLUMESTOTALPrim) > 0 and 	nAcumulador > 0 and nAcumulador = number(tNUMBEROFVOLUMESTOTALPrim) then
+			tQuery := build("SELECT distinct NUMMIS FROM FGE50FM",tToInfologPrefixFilename,".GESUPD WHERE NUMVAG='",fmbrasil_crnf_signify.ONDAWMS,"'")
+							
+							log(NL,tQuery,NL)
+							
+							
+							if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+									print("FATAL ", tfSqlErrorStr())
+									bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+									exit(1)
+								
+							endif
+
+							if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+
+							endif
+							
+							tNUMMIS := ""
+							while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+								if number(peel(taDb2Array["NUMMIS"]," ")) > 0 then
+									tNUMMIS := peel(taDb2Array["NUMMIS"]," ")
+									
+									
+									
+														
+								tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GERMIE    "\
+														"SET NOMAKT=''   "\
+														"WHERE NUMMIS = '",tNUMMIS,"'   "\
+														" "\
+														"  WITH NONE")
+													
+													
+												
+												log(NL,tQueryUpdade,NL)
+
+											
+													
+													
+													
+													
+															if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+															  exit(27)
+														   endif
+														   if not bfSqlExec(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+															  exit(28)
+														   endif
+														   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+															  exit(29)
+														   endif
+														   if not bfSqlFree(tDbBase2, "Updatedb2") then
+															  log(tfSqlErrorStr(), NL)
+															  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+															  exit(30)
+														   endif
+														   
+														   
+									
+								endif
+								remove(taDb2Array)
+					
+							endwhile
+							
+							
+							
+										
+									
+							
+							if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+								print("FATAL", tfSqlErrorStr())
+								 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+							
+							
+							if length(tNUMMIS) > 0 then
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+											
+								
+														   
+														   
+														   
+														   
+														   
+																   tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GEVAG SET  ETAVAG=30  "\
+										"WHERE NUMVAG = '",fmbrasil_crnf_signify.ONDAWMS,"'  WITH NONE")
+										
+										
+									
+									log(NL,tQueryUpdade,NL)
+
+								
+										
+										
+										
+										
+												if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+												  log(tfSqlErrorStr(), NL)
+												  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+												  exit(27)
+											   endif
+											   if not bfSqlExec(tDbBase2, "Updatedb2") then
+												  log(tfSqlErrorStr(), NL)
+												  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+												  exit(28)
+											   endif
+											   if not bfSqlCommit(tDbBase2, "Updatedb2") then
+												  log(tfSqlErrorStr(), NL)
+												  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+												  exit(29)
+											   endif
+											   if not bfSqlFree(tDbBase2, "Updatedb2") then
+												  log(tfSqlErrorStr(), NL)
+												  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",tQueryUpdade," do banco de dados: ",tfSqlErrorStr()))
+												  exit(30)
+											   endif
+							endif			   
+									   
+				
+									   
+		endif
+									   
+	endif
+		
+		
+		
+		
+	
+	
+	
+	
+	
+		! CSV
+	
+	
+	
+	
+	
+		nSeqCsv := cSeqCsvSignify
+		bPrimeiroRegistoCSV := TRUE
+		!I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SIG001
+		tFileOutCSV := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SIG_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+		tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SIG_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+		tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_SIG_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+		tSufixoCSV := ""
+		
+		if bEPrimeiraNF = TRUE then
+			tSufixoCSV := "01"
+		
+		else
+			if bESegundaNF = TRUE then
+				tSufixoCSV := "02"
+			else
+				if bETerceiraNF = TRUE then
+					tSufixoCSV := "03"
+				endif
+			endif
+		endif
+		
+		
+		if length(tSufixoCSV) > 0 then
+			fmbrasil_crnf_signify := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber)
+			if valid(fmbrasil_crnf_signify) then
+		
+								if bPrimeiroRegistoCSV = TRUE then
+									bPrimeiroRegistoCSV := FALSE
+									print("NUMLIV;SNULIV;TYPRUB;CODRUB;VALRUB;VALNUM;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTempCSV
+										
+
+									
+								endif
+								
+								
+								
+									
+									tQuery := 	build("SELECT NUMLIV, SNULIV   "\
+													"	FROM FGE50FM",tToInfologPrefixFilename,".GELIVE  "\
+													"	WHERE REFLIV = '",fmbrasil_crnf_signify.SALESORDERNUMBER,"' ")
+									 
+
+									 
+
+
+									log("tQuery ",tQuery,NL)	
+
+									   
+									if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+												 print("FATAL ", tfSqlErrorStr())
+												 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+												exit(1)
+										
+									endif
+
+									if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+										 print("FATAL ", tfSqlErrorStr())
+										  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+												exit(1)
+
+									endif
+									while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+										tNUMLIVQur := peel(taDb2Array["NUMLIV"]," ")
+										tSNULIVQur := peel(taDb2Array["SNULIV"]," ")
+										remove(taDb2Array)
+
+									endwhile
+									
+									
+
+									if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+										print("FATAL", tfSqlErrorStr())
+										 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+												exit(1)
+									endif
+						
+								
+						
+						
+								tNUMLIVCSV := tNUMLIVQur
+								tSNULIVCSV := tSNULIVQur
+								tTYPRUBCSV := "2"
+								tCODRUBCSV := build("NF",tSufixoCSV)
+								tVALRUBCSV := build(number(tDocumentoNumberNF))
+								tVALNUMCSV := ""
+								tDISPOCSV  := ""
+								tMAJCRECSV := time("now" ,"%Y%m%d")
+								tMAJDATCSV := time("now" ,"%Y%m%d")
+								tMAJHMSCSV := time("now" ,"%H%M%S")
+								tMAJPGMCSV := "GEPR1RUB2"
+								tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+								tMAJECRCSV := "QPADEV001"
+						
+
+
+								print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+										,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+										,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+										,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+										,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+										
+										
+										
+								tNUMLIVCSV := tNUMLIVQur
+								tSNULIVCSV := tSNULIVQur
+								tTYPRUBCSV := "2"
+								tCODRUBCSV := build("PS",tSufixoCSV)
+								tVALRUBCSV := build(nPesoTotalUnidade)
+								tVALNUMCSV := ""
+								tDISPOCSV  := ""
+								tMAJCRECSV := time("now" ,"%Y%m%d")
+								tMAJDATCSV := time("now" ,"%Y%m%d")
+								tMAJHMSCSV := time("now" ,"%H%M%S")
+								tMAJPGMCSV := "GEPR1RUB2"
+								tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+								tMAJECRCSV := "QPADEV001"
+						
+
+
+								print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+										,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+										,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+										,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+										,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+										
+										
+										
+								tNUMLIVCSV := tNUMLIVQur
+								tSNULIVCSV := tSNULIVQur
+								tTYPRUBCSV := "2"
+								tCODRUBCSV := build("DT",tSufixoCSV)
+								tVALRUBCSV := build(tfConvertDate(tDocumentoDateNF,  "YYYYMMDD" , "DD/MM/YYYY"))
+								tVALNUMCSV := ""
+								tDISPOCSV  := ""
+								tMAJCRECSV := time("now" ,"%Y%m%d")
+								tMAJDATCSV := time("now" ,"%Y%m%d")
+								tMAJHMSCSV := time("now" ,"%H%M%S")
+								tMAJPGMCSV := "GEPR1RUB2"
+								tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+								tMAJECRCSV := "QPADEV001"
+						
+
+
+								print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+										,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+										,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+										,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+										,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+										
+										
+										
+										
+										
+								tNUMLIVCSV := tNUMLIVQur
+								tSNULIVCSV := tSNULIVQur
+								tTYPRUBCSV := "2"
+								tCODRUBCSV := build("SE",tSufixoCSV)
+								tVALRUBCSV := build(number(tDocumentSeries))
+								tVALNUMCSV := ""
+								tDISPOCSV  := ""
+								tMAJCRECSV := time("now" ,"%Y%m%d")
+								tMAJDATCSV := time("now" ,"%Y%m%d")
+								tMAJHMSCSV := time("now" ,"%H%M%S")
+								tMAJPGMCSV := "GEPR1RUB2"
+								tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+								tMAJECRCSV := "QPADEV001"
+						
+
+
+								print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+										,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+										,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+										,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+										,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+										
+										
+											
+								tNUMLIVCSV := tNUMLIVQur
+								tSNULIVCSV := tSNULIVQur
+								tTYPRUBCSV := "2"
+								tCODRUBCSV := build("VO",tSufixoCSV)
+								tVALRUBCSV := build(number(tNumeroVolumesNF))
+								tVALNUMCSV := ""
+								tDISPOCSV  := ""
+								tMAJCRECSV := time("now" ,"%Y%m%d")
+								tMAJDATCSV := time("now" ,"%Y%m%d")
+								tMAJHMSCSV := time("now" ,"%H%M%S")
+								tMAJPGMCSV := "GEPR1RUB2"
+								tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+								tMAJECRCSV := "QPADEV001"
+						
+
+
+								print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+										,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+										,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+										,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+										,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+										
+										
+										
+										
+										
+								if bTemPRPIC5 = TRUE and number(tDiferencaPRPPIC5) > 0 then
+									tNUMLIVCSV := tNUMLIVQur
+									tSNULIVCSV := tSNULIVQur
+									tTYPRUBCSV := "2"
+									tCODRUBCSV := build("*GM1",tSufixoCSV)
+									tVALRUBCSV := build("FORMAR ",number(tDiferencaPRPPIC5)," Volumes")
+									tVALNUMCSV := ""
+									tDISPOCSV  := ""
+									tMAJCRECSV := time("now" ,"%Y%m%d")
+									tMAJDATCSV := time("now" ,"%Y%m%d")
+									tMAJHMSCSV := time("now" ,"%H%M%S")
+									tMAJPGMCSV := "GEPR1RUB2"
+									tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+									tMAJECRCSV := "QPADEV001"
+							
+
+
+									print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+											,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+											,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+											,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+											,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+												
+								endif		
+										
+										
+										
+								nAcumuladorUniAlocadas := 0
+								nAcumuladorUniNFs := 0
+								tNumeroNF1AposVal := ""
+								tNumeroNF2AposVal := ""
+								tNumeroNF3AposVal := ""
+								
+								tDataNF1AposVal := ""
+								tDataNF2AposVal := ""
+								tDataNF3AposVal := ""
+								
+								
+								tValorRubTempAux := ""
+								tValorRubTempAuxData := ""
+								
+								
+								fmbrasil_crnf_signifyvalidacao := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC="5")
+								while valid(fmbrasil_crnf_signifyvalidacao) do
+									nAcumuladorUniAlocadas := nAcumuladorUniAlocadas + number(fmbrasil_crnf_signifyvalidacao.QUANTITYPICKEDSHIPPED)
+									
+									nAcumuladorUniNFs := nAcumuladorUniNFs + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI2) + number(fmbrasil_crnf_signifyvalidacao.QUANTITYUNI3)
+									
+
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF) > 0 then
+										tNumeroNF1AposVal := build(number(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF))
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF2) > 0 then
+										tNumeroNF2AposVal := build(number(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF2))
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF3) > 0 then
+										tNumeroNF3AposVal := build(number(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF3))
+									endif
+									
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF) > 0 then
+										tDataNF1AposVal := tfConvertDate(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF,  "DD/MM/YYYY" , "DD/MM/YY")
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF2) > 0 then
+										tDataNF2AposVal := tfConvertDate(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF2,  "DD/MM/YYYY" , "DD/MM/YY")
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF3) > 0 then
+										tDataNF3AposVal := tfConvertDate(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF3,  "DD/MM/YYYY" , "DD/MM/YY")
+									endif
+									
+									fmbrasil_crnf_signifyvalidacao := find()
+								endwhile
+								
+								log("tSalesOrderNumber ",tSalesOrderNumber,NL)
+								log("nAcumuladorUniNFs ",nAcumuladorUniNFs,NL)
+								log("nAcumuladorUniAlocadas ",nAcumuladorUniAlocadas,NL)
+								
+								
+								
+								nAcumuladorVolAlocadas := 0
+								nAcumuladorVolNFs := 0
+								fmbrasil_crnf_signifyvalidacao := find(build(sHOME,"/fmbrasil_crnf_signify"),SALESORDERNUMBER=tSalesOrderNumber,PRPPIC<>"5")
+								while valid(fmbrasil_crnf_signifyvalidacao) do
+									nAcumuladorVolAlocadas := nAcumuladorVolAlocadas + number(fmbrasil_crnf_signifyvalidacao.QTDVOLSKU)
+									
+									nAcumuladorVolNFs := nAcumuladorVolNFs + number(fmbrasil_crnf_signifyvalidacao.QUANTITY) + number(fmbrasil_crnf_signifyvalidacao.QUANTITY2) + number(fmbrasil_crnf_signifyvalidacao.QUANTITY3)
+
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF) > 0 then
+										tNumeroNF1AposVal := build(number(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF))
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF2) > 0 then
+										tNumeroNF2AposVal := build(number(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF2))
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF3) > 0 then
+										tNumeroNF3AposVal := build(number(fmbrasil_crnf_signifyvalidacao.DOCUMENTNUMBERNF3))
+									endif
+									
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF) > 0 then
+										tDataNF1AposVal := tfConvertDate(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF,  "DD/MM/YYYY" , "DD/MM/YY")
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF2) > 0 then
+										tDataNF2AposVal := tfConvertDate(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF2,  "DD/MM/YYYY" , "DD/MM/YY")
+									endif
+									if length(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF3) > 0 then
+										tDataNF3AposVal := tfConvertDate(fmbrasil_crnf_signifyvalidacao.DOCUMENTDATENF3,  "DD/MM/YYYY" , "DD/MM/YY")
+									endif
+									
+									fmbrasil_crnf_signifyvalidacao := find()
+								endwhile
+								
+								
+								
+								if length(tNumeroNF3AposVal) > 0 then
+									tValorRubTempAux := build(tNumeroNF1AposVal,",",tNumeroNF2AposVal,",",tNumeroNF3AposVal)
+									tValorRubTempAuxData := build(tDataNF1AposVal,",",tDataNF2AposVal,",",tDataNF3AposVal)
+								else
+									if length(tNumeroNF2AposVal) > 0 then
+										tValorRubTempAux := build(tNumeroNF1AposVal,",",tNumeroNF2AposVal)
+										tValorRubTempAuxData := build(tDataNF1AposVal,",",tDataNF2AposVal)
+									else
+										if length(tNumeroNF1AposVal) > 0 then
+											tValorRubTempAux := build(tNumeroNF1AposVal)
+											tValorRubTempAuxData := build(tDataNF1AposVal)
+										endif
+									endif	
+								endif
+								
+								
+								log("nAcumuladorVolAlocadas ",nAcumuladorVolAlocadas,NL)
+								log("nAcumuladorVolNFs ",nAcumuladorVolNFs,NL)
+										
+										
+								if 	nAcumuladorVolAlocadas = nAcumuladorVolNFs and nAcumuladorUniAlocadas = nAcumuladorUniNFs and length(tValorRubTempAux) > 0 then
+								
+								
+									tNUMLIVCSV := tNUMLIVQur
+									tSNULIVCSV := tSNULIVQur
+									tTYPRUBCSV := "2"
+									tCODRUBCSV := build("*A01")
+									tVALRUBCSV := build(tValorRubTempAux)
+									tVALNUMCSV := ""
+									tDISPOCSV  := ""
+									tMAJCRECSV := time("now" ,"%Y%m%d")
+									tMAJDATCSV := time("now" ,"%Y%m%d")
+									tMAJHMSCSV := time("now" ,"%H%M%S")
+									tMAJPGMCSV := "GEPR1RUB2"
+									tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+									tMAJECRCSV := "QPADEV001"
+							
+
+
+									print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+											,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+											,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+											,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+											,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+											
+											
+											
+									tNUMLIVCSV := tNUMLIVQur
+									tSNULIVCSV := tSNULIVQur
+									tTYPRUBCSV := "2"
+									tCODRUBCSV := build("*A02")
+									tVALRUBCSV := build(tValorRubTempAuxData)
+									tVALNUMCSV := ""
+									tDISPOCSV  := ""
+									tMAJCRECSV := time("now" ,"%Y%m%d")
+									tMAJDATCSV := time("now" ,"%Y%m%d")
+									tMAJHMSCSV := time("now" ,"%H%M%S")
+									tMAJPGMCSV := "GEPR1RUB2"
+									tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+									tMAJECRCSV := "QPADEV001"
+							
+
+
+									print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+											,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+											,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+											,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+											,tMAJECRCSV,";", NL) >> tFileOutTempCSV	
+											
+											
+											
+											
+											
+											
+											
+											
+								
+								endif
+										
+										
+										
+										
+										
+
+								
+								
+						close(tFileOutTempCSV)
+						copy(tFileOutTempCSV,tFileOutCSV)
+						close(tFileOutTempCSV)
+						remove(tFileOutTempCSV)
+						close(tFileOutCSV)
+			endif
+		endif
+	
+	
+	
+	
+			
+	bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+			
+			
+
+		
+
+
+
+
+
+
+
+
+
+
+		
+
+bfSqlClose(tDbBase2)
+
+exit(0)
+
+endend
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "SIGNIFY"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "NF"
+   TRACE.NUMDOC := tDocumentoNumberNF
+   TRACE.DATDOC := tSalesOrderNumber
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pGW.ORIGINAL.NAME
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+ TRACE.LIBEXC := tLIBEXC
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+
+close(build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml"))
+copy(build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml"),TRACE.In)
+close(build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml"))
+close(TRACE.In)
+
+ remove(build(sHOME,"/tmp/auuuxxxSig",nMessageID:R010,".xml"))
+ remove(build(sHOME,"/tmp/FinalSig",nMessageID:R010,".xml"))
+
+
+
+
+
+print(tQueryUpdadeAcumulado,NL) >> TRACE.Out
+close(TRACE.Out)
+
+
+
+close(tFileOutCSV)
+copy(tFileOutCSV,TRACE.OutCSV)
+close(tFileOutCSV)
+close(TRACE.OutCSV)
+
+
+flush(TRACE)
+endfunction
+
+
+
+
+
+
+
+!----------------------------------------------------
+
+
+function tfRetiraPatern(tLinhdaLidaFunc,tPalavraPesquisar,tCaracteresAdicionar)
+nTemAuxxxxxx := 1
+log("tLinhdaLidaFunc ",tLinhdaLidaFunc,NL)
+log("tPalavraPesquisar ",tPalavraPesquisar,NL)
+
+tLinhaSemPalavra := tLinhdaLidaFunc
+while nTemAuxxxxxx <= length(tLinhdaLidaFunc) do
+	if substr(tLinhdaLidaFunc,nTemAuxxxxxx,length(tPalavraPesquisar)) = tPalavraPesquisar and length(tLinhdaLidaFunc) > length(tPalavraPesquisar) then
+		
+		if nTemAuxxxxxx = 1 then
+			tLinhaSemPalavra := build(tCaracteresAdicionar,substr(tLinhdaLidaFunc,(length(tPalavraPesquisar)+1),(length(tLinhdaLidaFunc)-length(tPalavraPesquisar))))
+			log("aqui1 ",tLinhaSemPalavra,NL)
+			return tfRetiraPatern(tLinhaSemPalavra,tPalavraPesquisar,tCaracteresAdicionar)
+		else
+			tLinhaSemPalavra := build(substr(tLinhdaLidaFunc,1,(nTemAuxxxxxx-1)),tCaracteresAdicionar,substr(tLinhdaLidaFunc,(nTemAuxxxxxx+(length(tPalavraPesquisar))),(length(tLinhdaLidaFunc)-(nTemAuxxxxxx+length(tPalavraPesquisar)-1))))
+			log("aqui2 ",tLinhaSemPalavra,NL)
+			return tfRetiraPatern(tLinhaSemPalavra,tPalavraPesquisar,tCaracteresAdicionar)
+		endif
+	endif
+	
+	nTemAuxxxxxx++
+endwhile
+
+
+log("aqui3 ",tLinhaSemPalavra,NL)
+return tLinhaSemPalavra
+endfunction

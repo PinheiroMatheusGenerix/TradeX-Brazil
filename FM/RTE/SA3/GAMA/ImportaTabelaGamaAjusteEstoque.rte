@@ -1,0 +1,110 @@
+base "../fmbrasil_gama_ajustes_estoque/fmbrasil_gama_ajustes_estoque.cfg" BASE, autoflush off
+base "syslog.cfg" SYSLOG
+
+
+begin
+
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	
+	/*
+	BASE := find (build(sHOME,"/fmbrasil_gama_ajustes_estoque/"))
+      while valid(BASE) do
+   
+   
+         remove(BASE)
+         flush(BASE)
+         BASE := find()
+      endwhile
+	  
+	  */
+	nContadorLinhasConsideradas := 0
+endbegin
+
+
+line(1)
+split(pick(1,1,EOL), taRegistoHeader, ";")
+
+endline
+
+line (not 1)
+split(pick(1,1,EOL), taRegistoDetail, ";")
+if length(taRegistoDetail[3]) > 0 then
+
+
+	nContadorLinhasConsideradas++
+	if nContadorLinhasConsideradas = 1 then
+		!apaga so os registos da atividade a que o arquivo diz respeito
+		BASE := find (build(sHOME,"/fmbrasil_gama_ajustes_estoque/"),Planta= peel(taRegistoDetail[4]," "))
+		  while valid(BASE) do
+	   
+	   
+			 remove(BASE)
+			 flush(BASE)
+			 BASE := find()
+		  endwhile
+	
+	endif
+
+
+
+
+
+	BASE := new(build(sHOME,"/fmbrasil_gama_ajustes_estoque/"))
+	nPos :=1
+
+
+	nPos := nPos + naLen[1]
+	BASE.TP_DIVERG := peel(taRegistoDetail[1]," ")
+
+	nPos := nPos + naLen[2]
+	BASE.Data := peel(taRegistoDetail[2]," ")
+
+	nPos := nPos + naLen[3]
+	BASE.Produto := peel(taRegistoDetail[3]," ")
+
+	
+	
+	nPos := nPos + naLen[4]
+	BASE.Planta := peel(taRegistoDetail[4]," ")
+
+	nPos := nPos + naLen[5]
+	BASE.Deposito := peel(taRegistoDetail[5]," ")
+
+	nPos := nPos + naLen[6]
+	BASE.Lote := peel(taRegistoDetail[6]," ")
+	
+	
+	
+	
+	nPos := nPos + naLen[7]
+	BASE.COD_SIT_CLI := peel(taRegistoDetail[7]," ")
+
+	nPos := nPos + naLen[8]
+	BASE.Qtd := peel(taRegistoDetail[8]," ")
+
+	nPos := nPos + naLen[9]
+	BASE.STATUS := peel(taRegistoDetail[9]," ")
+
+	nPos := nPos + naLen[10]
+	BASE.Responsavel := peel(taRegistoDetail[10]," ")
+	
+	close(SYSLOG.a)
+	copy(SYSLOG.a,BASE.CSV)
+	
+	flush(BASE)
+	close(BASE.CSV)
+	close(SYSLOG.a)
+endif
+remove(taRegistoDetail)
+   
+endline
+
+
+
+
+end
+
+exit(0)
+
+endend
+

@@ -1,0 +1,67 @@
+%@(#)  ByPassToSentinel.rte     modif:01-12-2017
+!==============================================================================
+% File          : ByPassToSentinel.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "ByPassToSentinel"
+#include "include/generix_func.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+
+    close(SYSLOG.a)
+    close(SYSLOG.l)
+    load(SYSLOG.l,taInfo)
+    close(SYSLOG.l)
+    if length(pEDISEND.ORIGINAL.NAME) > 0 then
+        tFileOut := build(sHOME,"/FMBR_AS2/",substr(pEDISEND.ORIGINAL.NAME, 10, length(pEDISEND.ORIGINAL.NAME) - 9))
+    else
+        log(NL,"could not find pEDISEND.ORIGINAL.NAME on SYSLOG.l",NL)
+        exit(1)
+    endif
+    log("copying file to ",tFileOut,NL)
+    copy(SYSLOG.a,tFileOut)
+    close(SYSLOG.a)
+    close(tFileOut)
+
+
+    exit(0)
+endbegin
+
+!===========================================================
+
+! End statements section
+end
+
+endend
+
+!===========================================================

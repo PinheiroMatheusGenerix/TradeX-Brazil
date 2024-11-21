@@ -1,0 +1,140 @@
+%@(#)  M40_M50_BRAE_XML.rte     modif:21-11-2017
+!==============================================================================
+% File          : M40_M50_BRAE_XML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+! schema "XML/FMBrasil/NFE/procNFe_v4.00.xsd" validating, building
+message "XML/FMBrasil/VEJA/VEJA_M30.dtd" building
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "M40_M50_BRAE_XML"
+#include "include/generix_func.inc"
+#include "include/GEEXM40.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1
+
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHENKEL"]
+
+	tDbBase		:= "FMWMS"
+	tDbBase2	:= "FMWMS2"
+
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+    tFileOut := build(sHOME,"/local/TESTE_M40.2",nMessageID,".xml")
+	tFileOutTemp := build(sHOME,"/local/Temp/TESTE_M40.2",nMessageID,".xml")
+	tNameOut := build("TESTE_M40",nMessageID,".xml")
+    log("CRIAR ARQUIVO", NL)
+    log("tCODEXC = ", tCODEXC, NL)
+endbegin
+
+!===========================================================
+line(1:"40.00")
+	tCODEXC := S_GEEX4000_CODEXC
+    
+    bfCriarOut()
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+endend
+
+!===========================================================
+
+function bfCriarOut()
+    segment SCOMPANY gGCATALOG, gGCATALOG_HEADER
+        eECOMPANY := "1"
+    endsegment
+
+    segment SYEAR  gGCATALOG, gGCATALOG_HEADER
+        eEYEAR := "2"
+    endsegment
+
+    segment SSEASON  gGCATALOG, gGCATALOG_HEADER
+        eESEASON := "3"
+    endsegment
+
+    segment STOTAL gGCATALOG, gGCATALOG_HEADER
+        eETOTAL := "4"
+    endsegment
+
+    segment SSTYLE gGCATALOG, gGCATALOG_BODY, gGSKU
+        eESTYLE := "5"
+    endsegment
+
+    segment SMODEL gGCATALOG, gGCATALOG_BODY, gGSKU
+        eEMODEL := "6"
+    endsegment
+
+    segment SCOLOR gGCATALOG, gGCATALOG_BODY, gGSKU
+        eECOLOR := "7"
+    endsegment
+
+    segment SCOLOR_NAME gGCATALOG, gGCATALOG_BODY, gGSKU
+        eECOLOR_NAME := "8"
+    endsegment
+
+    segment SSIZE gGCATALOG, gGCATALOG_BODY, gGSKU
+        eESIZE := "9"
+    endsegment
+
+    segment SSIZE_POSITION gGCATALOG, gGCATALOG_BODY, gGSKU
+        eESIZE_POSITION := "10"
+    endsegment
+
+    segment SBARCODE_SKU gGCATALOG, gGCATALOG_BODY, gGSKU
+        eEBARCODE_SKU := "11"
+    endsegment
+
+    print(MESSAGE) >> tFileOutTemp
+
+    ! flush(0,0,NL) >> tFileOutTemp
+    ! close(tFileOutTemp)
+
+    ! copy(tFileOutTemp,tFileOut)
+    ! close(tFileOutTemp)
+    ! ! remove(tFileOutTemp)
+    ! close(tFileOut)
+
+endfunction

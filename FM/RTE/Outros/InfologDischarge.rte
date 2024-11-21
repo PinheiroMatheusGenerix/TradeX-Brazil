@@ -1,0 +1,16 @@
+base "syslog.cfg" SYSLOG
+
+begin
+
+SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+close(SYSLOG.a)
+tFileOut := build(sHOME,"/InfologServer/OUT/",pFTP.ORIGINAL.FILENAME)
+log("copying file to ",tFileOut,NL)
+copy(SYSLOG.a,tFileOut)
+close(SYSLOG.a)
+close(tFileOut)
+ 
+
+exit(0)
+
+endbegin

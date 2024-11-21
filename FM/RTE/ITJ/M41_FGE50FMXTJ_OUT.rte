@@ -1,0 +1,1050 @@
+%@(#)  source_filename.rte     modif:08-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_clientespedloreal/fmbrasil_clientespedloreal.cfg" fmbrasil_clientespedloreal
+base "../fmbrasil_consolidacao_m40gamaitaly/fmbrasil_consolidacao_m40gamaitaly.cfg" fmbrasil_consolidacao_m40gamaitaly,autoflush off
+base "../fmbrasil_consolidacao_m40gamaitaly/fmbrasil_consolidacao_m40gamaitaly.cfg" fmbrasil_consolidacao_m40gamaitalylinhas,autoflush off
+base "../fmbrasil_confrec_email_divers/fmbrasil_confrec_email_divers.cfg" fmbrasil_confrec_email_divers
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M41_GAMAITALY_ASCII_OUT"
+#include "include/generix_func.inc"
+#include "include/M41.inc"
+#include "include/M41_CSV_PALETE.inc"
+#include "include/ERPFMviaCSV.inc"
+#include "include/ConfRecebimentoGamaItaly.inc"
+#include "include/ConfRecebimentoSYSLEY.inc"
+
+#include "include/M41_CSV_HASBRO.inc"
+
+
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    tDataSistemaNomeArquivo := time("now" ,"%Y%m%d%H%M%S")
+
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameFGE50FMXTJ"]
+ 
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+nMainIndex := 0
+
+
+
+
+		
+    	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtraceJAM("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+   
+   
+endbegin
+
+!===========================================================
+
+
+
+
+line(1:"00.00")
+ !  tCentroCusto := S_00HEADER_EDISIT
+nContadorHEADERCPK := 0
+endline
+
+line(1:"41.00")
+nResultadosQueryPEDIND := 0
+nContadorRegisto := 0
+tMsgrec4102 := ""
+
+tNumeroLoja := "00092"
+       
+tCODACTLido := S_4100HEADER_CODACT  
+
+
+
+ 
+	tCODFOU  := S_4100HEADER_CODFOU  
+
+	tPlacaVeiculo := substr(S_4100HEADER_REFREC,1,7)
+	tRomaneio := peel(substr(S_4100HEADER_REFREC,8,18)," ")
+	tNumeroDocumento := S_4100HEADER_REFREC
+	
+	tData := S_4100HEADER_DTRREC
+	tHora := S_4100HEADER_HERREC
+	
+	tKAIREC := S_4100HEADER_KAIREC
+	tCODTRA := S_4100HEADER_CODTRA
+
+	nLinha := 0
+	nConta4120 := 0
+	nConta4130 := 0
+	nConta4180 := 0
+   
+
+   
+   tCODTRE := S_4100HEADER_CODTRE
+   tNUMREC :=  S_4100HEADER_NUMREC
+   
+endline
+
+line(1:"41.01")
+	
+endline
+
+line(1:"41.02")
+	tMsgrec4102 := S_GEEX4102_MSGREC
+endline
+
+line(1:"41.20")
+
+
+	nConta4120++ 
+	taNUMOPE[nConta4120] := S_4120ORDERLINE_NUMOPE
+	
+	taNLIREC4120[nConta4120] := S_4120ORDERLINE_NLIREC
+	taCODPRO4120[nConta4120] := S_4120ORDERLINE_CODPRO
+	taUNICDE4120[nConta4120] := S_4120ORDERLINE_UNICDE
+	taUVCREA4120[nConta4120] := S_4120ORDERLINE_UVCREA
+	taUVCREC4120[nConta4120] := S_4120ORDERLINE_UVCREC
+	taUVCMVT4120[nConta4120] := "0"
+	taUVCMVT4120SIS[nConta4120] := "0"
+	taUVCMVT4120Bloqueada[nConta4120] := "0"
+	baProdutoSem4130[nConta4120] := TRUE
+endline
+
+
+
+line(1:"41.30")
+	baProdutoSem4130[nConta4120] := FALSE
+	
+	if S_4130ORDERLINE_DETAIL_MOTIMM = "AF" or  S_4130ORDERLINE_DETAIL_MOTIMM = "AT" then
+		taUVCMVT4120[nConta4120] := build(number(taUVCMVT4120[nConta4120])+number(S_4130ORDERLINE_DETAIL_UVCMVT))
+	endif
+	
+	if S_4130ORDERLINE_DETAIL_MOTIMM = "GB" or  S_4130ORDERLINE_DETAIL_MOTIMM = "NB" or  S_4130ORDERLINE_DETAIL_MOTIMM = "RW" or  S_4130ORDERLINE_DETAIL_MOTIMM = "NI" or  S_4130ORDERLINE_DETAIL_MOTIMM = "TB" then
+		taUVCMVT4120Bloqueada[nConta4120] := build(number(taUVCMVT4120Bloqueada[nConta4120])+number(S_4130ORDERLINE_DETAIL_UVCMVT))
+	endif
+	
+	!AB, AC, AF, AS, AT e AP
+	if S_4130ORDERLINE_DETAIL_MOTIMM = "AB" or  S_4130ORDERLINE_DETAIL_MOTIMM = "AC" or S_4130ORDERLINE_DETAIL_MOTIMM = "AF" or  S_4130ORDERLINE_DETAIL_MOTIMM = "AS" or S_4130ORDERLINE_DETAIL_MOTIMM = "AT" or  S_4130ORDERLINE_DETAIL_MOTIMM = "AP"then
+		taUVCMVT4120SIS[nConta4120] := build(number(taUVCMVT4120SIS[nConta4120])+number(S_4130ORDERLINE_DETAIL_UVCMVT))
+	endif
+	
+	
+	nConta4130++ 
+	/*
+	CODPAL
+CODPRO
+UVCMVT
+CODLOT
+
+	
+	*/
+	
+	taCODLOT4130[nConta4130] := S_4130ORDERLINE_DETAIL_CODLOT
+	taCODPAL4130[nConta4130] := S_4130ORDERLINE_DETAIL_CODPAL
+	taCODPRO4130[nConta4130] := S_4130ORDERLINE_DETAIL_CODPRO
+	taUVCMVT4130[nConta4130] := S_4130ORDERLINE_DETAIL_UVCMVT
+	taUVCMVT4130Consolidado[nConta4130] := S_4130ORDERLINE_DETAIL_UVCMVT
+	if S_4130ORDERLINE_DETAIL_MOTIMM = "AC" or S_4130ORDERLINE_DETAIL_MOTIMM = "AF" or S_4130ORDERLINE_DETAIL_MOTIMM = "AT" then
+		taUVCMVT4130ConsolAvaria[nConta4130] := S_4130ORDERLINE_DETAIL_UVCMVT
+	else
+		taUVCMVT4130ConsolAvaria[nConta4130] := "0"
+	endif
+	
+	if S_4130ORDERLINE_DETAIL_MOTIMM = "CQ" then
+		taUVCMVT4130ConsolQuali[nConta4130] := S_4130ORDERLINE_DETAIL_UVCMVT
+	else
+		taUVCMVT4130ConsolQuali[nConta4130] := "0"
+	endif
+	
+	taNUMOPE4130_do_4120[nConta4130] := taNUMOPE[nConta4120]
+	taZONSTS4130[nConta4130] := S_4130ORDERLINE_DETAIL_ZONSTS
+	taALLSTS4130[nConta4130] := S_4130ORDERLINE_DETAIL_ALLSTS
+	taDPLSTS4130[nConta4130] := S_4130ORDERLINE_DETAIL_DPLSTS
+	taNIVSTST4130[nConta4130] := S_4130ORDERLINE_DETAIL_NIVSTS
+	taDATFVI4130[nConta4130] := S_4130ORDERLINE_DETAIL_DATFVI
+
+	
+			
+	taNLIREC4130[nConta4130] := S_4130ORDERLINE_DETAIL_NLIREC
+	taMOTIMM4130[nConta4130] := S_4130ORDERLINE_DETAIL_MOTIMM
+	taUNICDE4130_do_4120[nConta4130] := taUNICDE4120[nConta4120]
+	taUVCREA4130_do_4120[nConta4130] := taUVCREA4120[nConta4120]
+	baProdutoDuplicado[nConta4130] := FALSE
+endline
+
+
+
+
+line(1:"41.80")
+	 
+
+	tCodigoEmb := S_4180_PROEMB
+	
+
+endline
+
+
+
+
+line(1:"41.99")
+/*
+
+
+*/
+remove(taNumSerie)
+split(tNumeroDocumento,taNumSerie,".")
+
+
+		
+		
+		
+   
+if tCODACTLido = "JAM" then   !JAMBO
+	
+
+		TRACE:=new(build(sHOME,"/trace"))
+		flush(TRACE)
+		
+		nMessageID := cMessageID
+		tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"JAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+		tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"JAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+		tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"JAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+
+		  R_HeaderSIS_TIPODEREGISTRO("0")
+		  R_HeaderSIS_CNPJORIGEM(build(number(tCODFOU):R015))
+		  R_HeaderSIS_CNPJDESTINATARIO("002462805000778")
+		  R_HeaderSIS_TIPORECEBIMENTO(tCODTRE)
+		  R_HeaderSIS_DATARECEBIMENTO(tfConvertDate(tData, "YYYYMMDD" , "DDMMYYYY"))
+		  !R_HeaderSIS_NUMEROBL(A)
+		  R_HeaderSIS_COMPLHEADER("                                                                                          ")
+		   flush(0,0,NL) >> tFileOutTemp
+		
+		
+		   
+		   
+		   
+		   
+		   
+		  R_HeaderNFSIS_Identificacaodoregistro("1")
+		  !nPosicaoPonto := index(tNumeroDocumento,".")
+		  
+		  !tSerieDaNF := substr(tNumeroDocumento,nPosicaoPonto+2,length(tNumeroDocumento)-nPosicaoPonto-1)
+		  !tNumeroDaNF := substr(tNumeroDocumento,1,nPosicaoPonto)
+		  
+		  tSerieDaNF := taNumSerie[2]
+		 tNumeroDaNF :=  taNumSerie[1]
+		  R_HeaderNFSIS_SeriedaNF(taNumSerie[2])
+		  R_HeaderNFSIS_NumerodaNotaFiscal(taNumSerie[1])
+		  R_HeaderNFSIS_NumerodoPedidodeCompra(taNumSerie[1])
+		 ! R_HeaderNFSIS_COMPLHEADER2("a")
+		 R_HeaderNFSIS_comnf("                                                                                                                      ")
+		 
+		   flush(0,0,NL) >> tFileOutTemp
+		
+		 
+		   
+		   
+		
+		   
+		   
+		   nTempConta4120 := 1
+		   while nTempConta4120 <= nConta4120 do
+		   
+				   
+				   nContadorRegisto++
+				   R_DetalheSIS_Identificacaodoregistro("2")
+				   R_DetalheSIS_SequenciadoprodutonaNotaFiscal(build(number(taNLIREC4120[nTempConta4120]):R06))
+				   R_DetalheSIS_CodigodoSKU(taCODPRO4120[nTempConta4120])
+				   !R_DetalheSIS_Depositooustatusesperadonorecebimento(taUNICDE4120[nTempConta4120])
+				   !R_DetalheSIS_Codigodolotedefabricacaorecebido(A)
+				   !R_DetalheSIS_Validadedolotedefabricacaodoproduto(A)
+				   R_DetalheSIS_UnidadedeMedidadoproduto("PC") !taUNICDE4120[nTempConta4120])
+				   
+				   tAux := build(number(taUVCREA4120[nTempConta4120])*1000)
+				   R_DetalheSIS_QuantidadedoprodutonaNF(build("0000000",number(tAux):R012))
+				   
+				   tAux := build(number(taUVCREC4120[nTempConta4120])*1000)
+				   R_DetalheSIS_Quantidadeefetivamenterecebida(build("0000000",number(tAux):R012))
+				   
+				   
+				   tAux := build(number(taUVCMVT4120SIS[nTempConta4120])*1000)
+				   R_DetalheSIS_QuantidadeAvariada(build("0000000",number(tAux):R012))
+				  ! R_DetalheSIS_QuantidadeBloqueada(build("0000000",number(taUVCMVT4120Bloqueada[nTempConta4120]):R012))
+				   
+				   
+				  
+				   
+				   flush(0,0,NL) >> tFileOutTemp
+				   nTempConta4120++
+		   endwhile
+	   
+	   
+	   
+		R_TraillerSIS_Identificacaodoregistro("9")
+	   R_TraillerSIS_Totaldelinhasdodetalhe(build(nContadorRegisto:R03))
+	   R_TraillerSIS_COMPLHEADER3("                                                                                                                                                   ")
+	   flush(0,0,NL) >> tFileOutTemp
+		
+		
+endif		
+		
+		
+
+
+if tCODACTLido = "JAM" then
+		bfMajtraceJAM("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+		
+		
+		
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+				close(tFileOut)
+endif
+		
+		
+   
+if tCODACTLido = "AQA" or tCODACTLido = "AQC" or tCODACTLido = "CGP" or tCODACTLido = "SCO" then
+
+	tFileOutCSVDIVERS := build(sHOME,"/EmailsAEnviar/M41_CSV/Recebimento_",tNumeroDocumento,".csv")
+			tFileOutTempCSVDIVERS := build(sHOME,"/EmailsAEnviar/M41_CSV/Temp/Recebimento_",tNumeroDocumento,".csv")
+			tNameOutCSVDIVERS := build("Recebimento_",tNumeroDocumento,".csv")
+	
+
+			
+			
+	nTempConta4130 := 1
+	while nTempConta4130 <= nConta4130 do
+		nTempConta4130_2 := nTempConta4130 + 1
+		while nTempConta4130_2 <= nConta4130 do
+			if baProdutoDuplicado[nTempConta4130_2] = FALSE then
+				if taCODPRO4130[nTempConta4130_2] = taCODPRO4130[nTempConta4130]  then
+					baProdutoDuplicado[nTempConta4130_2] := TRUE
+					taUVCMVT4130Consolidado[nTempConta4130] := build(number(taUVCMVT4130Consolidado[nTempConta4130]) + number(taUVCMVT4130Consolidado[nTempConta4130_2]))
+					
+					
+					
+					taUVCMVT4130ConsolAvaria[nTempConta4130] := build(number(taUVCMVT4130ConsolAvaria[nTempConta4130]) + number(taUVCMVT4130ConsolAvaria[nTempConta4130_2]))
+					taUVCMVT4130ConsolQuali[nTempConta4130] := build(number(taUVCMVT4130ConsolQuali[nTempConta4130]) + number(taUVCMVT4130ConsolQuali[nTempConta4130_2]))
+					
+					
+											
+				endif
+			
+			endif
+	
+			nTempConta4130_2++
+		endwhile
+	
+		nTempConta4130++
+	endwhile
+				
+				
+				
+				
+				!CSV
+		
+
+			
+				 nTempConta4130 := 1
+				 while nTempConta4130 <= nConta4130 do
+					if baProdutoDuplicado[nTempConta4130] = FALSE then	
+						
+					
+	
+						
+						
+						
+						
+							
+							R_M41CsvDiversReg_NF(tNumeroDocumento)
+							R_M41CsvDiversReg_Doca(tKAIREC)
+							R_M41CsvDiversReg_Transportadora(tCODTRA)
+							R_M41CsvDiversReg_Placa(tMsgrec4102)
+							R_M41CsvDiversReg_Motorista("")
+							R_M41CsvDiversReg_BL(tNumeroDocumento)
+							R_M41CsvDiversReg_Carga("")
+							R_M41CsvDiversReg_Operacao(tCODTRE)
+							R_M41CsvDiversReg_Data(tfConvertDate(build(tData,tHora,"00"),"YYYYMMDDHHMMSS","DD/MM/AAAA - HH:MM:SS")) !converter para "DD/MM/AAAA - HH:MM:SS"
+							R_M41CsvDiversReg_Cliente(tCODACTLido)
+						
+						
+							
+						
+						
+						
+						
+						R_M41CsvDiversReg_Sequencia(taNLIREC4130[nTempConta4130])
+						R_M41CsvDiversReg_SKU(taCODPRO4130[nTempConta4130])
+						
+						
+							tQuery := 	build("SELECT DS1PRO FROM FGE50FM",tToInfologPrefixFilename,".GEPRO WHERE CODPRO='",taCODPRO4130[nTempConta4130],"' AND CODACT='",tCODACTLido,"'")
+
+
+						
+
+							
+							if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+										 print("FATAL ", tfSqlErrorStr())
+										 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+								
+							endif
+
+							if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								  bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+
+							endif
+							while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		
+								
+								tDS1PROQueryCSVPalete := peel(taDb2Array["DS1PRO"]," ")
+							
+								remove(taDb2Array)
+
+							endwhile
+							
+							
+
+							if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+								print("FATAL", tfSqlErrorStr())
+								 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+							endif
+						
+						
+						R_M41CsvDiversReg_Descricao(tDS1PROQueryCSVPalete) 
+						R_M41CsvDiversReg_Lote("")
+						
+						
+						!R_M41CsvDiversReg_Palete(taCODPAL4130[nTempConta4130])
+						R_M41CsvDiversReg_STATUSIMO(taMOTIMM4130[nTempConta4130])
+						
+						R_M41CsvDiversReg_Unidade(taUNICDE4130_do_4120[nTempConta4130])
+						R_M41CsvDiversReg_QtdFiscal(taUVCREA4130_do_4120[nTempConta4130])
+						
+						R_M41CsvDiversReg_QtdRecebida(taUVCMVT4130Consolidado[nTempConta4130])
+						
+						!Quando MOTIMM=AC,AM,AT,AV,FT,NB,RG,RT,RW,SB,SK,SL  - Tipo: AVARIA  
+						if number(taUVCMVT4130ConsolAvaria[nTempConta4130]) > 0 then
+							R_M41CsvDiversReg_Quantidade_IMO_Avaria(taUVCMVT4130ConsolAvaria[nTempConta4130])
+						else
+							R_M41CsvDiversReg_Quantidade_IMO_Avaria("")
+						endif	
+						
+						
+						
+						!Quando MOTIMM= CQ - Tipo: QUALIDADE
+						if number(taUVCMVT4130ConsolQuali[nTempConta4130]) > 0 then
+							R_M41CsvDiversReg_Qtd_IMO_Qualidade(taUVCMVT4130ConsolQuali[nTempConta4130])
+						else
+							R_M41CsvDiversReg_Qtd_IMO_Qualidade("")
+						endif
+						
+						
+						
+						
+						
+						
+							
+															
+															
+																
+															tQuery := 	build("SELECT CASE "\
+															"	   WHEN ORICDE=1 THEN 'N' "\
+															"	   WHEN ORICDE=2 THEN 'S' "\
+															"	   ELSE '' "\
+															"	   END ITEM_SURPRESA "\
+															"FROM FGE50FM",tToInfologPrefixFilename,".GERECD "\
+															"WHERE SEQREC='",taNLIREC4130[nTempConta4130],"' AND NUMREC='",tNUMREC,"' AND CODPRO='",taCODPRO4130[nTempConta4130],"'")
+															
+
+																log(tQuery,NL)
+																if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+																			 print("FATAL ", tfSqlErrorStr())
+																			 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+																			exit(1)
+																	
+																endif
+
+																if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+																	 print("FATAL ", tfSqlErrorStr())
+																	  bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+																			exit(1)
+
+																endif
+																tITEM_SURPRESACSVPalete := ""
+																while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+											
+																	
+																	tITEM_SURPRESACSVPalete := peel(taDb2Array["ITEM_SURPRESA"]," ")
+																	if peel(taDb2Array["ITEM_SURPRESA"]," ") = "S" then
+																		R_M41CsvDiversReg_QtdFiscal("0")
+																	endif
+																	remove(taDb2Array)
+
+																endwhile
+																
+																
+
+																if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+																	print("FATAL", tfSqlErrorStr())
+																	 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+																			exit(1)
+																endif
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						if nTempConta4130 = 1 then
+								print("NF;Doca;Transportadora;Placa;Motorista;BL;Carga;Operacao;Data;Cliente;Sequencia;SKU;Descricao;Lote;Palete;\"Status (IMO)\";Unidade;\"Quantidade Fiscal\";\"Quantidade Recebida\";\"Quantidade IMO Avaria\";\"Quantidade IMO Qualidade\";\"Item Surpresa\"", NL) >> tFileOutTempCSVDIVERS
+						 
+						endif
+						
+						
+						
+							print(taM41CsvDiversReg[1],";",taM41CsvDiversReg[2],";",taM41CsvDiversReg[3] \
+									,";",taM41CsvDiversReg[4],";",taM41CsvDiversReg[5],";",taM41CsvDiversReg[ \
+									6],";",taM41CsvDiversReg[7],";",taM41CsvDiversReg[8],";", \
+									taM41CsvDiversReg[9],";",taM41CsvDiversReg[10],";",taM41CsvDiversReg[11],";", \
+									taM41CsvDiversReg[12],";",taM41CsvDiversReg[13],";",taM41CsvDiversReg[ \
+									14],";",taM41CsvDiversReg[15],";",taM41CsvDiversReg[16],";", \
+									taM41CsvDiversReg[17],";",taM41CsvDiversReg[18],";",taM41CsvDiversReg[19],";", \
+									taM41CsvDiversReg[20],";",taM41CsvDiversReg[21],";",tITEM_SURPRESACSVPalete,";", NL) >> tFileOutTempCSVDIVERS
+							 remove(taM41CsvDiversReg)
+							bNaoGerarCSV := FALSE
+						
+					
+					endif		
+					nTempConta4130++
+				endwhile
+					
+					
+					
+					
+					
+					
+					
+				!dos produtos que nao foi recebido nada
+					
+					
+					
+					
+			
+				 nTempConta4120 := 1
+				 while nTempConta4120 <= nConta4120 do
+						
+					if baProdutoSem4130[nTempConta4120] = TRUE	then
+					
+	
+						
+						
+						
+						
+							
+							R_M41CsvDiversReg_NF(tNumeroDocumento)
+							R_M41CsvDiversReg_Doca(tKAIREC)
+							R_M41CsvDiversReg_Transportadora(tCODTRA)
+							R_M41CsvDiversReg_Placa(tMsgrec4102)
+							R_M41CsvDiversReg_Motorista("")
+							R_M41CsvDiversReg_BL(tNumeroDocumento)
+							R_M41CsvDiversReg_Carga("")
+							R_M41CsvDiversReg_Operacao(tCODTRE)
+							R_M41CsvDiversReg_Data(tfConvertDate(build(tData,tHora,"00"),"YYYYMMDDHHMMSS","DD/MM/AAAA - HH:MM:SS")) !converter para "DD/MM/AAAA - HH:MM:SS"
+							R_M41CsvDiversReg_Cliente(tCODACTLido)
+						
+						
+							
+						
+						
+						
+						
+						R_M41CsvDiversReg_Sequencia(taNLIREC4120[nTempConta4120])
+						R_M41CsvDiversReg_SKU(taCODPRO4120[nTempConta4120])
+						
+						
+							tQuery := 	build("SELECT DS1PRO FROM FGE50FM",tToInfologPrefixFilename,".GEPRO WHERE CODPRO='",taCODPRO4120[nTempConta4120],"' AND CODACT='",tCODACTLido,"'")
+
+
+						
+
+							
+							if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+										 print("FATAL ", tfSqlErrorStr())
+										 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+								
+							endif
+
+							if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+								 print("FATAL ", tfSqlErrorStr())
+								  bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+
+							endif
+							while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		
+								
+								tDS1PROQueryCSVPalete := peel(taDb2Array["DS1PRO"]," ")
+							
+								remove(taDb2Array)
+
+							endwhile
+							
+							
+
+							if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+								print("FATAL", tfSqlErrorStr())
+								 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+										exit(1)
+							endif
+						
+						
+						R_M41CsvDiversReg_Descricao(tDS1PROQueryCSVPalete) 
+						R_M41CsvDiversReg_Lote("")
+						
+						
+						!R_M41CsvDiversReg_Palete(taCODPAL4130[nTempConta4120])
+						!R_M41CsvDiversReg_STATUSIMO(taMOTIMM4130[nTempConta4120])
+						
+						R_M41CsvDiversReg_Unidade(taUNICDE4120[nTempConta4120])
+						R_M41CsvDiversReg_QtdFiscal(taUVCREA4120[nTempConta4120])
+						!R_M41CsvDiversReg_QtdRecebida(taUVCREC4120[nTempConta4120])
+						R_M41CsvDiversReg_QtdRecebida(taUVCREC4120[nTempConta4120])
+						
+						!Quando MOTIMM=AC,AM,AT,AV,FT,NB,RG,RT,RW,SB,SK,SL  - Tipo: AVARIA  
+						
+						
+						
+						
+						
+						
+							
+															
+															
+																
+															tQuery := 	build("SELECT CASE "\
+															"	   WHEN ORICDE=1 THEN 'N' "\
+															"	   WHEN ORICDE=2 THEN 'S' "\
+															"	   ELSE '' "\
+															"	   END ITEM_SURPRESA "\
+															"FROM FGE50FM",tToInfologPrefixFilename,".GERECD "\
+															"WHERE SEQREC='",taNLIREC4120[nTempConta4120],"' AND NUMREC='",tNUMREC,"' AND CODPRO='",taCODPRO4120[nTempConta4120],"'")
+															
+
+																log(tQuery,NL)
+																if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+																			 print("FATAL ", tfSqlErrorStr())
+																			 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+																			exit(1)
+																	
+																endif
+
+																if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+																	 print("FATAL ", tfSqlErrorStr())
+																	  bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+																			exit(1)
+
+																endif
+																tITEM_SURPRESACSVPalete := ""
+																while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+											
+																	
+																	tITEM_SURPRESACSVPalete := peel(taDb2Array["ITEM_SURPRESA"]," ")
+																	if peel(taDb2Array["ITEM_SURPRESA"]," ") = "S" then
+																		R_M41CsvDiversReg_QtdFiscal("0")
+																	endif
+																
+																	remove(taDb2Array)
+
+																endwhile
+																
+																
+
+																if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+																	print("FATAL", tfSqlErrorStr())
+																	 bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+																			exit(1)
+																endif
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+							print(taM41CsvDiversReg[1],";",taM41CsvDiversReg[2],";",taM41CsvDiversReg[3] \
+									,";",taM41CsvDiversReg[4],";",taM41CsvDiversReg[5],";",taM41CsvDiversReg[ \
+									6],";",taM41CsvDiversReg[7],";",taM41CsvDiversReg[8],";", \
+									taM41CsvDiversReg[9],";",taM41CsvDiversReg[10],";",taM41CsvDiversReg[11],";", \
+									taM41CsvDiversReg[12],";",taM41CsvDiversReg[13],";",taM41CsvDiversReg[ \
+									14],";",taM41CsvDiversReg[15],";",taM41CsvDiversReg[16],";", \
+									taM41CsvDiversReg[17],";",taM41CsvDiversReg[18],";",taM41CsvDiversReg[19],";", \
+									taM41CsvDiversReg[20],";",taM41CsvDiversReg[21],";",tITEM_SURPRESACSVPalete,";", NL) >> tFileOutTempCSVDIVERS
+							 remove(taM41CsvDiversReg)
+							bNaoGerarCSV := FALSE
+						
+					
+						endif	
+						nTempConta4120++
+					endwhile
+			
+			
+					
+			
+						close(tFileOutTempCSVDIVERS)
+						copy(tFileOutTempCSVDIVERS,tFileOutCSVDIVERS)
+						close(tFileOutTempCSVDIVERS)
+						remove(tFileOutTempCSVDIVERS)
+						close(tFileOutCSVDIVERS)
+					
+					
+					
+					
+						fmbrasil_confrec_email_divers := find(build(sHOME,"/fmbrasil_confrec_email_divers"),CODACT=tCODACTLido)
+						if valid(fmbrasil_confrec_email_divers) then
+						
+						
+							tSubjectEmail := build(replace(fmbrasil_confrec_email_divers.BEGINSUBJ," ",""),"_",tNameOutCSVDIVERS) 
+							tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameOutCSVDIVERS," EMAIL.RCPT=",replace(replace(fmbrasil_confrec_email_divers.TOEMAIL," ",""),";",",")," MailM41DIVERS ",tFileOutCSVDIVERS)
+							
+							log("executing command ",tCmdEmailErro,NL)
+							nRet := system(tCmdEmailErro)
+				
+						else
+							bfMajtraceAQA("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("CODACT: ",tCODACTLido," nao existe na tabela fmbrasil_confrec_email_divers!"))
+							exit(1)			
+						
+						endif
+					
+
+
+		
+				
+				
+				
+				bfMajtraceAQA("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+		
+		
+				
+		
+		
+		
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+				close(tFileOut)
+				
+				
+				
+				
+
+
+
+
+
+	
+
+endif
+		
+		system("sleep 1")
+		
+
+
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+		
+bfSqlClose(tDbBase)
+
+
+
+	exit(0)
+endend
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+!===========================================================
+!===========================================================
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtraceJAM(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   !TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   if tCODACTLido = "JAM" then
+		TRACE.PERFIL := "JAMBO - PET"
+	else
+		TRACE.PERFIL := tToInfologPrefixFilename
+	endif
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONFIRMACAO DE RECEBIMENTO"
+   TRACE.NUMDOC := tNumeroDocumento
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R010)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+
+
+
+
+
+
+
+/*
+if 1=1 then
+					close(tFileOutTempCSVPALETE)
+					copy(tFileOutTempCSVPALETE,tFileOutCSVPALETE)
+					close(tFileOutTempCSVPALETE)
+					remove(tFileOutTempCSVPALETE)
+					close(tFileOutCSVPALETE)
+					
+					copy(tFileOutCSVPALETE,TRACE.OutCsvPalete)
+					close(tFileOutCSVPALETE)
+					remove(tFileOutCSVPALETE)
+					close(TRACE.OutCsvPalete)
+endif
+*/
+
+
+
+flush(TRACE)
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================
+!===========================================================
+
+
+!===========================================================
+
+
+
+
+function bfMajtraceAQA(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   if tCODACTLido = "AQA" then
+	TRACE.PERFIL := "AQUARIO"
+endif
+
+
+
+
+if tCODACTLido = "AQC" then
+	TRACE.PERFIL := "AQUARIO CROSS DOCKING"
+endif
+
+
+if tCODACTLido = "CGP" then
+	TRACE.PERFIL := "CGP COATING IMPORTADOR"
+endif
+
+
+
+
+if tCODACTLido = "SCO" then
+	TRACE.PERFIL := "SCOTT"
+endif
+
+   TRACE.SENTIDO := "O"
+   TRACE.MENSAGEM := "CONFIRMACAO DE RECEBIMENTO"
+   TRACE.NUMDOC := tNumeroDocumento
+   TRACE.DATDOC := time("now","%Y-%m-%d")
+   TRACE.MESSAGEID := build(nMessageID:R010)
+
+    TRACE.REDE := substr(pEDISEND.ORIGINAL.NAME,1,20)
+TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+   if tStatus = "Recebida" then
+   print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+
+
+  print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+  print("Traduzida com Sucesso",NL) >> TRACE.Detail
+
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+close(SYSLOG.a)
+
+
+if nMainIndex = 0 then
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+	close(tFileOutCSVDIVERS)
+	copy(tFileOutCSVDIVERS,TRACE.CSV_Email)
+	close(tFileOutCSVDIVERS)
+	close(TRACE.CSV_Email)
+
+
+
+
+
+
+flush(TRACE)
+
+endfunction
+
+
+
+!===========================================================
+!===========================================================

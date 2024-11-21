@@ -1,0 +1,285 @@
+%@(#)  SHIPCONF_BROTHER.rte     modif:08-12-2017
+!==============================================================================
+% File          : SHIPCONF_BROTHER.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!==============================================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "SHIPCONF_BROTHER"
+#include "include/generix_func.inc"
+#include "include/SHIPCONF_BROTHER.inc"
+!==============================================================================
+
+! Initialization section
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA9"]
+
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "BROTHER"
+		tSentido := "O"
+		tMensagem := "SHIPCONF"
+		tDataDocumento := time("now","%Y-%m-%d")
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "FMWMS"
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= taPARAM["WMSDBPASS"]
+		tDbUrl		:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif		
+endbegin
+
+!==============================================================================
+
+! Default statements section
+default
+
+enddefault
+
+!==============================================================================
+
+! End statements section
+end
+	! INICIO SHIPCONF
+		tNameOut := build("FM", tToInfologPrefixFilename, "BRO_ShipConf_", time("now" ,"%Y%m%d%H%M%S"), ".txt")
+		tFileOutTemp := build(sHOME,"/mdn/auto/Temp/",tNameOut)
+		tFileOut := build(sHOME,"/mdn/auto/",tNameOut)
+
+		tQuery := build("SELECT  TD.CODCLI                                                AS RECIPIENT_CNPJ_CPF",NL," "\
+						"       ,LPAD(LEFT(TD.REFLIV, LOCATE('.', TD.REFLIV) - 1), 7, '0')AS ORDER_NUMBER",NL," "\
+						"       ,TD.CUMPOI                                                AS GROSS_WEIGHT_DOCUMENT",NL," "\
+						"       ,CASE",NL," "\
+						"            WHEN TD.KAILIV = '1'",NL," "\
+						"            THEN 1",NL," "\
+						"            ELSE TD.CUMCOL",NL," "\
+						"        END                                                      AS QUANTITY_OF_DOCUMENT_VOLUMES",NL," "\
+						"       ,LD.NLILIV                                                AS PRODUCT_SEQUENCE",NL," "\
+						"       ,LD.CODPRO                                                AS PRODUCT_CODE",NL," "\
+						"       ,'1'		                                                 AS PRODUCT_QUANTITY",NL," "\
+						"       ,LD.UNICDE                                                AS PRODUCT_MEASUREMENT_UNIT",NL," "\
+						"       ,CASE",NL," "\
+						"            WHEN TD.KAILIV <> '1'",NL," "\
+						"            THEN PR.PDBCOL * (1 / PR.PCBPRO)",NL," "\
+						"            ELSE (TD.CUMPOI - ZM.PDBEMB)",NL," "\
+						"        END                                                      AS NET_WEIGHT_DOCUMENT",NL," "\
+						"       ,(",NL," "\
+						"            SELECT  RB.VALRUB",NL," "\
+						"            FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+						"            WHERE RB.CODRUB = 'STCK'",NL," "\
+						"            AND RB.VALCLE = LD.IMMFRG",NL," "\
+						"        )                                                        AS PRODUCT_STOCK_TYPE",NL," "\
+						",SR.CODSER                                                       AS PRODUCT_SERIAL_NUMBER",NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GESERI SR",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GETOUD TD",NL," "\
+						"    ON SR.NUMLIV = TD.NUMLIV",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GETOUE TE",NL," "\
+						"    ON TE.NUMTOU = TD.NUMTOU",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PR",NL," "\
+						"	ON PR.CODPRO = SR.CODPRO",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZEMB ZM",NL," "\
+						"    ON ZM.CODEMB = PR.CODEMB",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD LD",NL," "\
+						"    ON SR.NUMLIV = LD.NUMLIV",NL," "\
+						"    AND LD.CODPRO = SR.CODPRO",NL," "\
+						"WHERE SR.CODSER <> ''",NL," "\
+						"AND TE.ETATOU = '40'",NL," "\
+						"AND TE.DATEXP = TO_CHAR(DATE(CURRENT_DATE) - 1 DAY, 'YYYYMMDD')",NL," "\
+						"ORDER BY SR.REFLIV")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		nCountQueryResult := 0
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			nCountQueryResult++
+			R_VALUE_RECIPIENT_CNPJ_CPF(build(number(peel(taDb2Array["RECIPIENT_CNPJ_CPF"], " ")):R015))
+			R_VALUE_ORDER_NUMBER(peel(taDb2Array["ORDER_NUMBER"], " ")) 
+            R_VALUE_GROSS_WEIGHT_DOCUMENT(peel(taDb2Array["GROSS_WEIGHT_DOCUMENT"], " "))
+            R_VALUE_QUANTITY_OF_DOCUMENT_VOLUMES(peel(taDb2Array["QUANTITY_OF_DOCUMENT_VOLUMES"], " "))
+            R_VALUE_PRODUCT_SEQUENCE(peel(taDb2Array["PRODUCT_SEQUENCE"], " "))
+            R_VALUE_PRODUCT_CODE(peel(taDb2Array["PRODUCT_CODE"], " "))
+            R_VALUE_PRODUCT_QUANTITY(peel(taDb2Array["PRODUCT_QUANTITY"], " "))
+            R_VALUE_FILLER("")
+            R_VALUE_PRODUCT_MEASUREMENT_UNIT(peel(taDb2Array["PRODUCT_MEASUREMENT_UNIT"], " "))
+            R_VALUE_NET_WEIGHT_DOCUMENT(peel(taDb2Array["NET_WEIGHT_DOCUMENT"], " "))
+            R_VALUE_PRODUCT_STOCK_TYPE(peel(taDb2Array["PRODUCT_STOCK_TYPE"], " "))
+            R_VALUE_PRODUCT_SERIAL_NUMBER(peel(taDb2Array["PRODUCT_SERIAL_NUMBER"], " "))
+        
+            print(taVALUE[1],";", \
+                    taVALUE[2],";", \
+                    taVALUE[3],";", \
+                    taVALUE[4],";", \
+                    taVALUE[5],";", \
+                    taVALUE[6],";", \
+                    taVALUE[7],";", \
+                    taVALUE[8],";", \
+                    taVALUE[9],";", \
+                    taVALUE[10],";", \
+                    taVALUE[11],";", \
+                    taVALUE[12], NL) >> tFileOutTemp
+            remove(taVALUE)
+
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		if nCountQueryResult > 0 then
+			close(tFileOutTemp)
+			copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+			close(tFileOut)
+
+			bfMajtrace("Recebida" \
+						,"0" \
+						,"SHIPCONF" \
+						,tDataDocumento \
+						,tFileInput \
+						,tFileOut \
+						,"SHIPCONF" \
+						,"")
+		else
+			remove(tFileOutTemp)
+			remove(tFileOut)
+		endif
+	! FIM SHIPCONF
+
+	bfSqlClose(tDbBase)
+
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	exit(0)
+endend
+
+!==============================================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+    TRACE:=new(build(sHOME,"/trace"))
+    TRACE.ESTADO := tStatus
+    TRACE.ERRO := tError
+    TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+    TRACE.PERFIL := tPerfil
+    TRACE.SENTIDO := tSentido
+    TRACE.MENSAGEM := tMensagem
+    TRACE.NUMDOC := tMensagem
+    TRACE.DATDOC := time("now","%Y-%m-%d")
+    TRACE.MESSAGEID := build(nMessageID:R010)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+    TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+    TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+    close(TRACE.Detail)
+    close(SYSLOG.a)
+
+    if nMainIndex = 0 then
+        copy(SYSLOG.a,TRACE.In)
+        close(SYSLOG.a)
+        close(TRACE.In)
+        nMainIndex := TRACE.INDEX
+    else
+        tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+        system(tCmd)
+    endif
+
+	close(tFileOut)
+	copy(tFileOut,TRACE.Out)
+	close(tFileOut)
+	close(TRACE.Out)
+
+    flush(TRACE)
+endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileInput \
+                ,tFileOut \
+                ,tMensagem \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+!==============================================================================
+
+function bfToInfolog()
+
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+
+endfunction
+
+!==============================================================================

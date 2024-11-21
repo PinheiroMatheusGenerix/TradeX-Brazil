@@ -1,0 +1,715 @@
+%@(#)  source_filename.rte     modif:17-01-2018
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 17-01-2018  XX  Creation
+! 17-01-2018  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+schema "XML/FMBrasil/relatorio.xsd" validating
+message "XML/FMBrasil/STORAGE.dtd" building
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "REPORT_DB_OUT"
+#include "include/generix_func.inc"
+
+
+!===========================================================
+
+! Initialization section
+
+begin
+
+  nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAKRO"]
+
+    
+    tCODACTConst := "001"
+    nContadorLinhasEscritas  := 0
+    
+    
+    	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+bfSqlInit()
+   if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+      print("FATAL ",tfSqlErrorStr())
+      bfSqlClose(tDbBase)
+	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		
+      exit(1)
+   endif
+   
+   nLinha := 0
+   
+	/*
+tQuery := 	build("SELECT DISTINCT (CODPRO), SUM(UVCSTO) TOTUVC,  SUM (COLSTO) TOTCOL, COUNT (CODPAL) TOTPAL, SUM (UVCDES) PRPUVC, MIN (DATREC) MINREC, MAX (DATREC) MAXREC,"\
+"	MIN (DATFVI) MINFVI, MAX (DATFVI) MAXFVI, SUM((CAST(FLOOR (PDBCOL*1000/PCBPRO) AS DECIMAL(8,3))/1000)*UVCSTO) TOTPOI FROM FGE50FM",tToInfologPrefixFilename,".GEPAL GROUP BY CODPRO ORDER BY CODPRO")
+*/
+
+tQuery := 	build("select A.CODPAL COD_PALETE, B.VALPRO VAR_LOGISTICA,  B.FAMPRO FAMILIA, B.MESPRO MEDIDA_PRO, "\
+"B.SPCPRO SUB_CAIXA, B.PCBPRO QTE_CAIXA, A.COLCOU CX_CAMADA, A.HAUCOU ALT_CAMADA, A.COUPAL CAMADA_PALETE, A.CODEMB EMBALAGEM,"\
+" A.LRGPAL LARG_PALET, A.PDBUVC PBRUTO_UNI, A.PDNUVC PLIQ_UNI, A.PDBCOL PBRUTO_CX, A.PDBPAL PBRUTO_PAL, A.VOLUVC VOLUME_UNI, "\
+"A.VOLCOL VOLUME_CX, A.VOLPAL VOLUME_PAL, A.MOTSTO MOT_ESTOC, A.REFREC REF_RECEB, A.TYPMBL TIPO_MOVEL, A.CODFOU FORNECEDOR, "\
+"A.MOTIMM MOT_IMOBIL, A.DATPRP DATA_PREPA, A.CODPRO CODIGO, A.SNUPAL SUBNUM_PAL, A.ETAPAL STATUS_PAL, A.UNIPRO UNID_PRO, B.PCBPRO UNID_CX, "\
+"A.DATREC DATA_REC, A.DATSTO DATA_ESTOC, A.UVCSTO CX_ESTOQUE, A.HAUSCL ALTURA_PAL, A.UVCDES DESESTCADO, A.NUMLIV PEDIDO, A.ZONSTS ZONA, A.ALLSTS RUA, "\
+"A.DPLSTS COLUNA, A.NIVSTS NIVEL , A.MAJCRE DATA_MOVIMENTO, A.DATLIV DATA_EXPEDICAO, A.NUMLIV NUM_EXPEDICAO, A.SNULIV SUBNUM_EXP   from FGE50FM",tToInfologPrefixFilename,".GEPAL A, FGE50FM",tToInfologPrefixFilename,".GEPRO B WHERE A.CODPRO=B.CODPRO AND ETAPAL<=50")
+
+
+print(NL,tQuery,NL)
+
+
+
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+						 print("FATAL ", tfSqlErrorStr())
+						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+				
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				 print("FATAL ", tfSqlErrorStr())
+				  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+
+			endif
+
+		bQueryTemResul := FALSE
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				bQueryTemResul := TRUE	
+				nLinha++
+				taCOD_PALETE[nLinha] := peel(taDb2Array["COD_PALETE"]," ")
+				taVAR_LOGISTICA[nLinha] := peel(taDb2Array["VAR_LOGISTICA"]," ")
+				taFAMILIA[nLinha] := peel(taDb2Array["FAMILIA"]," ")
+				taMEDIDA_PRO[nLinha] := peel(taDb2Array["MEDIDA_PRO"]," ")
+				taSUB_CAIXA[nLinha] := peel(taDb2Array["SUB_CAIXA"]," ")
+				taQTE_CAIXA[nLinha] := peel(taDb2Array["QTE_CAIXA"]," ")
+				taCX_CAMADA[nLinha] := peel(taDb2Array["CX_CAMADA"]," ")
+				taALT_CAMADA[nLinha] := peel(taDb2Array["ALT_CAMADA"]," ")
+				taCAMADA_PALETE[nLinha] := peel(taDb2Array["CAMADA_PALETE"]," ")
+				taEMBALAGEM[nLinha] := peel(taDb2Array["EMBALAGEM"]," ")
+            taLARG_PALET[nLinha] := peel(taDb2Array["LARG_PALET"]," ")
+            taPBRUTO_UNI[nLinha] := peel(taDb2Array["PBRUTO_UNI"]," ")
+            taPLIQ_UNI[nLinha] := peel(taDb2Array["PLIQ_UNI"]," ")
+				taPBRUTO_CX[nLinha] := peel(taDb2Array["PBRUTO_CX"]," ")
+            taPBRUTO_PAL[nLinha] := peel(taDb2Array["PBRUTO_PAL"]," ")
+            taVOLUME_UNI[nLinha] := peel(taDb2Array["VOLUME_UNI"]," ")
+            taVOLUME_CX[nLinha] := peel(taDb2Array["VOLUME_CX"]," ")
+            taVOLUME_PAL[nLinha] := peel(taDb2Array["VOLUME_PAL"]," ")
+            taMOT_ESTOC[nLinha] := peel(taDb2Array["MOT_ESTOC"]," ")
+            taREF_RECEB[nLinha] := peel(taDb2Array["REF_RECEB"]," ")
+            taTIPO_MOVEL[nLinha] := peel(taDb2Array["TIPO_MOVEL"]," ")
+            taFORNECEDOR[nLinha] := peel(taDb2Array["FORNECEDOR"]," ")          
+            taMOT_IMOBIL[nLinha] := peel(taDb2Array["MOT_IMOBIL"]," ")
+            taDATA_PREPA[nLinha] := peel(taDb2Array["DATA_PREPA"]," ")
+            taCODIGO[nLinha] := peel(taDb2Array["CODIGO"]," ")
+            taSUBNUM_PAL[nLinha] := peel(taDb2Array["SUBNUM_PAL"]," ")
+            taSTATUS_PAL[nLinha] := peel(taDb2Array["STATUS_PAL"]," ")
+            taUNID_PRO[nLinha] := peel(taDb2Array["UNID_PRO"]," ")
+            taUNID_CX[nLinha] := peel(taDb2Array["UNID_CX"]," ")
+            taDATA_REC[nLinha] := peel(taDb2Array["DATA_REC"]," ")
+            taDATA_ESTOC[nLinha] := peel(taDb2Array["DATA_ESTOC"]," ")
+            taCX_ESTOQUE[nLinha] := peel(taDb2Array["CX_ESTOQUE"]," ")
+            taALTURA_PAL[nLinha] := peel(taDb2Array["ALTURA_PAL"]," ")
+            taDESESTCADO[nLinha] := peel(taDb2Array["DESESTCADO"]," ")
+            taPEDIDO[nLinha] := peel(taDb2Array["PEDIDO"]," ")
+            taZONA[nLinha] := peel(taDb2Array["ZONA"]," ")
+            taRUA[nLinha] := peel(taDb2Array["RUA"]," ")
+            taCOLUNA[nLinha] := peel(taDb2Array["COLUNA"]," ")
+            taNIVEL[nLinha] := peel(taDb2Array["NIVEL"]," ")
+			taDATA_MOVIMENTO[nLinha] := peel(taDb2Array["DATA_MOVIMENTO"]," ")
+			taDATA_EXPEDICAO[nLinha] := peel(taDb2Array["DATA_EXPEDICAO"]," ")
+			taNUM_EXPEDICAO[nLinha] := peel(taDb2Array["NUM_EXPEDICAO"]," ")
+			taSUBNUM_EXP[nLinha] := peel(taDb2Array["SUBNUM_EXP"]," ")
+			
+			   
+				remove(taDb2Array)
+
+			endwhile
+			
+			if bQueryTemResul = FALSE then
+			 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("A query ",tQuery," nao devolveu resultados!"))
+			  exit(1)
+			endif
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+			endif
+         
+         
+bfSqlClose(tDbBase)
+
+
+
+
+nMessageID := cMessageID
+
+
+
+tNumeroLoja := "00092"
+        tFileOut := build(sHOME,"/rte/FMREPORTMAKRO",tToInfologPrefixFilename,".",time("now" ,"%Y%m%d%H%M%S"),".xml")
+        tFileOutTemp := build(sHOME,"/rte/Temp/FMREPORTMAKRO",tToInfologPrefixFilename,".",time("now" ,"%Y%m%d%H%M%S"),".xml")
+		tNameOut := build("FMREPORTMAKRO",tToInfologPrefixFilename,".",time("now" ,"%Y%m%d%H%M%S"),".xml")
+pXML.INCONVOUT := "UTF-8"
+   pXML.ENCODING := "UTF-8"
+   
+   nTempLinha  := 1
+   while nTempLinha   <= nLinha do
+      tfEscrevexML()
+      nTempLinha++
+   endwhile   
+      
+   print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>",NL) > tFileOut
+     print(MESSAGE) > tFileOut
+
+     close(tFileOut)
+	 bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+exit(0)
+endbegin
+
+! Default statements section
+default
+
+enddefault
+!===========================================================
+
+! End statements section
+
+end
+   exit(0)
+endend
+
+!===========================================================
+
+function tfEscrevexML()
+!===========================================================
+
+segment SSTORAGE gGSTORAGE     ! M 1/1 
+
+endsegment
+
+if length(taDATA_MOVIMENTO[nTempLinha]) > 0 and number(taDATA_MOVIMENTO[nTempLinha]) > 0  then
+	! Group gGSTORAGE,gGMOVIMENTO : C 1/unbound 
+	segment SDATA_MOVIMENTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+	   eEDATA_MOVIMENTO  := taDATA_MOVIMENTO[nTempLinha] ! M  
+	endsegment
+else
+	segment SDATA_MOVIMENTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+	   eEDATA_MOVIMENTO  := " " ! M  
+	endsegment
+endif
+
+if length(taFAMILIA[nTempLinha]) > 0 then
+segment SFAMILIA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEFAMILIA := taFAMILIA[nTempLinha]   ! M  
+endsegment
+else
+segment SFAMILIA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEFAMILIA := " "   ! M  
+endsegment
+endif
+
+if length(taVAR_LOGISTICA[nTempLinha]) > 0 then
+segment SVARIANTE_LOGISTICA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVARIANTE_LOGISTICA := taVAR_LOGISTICA[nTempLinha]   ! M  
+endsegment
+else
+segment SVARIANTE_LOGISTICA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVARIANTE_LOGISTICA := " "   ! M  
+endsegment
+endif
+
+if length(taPEDIDO[nTempLinha]) > 0 then
+segment SNRO_PEDIDO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENRO_PEDIDO := taPEDIDO[nTempLinha]   ! M  
+endsegment
+else
+segment SNRO_PEDIDO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENRO_PEDIDO := " "   ! M  
+endsegment
+endif
+
+if length(taSUBNUM_PAL[nTempLinha]) > 0 then
+segment SSUB_NUMERO_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESUB_NUMERO_PALETE  := taSUBNUM_PAL[nTempLinha] ! M  
+endsegment
+else
+segment SSUB_NUMERO_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESUB_NUMERO_PALETE  := " " ! M  
+endsegment
+endif
+
+if length(taCOD_PALETE[nTempLinha]) > 0 then
+segment SNRO_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENRO_PALETE := taCOD_PALETE[nTempLinha]   ! M  
+endsegment
+else
+segment SNRO_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENRO_PALETE := " "   ! M  
+endsegment
+endif
+
+if length(taSTATUS_PAL[nTempLinha]) > 0 then
+segment SSTATUS_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESTATUS_PALETE := taSTATUS_PAL[nTempLinha]   ! M  
+endsegment
+else
+segment SSTATUS_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESTATUS_PALETE := " "   ! M  
+endsegment
+endif
+
+if length(taCODIGO[nTempLinha]) > 0 then
+segment SSKU gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESKU := taCODIGO[nTempLinha]   ! M  
+endsegment
+else
+segment SSKU gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESKU := " "   ! M  
+endsegment
+endif
+
+
+if length(taUNID_PRO[nTempLinha]) > 0 then
+segment SIDUNIDADEPRODUTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEIDUNIDADEPRODUTO := taUNID_PRO[nTempLinha]   ! M  
+endsegment
+else
+segment SIDUNIDADEPRODUTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEIDUNIDADEPRODUTO := " "   ! M  
+endsegment
+endif
+
+if length(taMEDIDA_PRO[nTempLinha]) > 0 then
+segment SIDMEDIDAPRODUTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEIDMEDIDAPRODUTO := taMEDIDA_PRO[nTempLinha]   ! M  
+endsegment
+else
+segment SIDMEDIDAPRODUTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEIDMEDIDAPRODUTO :=  " "   ! M  
+endsegment
+endif
+
+if length(taSUB_CAIXA[nTempLinha]) > 0 then
+segment SQTD_UNIDADE_SUBCAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_UNIDADE_SUBCAIXA := taSUB_CAIXA[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_UNIDADE_SUBCAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_UNIDADE_SUBCAIXA := " "   ! M  
+endsegment
+endif
+
+if length(taQTE_CAIXA[nTempLinha]) > 0 then
+segment SQTD_UNIDADE_CAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_UNIDADE_CAIXA := taQTE_CAIXA[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_UNIDADE_CAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_UNIDADE_CAIXA := " "   ! M  
+endsegment
+endif
+
+if length(taCX_CAMADA[nTempLinha]) > 0 then
+segment SQTD_CAIXA_CAMADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_CAIXA_CAMADA := taCX_CAMADA[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_CAIXA_CAMADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_CAIXA_CAMADA := " "   ! M  
+endsegment
+endif
+
+if length(taALT_CAMADA[nTempLinha]) > 0 then
+segment SALTURA_CAMADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEALTURA_CAMADA := taALT_CAMADA[nTempLinha]   ! M  
+endsegment
+else
+segment SALTURA_CAMADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEALTURA_CAMADA := " "   ! M  
+endsegment
+endif
+
+if length(taCAMADA_PALETE[nTempLinha]) > 0 then
+segment SQTD_CAMADA_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_CAMADA_PALETE := taCAMADA_PALETE[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_CAMADA_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_CAMADA_PALETE := " "   ! M  
+endsegment
+endif
+
+
+if length(taEMBALAGEM[nTempLinha]) > 0 then
+segment SCOD_EMBALAGEM gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eECOD_EMBALAGEM := taEMBALAGEM[nTempLinha]   ! M  
+endsegment
+else
+segment SCOD_EMBALAGEM gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eECOD_EMBALAGEM := " "  ! M  
+endsegment
+endif
+
+if length(taLARG_PALET[nTempLinha]) > 0 then
+segment SLARGURA_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eELARGURA_PALETE := taLARG_PALET[nTempLinha]   ! M  
+endsegment
+else
+segment SLARGURA_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eELARGURA_PALETE := " "   ! M  
+endsegment
+endif
+
+if length(taALTURA_PAL[nTempLinha]) > 0 then
+segment SALTURA_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEALTURA_PALETE := taALTURA_PAL[nTempLinha]   ! M  
+endsegment
+else
+segment SALTURA_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEALTURA_PALETE := " "   ! M  
+endsegment
+endif
+
+if length(taPBRUTO_UNI[nTempLinha]) > 0 then
+segment SPESO_BRUTO_UNIDADE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_BRUTO_UNIDADE := taPBRUTO_UNI[nTempLinha]   ! M  
+endsegment
+else
+segment SPESO_BRUTO_UNIDADE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_BRUTO_UNIDADE := " "   ! M  
+endsegment
+endif
+
+if length(taPLIQ_UNI[nTempLinha]) > 0 then
+segment SPESO_LIQUIDO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_LIQUIDO := taPLIQ_UNI[nTempLinha]   ! M  
+endsegment
+else
+segment SPESO_LIQUIDO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_LIQUIDO := " "   ! M  
+endsegment
+endif
+
+if length(taPBRUTO_CX[nTempLinha]) > 0 then
+segment SPESO_BRUTO_CAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_BRUTO_CAIXA := taPBRUTO_CX[nTempLinha]   ! M  
+endsegment
+else
+segment SPESO_BRUTO_CAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_BRUTO_CAIXA := " "   ! M  
+endsegment
+endif
+
+if length(taPBRUTO_PAL[nTempLinha]) > 0 then
+segment SPESO_BRUTO_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_BRUTO_PALETE := taPBRUTO_PAL[nTempLinha]   ! M  
+endsegment
+else
+segment SPESO_BRUTO_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEPESO_BRUTO_PALETE := " "   ! M  
+endsegment
+endif
+
+if length(taVOLUME_UNI[nTempLinha]) > 0 then
+segment SVOLUME_UNIDADE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVOLUME_UNIDADE := taVOLUME_UNI[nTempLinha]   ! M  
+endsegment
+else
+segment SVOLUME_UNIDADE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVOLUME_UNIDADE := " "   ! M  
+endsegment
+endif
+
+if length(taVOLUME_CX[nTempLinha]) > 0 then
+segment SVOLUME_CAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVOLUME_CAIXA := taVOLUME_CX[nTempLinha]   ! M  
+endsegment
+else
+segment SVOLUME_CAIXA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVOLUME_CAIXA := " "   ! M  
+endsegment
+endif
+
+if length(taVOLUME_PAL[nTempLinha]) > 0 then
+segment SVOLUME_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVOLUME_PALETE := taVOLUME_PAL[nTempLinha]   ! M  
+endsegment
+else
+segment SVOLUME_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEVOLUME_PALETE := " "   ! M  
+endsegment
+endif
+
+
+if length(taCX_ESTOQUE[nTempLinha]) > 0 then
+segment SQTD_UNID_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_UNID_PALETE := taCX_ESTOQUE[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_UNID_PALETE gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_UNID_PALETE := " "   ! M  
+endsegment
+endif
+
+
+if length(taMOT_ESTOC[nTempLinha]) > 0 then
+segment SMOTIVO_ESTOCAGEM gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEMOTIVO_ESTOCAGEM := taMOT_ESTOC[nTempLinha]   ! M  
+endsegment
+else
+segment SMOTIVO_ESTOCAGEM gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEMOTIVO_ESTOCAGEM := " "   ! M  
+endsegment
+endif
+
+if length(taZONA[nTempLinha]) > 0 then
+segment SZONA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEZONA := taZONA[nTempLinha]   ! M  
+endsegment
+else
+segment SZONA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEZONA :=  " "   ! M  
+endsegment
+endif
+
+if length(taRUA[nTempLinha]) > 0 then
+segment SRUA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eERUA := taRUA[nTempLinha]   ! M  
+endsegment
+else
+segment SRUA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eERUA := " "   ! M  
+endsegment
+endif
+
+if length(taCOLUNA[nTempLinha]) > 0 then
+segment SCOLUNA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eECOLUNA  := taCOLUNA[nTempLinha] ! M  
+endsegment
+else
+segment SCOLUNA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eECOLUNA  := " " ! M  
+endsegment
+endif
+
+if length(taNIVEL[nTempLinha]) > 0 then
+segment SNIVEL gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENIVEL := taNIVEL[nTempLinha]   ! M  
+endsegment
+else
+segment SNIVEL gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENIVEL := " "   ! M  
+endsegment
+endif
+
+if length(taTIPO_MOVEL[nTempLinha]) > 0 then
+segment STIPO_MOVEL gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eETIPO_MOVEL := taTIPO_MOVEL[nTempLinha]   ! M  
+endsegment
+else
+segment STIPO_MOVEL gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eETIPO_MOVEL := " "   ! M  
+endsegment
+endif
+
+if length(taFORNECEDOR[nTempLinha]) > 0 then
+segment SFORNECEDOR gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEFORNECEDOR := taFORNECEDOR[nTempLinha]  ! M  
+endsegment
+else
+segment SFORNECEDOR gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEFORNECEDOR := " "  ! M  
+endsegment
+endif
+
+if length(taDATA_REC[nTempLinha]) > 0 and number(taDATA_REC[nTempLinha]) > 0  then
+segment SDATA_RECEBIMENTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_RECEBIMENTO := taDATA_REC[nTempLinha]   ! M  
+endsegment
+else
+segment SDATA_RECEBIMENTO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_RECEBIMENTO := " "  ! M  
+endsegment
+endif
+
+if length(taDATA_ESTOC[nTempLinha]) > 0 and number(taDATA_ESTOC[nTempLinha]) > 0  then
+
+segment SDATA_ESTOCAGEM gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_ESTOCAGEM := taDATA_ESTOC[nTempLinha]   ! M  
+endsegment
+else
+segment SDATA_ESTOCAGEM gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_ESTOCAGEM := " "   ! M  
+endsegment
+endif
+
+if length(taMOT_IMOBIL[nTempLinha]) > 0 then
+segment SMOTIVO_IMOBILIZACAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEMOTIVO_IMOBILIZACAO := taMOT_IMOBIL[nTempLinha]   ! M  
+endsegment
+else
+segment SMOTIVO_IMOBILIZACAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEMOTIVO_IMOBILIZACAO := " "   ! M  
+endsegment
+endif
+
+if length(taDESESTCADO[nTempLinha]) > 0 then
+segment SQTD_DESESTOCADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_DESESTOCADA := taDESESTCADO[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_DESESTOCADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_DESESTOCADA := " "   ! M  
+endsegment
+endif
+
+if length(taDATA_PREPA[nTempLinha]) > 0 and number(taDATA_PREPA[nTempLinha]) > 0  then
+segment SDATA_PREPARACAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_PREPARACAO := taDATA_PREPA[nTempLinha]   ! M  
+endsegment
+else
+segment SDATA_PREPARACAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_PREPARACAO := " "   ! M  
+endsegment
+endif
+
+if length(taDATA_EXPEDICAO[nTempLinha]) > 0 and number(taDATA_EXPEDICAO[nTempLinha]) > 0  then
+segment SDATA_EXPEDICAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_EXPEDICAO := taDATA_EXPEDICAO[nTempLinha]  ! M  
+endsegment
+else
+segment SDATA_EXPEDICAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEDATA_EXPEDICAO := " "  ! M  
+endsegment
+endif
+
+if length(taNUM_EXPEDICAO[nTempLinha]) > 0 then
+segment SNUM_EXPEDICAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENUM_EXPEDICAO := taNUM_EXPEDICAO[nTempLinha] !taREF_RECEB[nLinha]   ! M  
+endsegment
+else
+segment SNUM_EXPEDICAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eENUM_EXPEDICAO := " "   ! M  
+endsegment
+endif
+
+if length(taSUBNUM_EXP[nTempLinha]) > 0 then
+segment SSUB_NUM_EXPEDICAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESUB_NUM_EXPEDICAO := taSUBNUM_EXP[nTempLinha]   ! M  
+endsegment
+else
+segment SSUB_NUM_EXPEDICAO gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eESUB_NUM_EXPEDICAO := " "   ! M  
+endsegment
+endif
+
+if length(taCX_ESTOQUE[nTempLinha]) > 0 then
+segment SQTD_CAIXA_ESTOCADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_CAIXA_ESTOCADA := taCX_ESTOQUE[nTempLinha]   ! M  
+endsegment
+else
+segment SQTD_CAIXA_ESTOCADA gGSTORAGE,gGMOVIMENTO     ! M 1/1 
+   eEQTD_CAIXA_ESTOCADA := " "   ! M  
+endsegment
+endif
+
+
+endfunction
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "MAKRO"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "BILLING"
+   TRACE.NUMDOC := time("now" ,"%Y-%m-%d")
+   TRACE.DATDOC := time("now" ,"%Y-%m-%d") !tfConvertDate(tDTIREC, "DDMMYYYY" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+!0AOCD_m40com.str00092.20180102164520.txt
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+  TRACE.LIBEXC := tLIBEXC
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+      if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+
+print(tQuery,NL) >>TRACE.In
+close(TRACE.In)
+
+ 
+
+
+
+
+
+close(tFileOut)
+copy(tFileOut,TRACE.Out)
+close(tFileOut)
+close(TRACE.Out)
+
+
+
+flush(TRACE)
+endfunction
+
+
+

@@ -1,0 +1,444 @@
+%@(#)  source_filename.rte     modif:01-12-2017
+!==============================================================================
+% File          : source_filename.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M40_MAPED_ASCII_IN"
+#include "include/generix_func.inc"
+#include "include/nfiNBMAPPED.inc"
+#include "include/M40.inc"
+!===========================================================
+
+! Initialization section
+
+begin
+   !PROCESS_ERRONEOUS := TRUE
+   nPos := 1
+    nRec := 1
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    
+    
+    
+    
+ load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+        tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameMAPED"]
+
+    	tDbBase			:= "FMWMS"
+	tDbUsername		:= taPARAM["WMSDBUSER"]
+	tDbPassword		:= taPARAM["WMSDBPASS"]
+	tDbUrl			:= taPARAM["WMSDBURL"]
+	
+	
+	
+
+	bfSqlInit()
+	
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		  print("FATAL ",tfSqlErrorStr())
+		  bfSqlClose(tDbBase)
+		  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			
+		  exit(1)
+	endif
+	
+
+	bPrimeiraLinhaUM := TRUE
+    
+    nContadorLinhasEscritas  := 0
+	nMainIndex := 0
+	nNumeroLinha := 0
+	nNumeroHeader := 0
+endbegin
+
+!===========================================================
+
+
+line(1:"01")
+	nNumeroHeader++
+	if S_Header_CodigoDepositante = "05317331000416" then
+		tCODACTConst := "MAP"
+	endif
+	taEDIFOU[nNumeroHeader] := build(number(S_Header_CodigoDepositante):R014)
+	taCODFOU[nNumeroHeader] := build(number(S_Header_CNPJCliente):R014)
+	taNOMFOU[nNumeroHeader] :=S_Header_NomeCliente
+	taAD1FOU[nNumeroHeader] := S_Header_EnderecoCliente
+	taAD2FOU[nNumeroHeader] := S_Header_BairroCliente
+	taVILFOU[nNumeroHeader] := build(S_Header_MunicipioCliente," ",S_Header_EStadoCliente)
+	taCPIFOU[nNumeroHeader] := S_Header_CEPCliente
+	taCODTRE[nNumeroHeader] := S_Header_TipoDocumento
+	taREFREC[nNumeroHeader] := build(build(S_Header_NumeroDocumento),".",S_Header_SerieDocumento )
+	taDTIREC[nNumeroHeader] := S_Header_DataEmissao
+	taValorTotal[nNumeroHeader] := S_Header_ValorTotal
+	taCODTRA[nNumeroHeader] :=  build(number(S_Header_CNPJTransportadora):R014)
+endline
+
+
+
+line(1:"02")
+
+
+nNumeroLinha++
+	taReferenciaHeaderLinha[nNumeroLinha] := build(nNumeroHeader)
+   taNLIREC[nNumeroLinha] := S_Detail_SeqItemDocumento
+   taCODPRO[nNumeroLinha] := S_Detail_CodigoProduto
+   taUNICDE[nNumeroLinha] := "UNI"
+   taDIPREC4021[nNumeroLinha] := S_Detail_ClassePrtoduto
+   taUVCREA[nNumeroLinha] := build(number(S_Detail_QTDEProdutoNoDOC) / 10000 )
+  
+  
+endline
+
+end
+   
+  
+nTempNumeroHeader := 1
+
+while nTempNumeroHeader <= nNumeroHeader do
+  
+   nMessageID := cMessageID
+  tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  !tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+  tNameOut := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
+    
+
+
+   tCUMLIG := build(nNumeroLinha)
+   
+   
+
+
+     R_00HEADER_CODEXC("00")
+     R_00HEADER_SEPEXC(".")
+     R_00HEADER_SCOEXC("00")
+     R_00HEADER_TRTEXC("")
+     R_00HEADER_EMTEXC("FM") 
+     R_00HEADER_RCTEXC("")
+     R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
+     R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
+     R_00HEADER_NUMEXC("0000000")
+     R_00HEADER_ACQEXC("0")
+     R_00HEADER_VEREXC("5.00") 
+     R_00HEADER_NOMSYS("")  
+     R_00HEADER_NOMDTQ("M40")
+     R_00HEADER_BIBDTQ("")
+     R_00HEADER_LIBEXC(build(nMessageID:R010))
+     R_00HEADER_BIBDST("")
+     R_00HEADER_PGMDST("")
+     R_00HEADER_PARDST("")
+     R_00HEADER_CODACT("")
+     R_00HEADER_IGLSIT("")
+     R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
+     R_00HEADER_IMAEXC("")  
+     R_00HEADER_DISEXC("")
+     
+     flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+     nContadorLinhasEscritas++
+
+
+					
+
+
+
+
+
+
+
+
+   R_40HEADER_CODEXC("40")
+   R_40HEADER_SEPEXC(".")
+   R_40HEADER_SCOEXC("00")
+   
+   R_40HEADER_REFREC(taREFREC[nTempNumeroHeader] )
+   R_40HEADER_CODTRE(taCODTRE[nTempNumeroHeader] )
+   R_40HEADER_CODLDR(tCODLDR)
+   R_40HEADER_EDIFOU(taEDIFOU[nTempNumeroHeader] )
+   R_40HEADER_CODFOU(taCODFOU[nTempNumeroHeader] )
+   
+R_40HEADER_CODACT(tCODACTConst )
+R_40HEADER_DTIREC(tfConvertDate(taDTIREC[nTempNumeroHeader], "DDMMYYYY" , "YYYYMMDD")) !(tfConvertDate(tDataHoraProtocoloNFE , "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD"))
+R_40HEADER_CODTRA(taCODTRA[nTempNumeroHeader])
+    flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+   R_40_01ORDHEADER_CODEXC("40")
+   R_40_01ORDHEADER_SEPEXC(".")
+   R_40_01ORDHEADER_SCOEXC("01")
+   
+   R_40_01ORDHEADER_REFREC(taREFREC[nTempNumeroHeader] )
+!R_40_01ORDHEADER_CODACT(tCODACTConst )
+R_40_01ORDHEADER_DIPREC(tDIPREC)
+R_40_01ORDHEADER_NOMFOU(taNOMFOU[nTempNumeroHeader])
+R_40_01ORDHEADER_AD1FOU(taAD1FOU[nTempNumeroHeader])
+R_40_01ORDHEADER_AD2FOU(taAD2FOU[nTempNumeroHeader])
+R_40_01ORDHEADER_VILFOU(taVILFOU[nTempNumeroHeader])
+    flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+R_40_02ORDHEADER_CODEXC("40")
+R_40_02ORDHEADER_SEPEXC(".")
+R_40_02ORDHEADER_SCOEXC("02")
+					 
+R_40_02ORDHEADER_REFREC(taREFREC[nTempNumeroHeader])   ! C  
+R_40_02ORDHEADER_CPIFOU(taCPIFOU[nTempNumeroHeader])   ! C  
+					 
+flush(0,0,NL) >> tFileOutTemp   !ESCRITA DO HEADER M00.00
+nContadorLinhasEscritas++
+
+
+
+if length(taValorTotal[nTempNumeroHeader]) > 0 then
+	R_40_05ORDHEADER_CODEXC("40")
+	R_40_05ORDHEADER_SEPEXC(".")
+	R_40_05ORDHEADER_SCOEXC("05")
+	   
+	R_40_05ORDHEADER_REFREC(taREFREC[nTempNumeroHeader])
+	  
+	   
+	 
+	!R_40_05ORDHEADER_CODACT(tCODACTConst )
+	R_40_05ORDHEADER_CODRUB("NFVL")
+	R_40_05ORDHEADER_VALRUB(taValorTotal[nTempNumeroHeader])
+		flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+	nContadorLinhasEscritas++
+endif
+
+
+      nContadorLinhasEncomenda := 0
+      
+      
+         nContador := 8
+         print("ve ",peel(taREGISTO[nContador+1],"\""),NL)
+
+nContadorTmpTOTAL := 1
+!tNumeroTotalProdutosPLUS
+print("tNumeroTotalProdutosPLUS ",tNumeroTotalProdutosPLUS,NL)
+!   while length(peel(taREGISTO[nContador+1],"\"")) > 0 then
+ while nContadorTmpTOTAL <= nNumeroLinha do  
+      ! fazer aqui um while e validar
+	  if taReferenciaHeaderLinha[nContadorTmpTOTAL] = build(nTempNumeroHeader) then
+				R_40_20M40_CODEXC("40")
+			   R_40_20M40_SEPEXC(".")
+			   R_40_20M40_SCOEXC("20")
+			   R_40_20M40_CODACT(tCODACTConst )
+
+			   R_40_20M40_REFREC(taREFREC[nTempNumeroHeader] )
+			   R_40_20M40_CODPRO(taCODPRO[nContadorTmpTOTAL ])
+			   
+			  R_40_20M40_NLIREC(build(taNLIREC[nContadorTmpTOTAL]:R05)) 
+			  R_40_20M40_UNICDE(taUNICDE[nContadorTmpTOTAL] )
+
+
+
+				tCont:= taUVCREA[nContadorTmpTOTAL ]
+				R_40_20M40_UVCREA(build(number(tCont):R09.0))
+
+
+			   
+
+			 flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+			nContadorLinhasEscritas++
+
+
+
+						R_40_21M40_CODEXC("40")
+						R_40_21M40_SEPEXC(".")
+						R_40_21M40_SCOEXC("21")
+						R_40_21M40_TRTEXC("2")
+
+						R_40_21M40_REFREC(taREFREC[nTempNumeroHeader] )
+						R_40_21M40_DIPREC(taDIPREC4021[nContadorTmpTOTAL ])
+						R_40_20M40_NLIREC(build(taNLIREC[nContadorTmpTOTAL]:R05))
+						flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+
+						nContadorLinhasEscritas++
+						
+						
+						flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+						nContadorLinhasEscritas++
+				
+
+
+		   
+		   
+					nContadorLinhasEncomenda++
+	   endif
+	   nContadorTmpTOTAL++
+   endwhile
+
+
+    
+    
+    
+    R_40_99TRAILLER_CODEXC("40")
+   R_40_99TRAILLER_SEPEXC(".")
+   R_40_99TRAILLER_SCOEXC("99")
+  ! R_40_99TRAILLER_CODACT("ELG")
+
+   R_40_99TRAILLER_REFREC(taREFREC[nTempNumeroHeader] )
+   R_40_99TRAILLER_CUMLIG(build(number(tCUMLIG) :R04.0)) !ver conversao e  por erro!!!!!
+    flush(0,0,NL) >> tFileOutTemp !ESCRITA DO HEADER M00.00
+   nContadorLinhasEscritas++
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    R_TRAILLER_CODEXC("99")
+    R_TRAILLER_SEPEXC(".")
+    R_TRAILLER_SCOEXC("00")
+    R_TRAILLER_TRTEXC("")
+    R_TRAILLER_EMTEXC("FM")
+    R_TRAILLER_RCTEXC("")
+    R_TRAILLER_DATEXC(time("now" ,"%Y%m%d"))
+    R_TRAILLER_HEUEXC(time("now" ,"H%M%S"))
+    R_TRAILLER_NUMEXC("")
+    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+    !print(tContadorLinhasEscritas) > "c:/influe/tContadorLinhasEscritas.txt"
+    R_TRAILLER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0)) !VER NUMERO DE REGISTOS EXEPTO HEADER E TRAILLER
+    !R_TRAILLER_NOMSYS("")
+    !R_TRAILLER_NOMDTQ("")
+    !R_TRAILLER_BIBDTQ("")
+    !R_TRAILLER_IDEMSG("")
+    !R_TRAILLER_DISEXC("")
+
+    flush(0,0,NL)  >> tFileOutTemp
+    close(tFileOutTemp)
+
+
+
+bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+copy(tFileOutTemp,tFileOut)
+    close(tFileOutTemp)
+	remove(tFileOutTemp)
+	    close(tFileOut)
+   
+
+
+	nTempNumeroHeader++
+endwhile
+
+
+bfSqlClose(tDbBase)
+
+
+
+exit(0)
+
+endend
+
+
+!===========================================================
+
+
+!===========================================================
+
+
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+   TRACE:=new(build(sHOME,"/trace"))
+   TRACE.ESTADO := tStatus
+   TRACE.ERRO := tError
+   TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+   TRACE.MENSAGEM := tTipoDocumento
+
+   TRACE.PERFIL := "MAPED"
+   TRACE.SENTIDO := "I"
+   TRACE.MENSAGEM := "RECEBIMENTO E DEVOLUCAO"
+   TRACE.NUMDOC := taREFREC[nTempNumeroHeader] 
+   TRACE.DATDOC := tfConvertDate(taDTIREC[nTempNumeroHeader], "DDMMYYYY" , "YYYY-MM-DD") 
+   TRACE.MESSAGEID := build(nMessageID:R010)   
+
+    TRACE.REDE := pEDISEND.ORIGINAL.NAME
+!0AOCD_m40com.str00092.20180102164520.txt
+
+  TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+ TRACE.FICHEIROSAIDA := tNameOut
+
+
+   if tStatus = "Recebida" then
+    print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+    print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+    print("Traduzida com Sucesso",NL) >> TRACE.Detail
+  
+  else
+          if tStatus = "Erro de Traducao" then
+
+        print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+        print("Erro de Traducao",NL) >> TRACE.Detail
+        print(tMensagemErrro,NL) >> TRACE.Detail
+        endif
+  endif
+close(TRACE.Detail)
+
+
+if nMainIndex = 0 then
+close(SYSLOG.a)
+copy(SYSLOG.a,TRACE.In)
+close(SYSLOG.a)
+close(TRACE.In)
+
+ 
+	nMainIndex := TRACE.INDEX
+else
+	tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+	system(tCmd)
+endif
+
+
+
+
+
+if tError="0" then
+close(tFileOutTemp)
+copy(tFileOutTemp,TRACE.Out)
+close(tFileOutTemp)
+close(TRACE.Out)
+endif
+
+
+flush(TRACE)
+endfunction
+

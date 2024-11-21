@@ -1,0 +1,1618 @@
+%@(#) $Id:  M97_DANA_ASCII_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M97_DANA_ASCII_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M97_DANA_ASCII_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M97_DANA_ASCII_OUT
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana,autoflush off
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana_validacao
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana_validacao2
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana_validacao3
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana_validacao4
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana_numTotal
+base "../fmbrasil_crnf_dana/fmbrasil_crnf_dana.cfg" fmbrasil_crnf_dana_iteracao
+
+#define PROG_NAME "$RCSfile: $"
+#define PROG_VER  "$Revision: $"
+#define PROG_DATE "$Date: $"
+#define PROG_INFO build(PROG_NAME,PROG_VER,PROG_DATE)
+#define TX_PROG_INFO build(PROG_NAME,PROG_VER,PROG_DATE)
+
+#include "include/generix_func.inc"
+#include "include/M97_ASCII.inc"
+#include "include/ConfSeparacaoSYSLEY.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameDANA"]
+	
+	tDbBase		:= "FMWMS"
+	tDbBase2	:= "FMWMS2"
+	tDbBase3	:= "FMWMS3"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+	tDbUsernameUPDATES	:= taPARAM["WMSDBUSERUPDATES"]
+	tDbPasswordUPDATES	:= taPARAM["WMSDBPASSUPDATES"]
+	tDbUrlUPDATES		:= taPARAM["WMSDBURLUPDATES"]
+
+	bfSqlInit()
+
+	if not bfSqlJdbc(tDbBase , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if not bfSqlJdbc(tDbBase2 , tDbUsernameUPDATES,tDbPasswordUPDATES,tDbUrlUPDATES) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+		if not bfSqlJdbc(tDbBase3 , tDbUsername,tDbPassword,tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	tCODACTConst := "001"
+	nContadorLinhasEscritas  := 0
+	nMainIndex := 0
+endbegin
+
+line(1:"00.00")
+	tREFLIV := ""
+	bGeraArquivo := FALSE
+	bCODTLIIgualEX := FALSE
+endline
+
+line(1:"97.40")
+	tNUMREC_9740 := S_GEEX9740_NUMREC
+									 
+	tQuery := build("SELECT DISTINCT  "\
+					"    NUMREC "\
+					"   ,CASE "\
+					"    WHEN REFORI ='' THEN NULL "\
+					"    ELSE REFORI "\
+					"    END NOTA_FISCAL "\
+					"	FROM FGE50FM",tToInfologPrefixFilename,".GERECD "\
+					"	WHERE NUMREC = (SELECT DISTINCT NUMREC FROM FGE50FM",tToInfologPrefixFilename,".GERECD WHERE NUMORI='",tNUMREC_9740,"')")
+		
+	log("tQuery ",tQuery,NL)	
+		
+	if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtraceRubrica9740("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtraceRubrica9740("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+									
+	nResulqurtu := 0
+	while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+		nResulqurtu++
+		remove(taREFRECSplitado)
+		taDb2Array["NOTA_FISCAL"] := peel(taDb2Array["NOTA_FISCAL"]," ")
+		split(taDb2Array["NOTA_FISCAL"],taREFRECSplitado,".")
+		taDb2Array["NOTA_FISCAL"] := taREFRECSplitado[1]
+		if nResulqurtu = 1 then
+			nSeqCsv := cSeqCsvHasbro
+			tFileOutCSV := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GERERUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+			tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GERERUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+			tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GERERUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+		
+			print("NUMREC;SNUREC;TYPRUB;CODRUB;VALRUB;VALNUM;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTempCSV
+		endif
+		tNUMLIVCSV := peel(taDb2Array["NUMREC"]," ")
+		tSNULIVCSV := ""
+		tTYPRUBCSV := "2"
+		tCODRUBCSV := build("NF",nResulqurtu:R02)
+		tVALRUBCSV := peel(taDb2Array["NOTA_FISCAL"]," ")
+		tVALNUMCSV := ""
+		tDISPOCSV  := ""
+		tMAJCRECSV := time("now" ,"%Y%m%d")
+		tMAJDATCSV := time("now" ,"%Y%m%d")
+		tMAJHMSCSV := time("now" ,"%H%M%S")
+		tMAJPGMCSV := "GERE1RUB2"
+		tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+		tMAJECRCSV := "QPADEV001"
+
+		print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+				,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+				,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+				,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+				,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+	
+		remove(taDb2Array)
+	endwhile
+
+	if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+		print("FATAL", tfSqlErrorStr())
+		bfMajtraceRubrica9740("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+		exit(1)
+	endif
+
+	if nResulqurtu >= 1 then
+		close(tFileOutTempCSV)
+		copy(tFileOutTempCSV,tFileOutCSV)
+		close(tFileOutTempCSV)
+		remove(tFileOutTempCSV)
+		close(tFileOutCSV)
+
+		bfMajtraceRubrica9740("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+	else										
+		tQuery := build("SELECT NUMREC, TRIM(REFREC) NOTA_FISCAL "\
+						"	FROM FGE50FM",tToInfologPrefixFilename,".GERECE "\
+						"	WHERE NUMREC ='",tNUMREC_9740,"'")
+
+		log("tQuery ",tQuery,NL)	
+			
+		if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceRubrica9740("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtraceRubrica9740("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+																
+		nResulqurtu := 0
+		while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			nResulqurtu++
+			remove(taREFRECSplitado)
+			taDb2Array["NOTA_FISCAL"] := peel(taDb2Array["NOTA_FISCAL"]," ")
+			split(taDb2Array["NOTA_FISCAL"],taREFRECSplitado,".")
+			taDb2Array["NOTA_FISCAL"] := taREFRECSplitado[1]
+			if nResulqurtu= 1 then
+				nSeqCsv := cSeqCsvHasbro
+				tFileOutCSV := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GERERUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+				tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GERERUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+				tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GERERUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+				print("NUMREC;SNUREC;TYPRUB;CODRUB;VALRUB;VALNUM;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTempCSV
+			endif
+			tNUMLIVCSV := peel(taDb2Array["NUMREC"]," ")
+			tSNULIVCSV := ""
+			tTYPRUBCSV := "2"
+			tCODRUBCSV := build("NF",nResulqurtu:R02)
+			tVALRUBCSV := peel(taDb2Array["NOTA_FISCAL"]," ")
+			tVALNUMCSV := ""
+			tDISPOCSV  := ""
+			tMAJCRECSV := time("now" ,"%Y%m%d")
+			tMAJDATCSV := time("now" ,"%Y%m%d")
+			tMAJHMSCSV := time("now" ,"%H%M%S")
+			tMAJPGMCSV := "GERE1RUB2"
+			tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+			tMAJECRCSV := "QPADEV001"
+
+			print(tNUMLIVCSV,";",tSNULIVCSV,";",tTYPRUBCSV \
+					,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+					,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+					,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+					,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+		
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtraceRubrica9740("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if nResulqurtu >= 1 then
+			close(tFileOutTempCSV)
+			copy(tFileOutTempCSV,tFileOutCSV)
+			close(tFileOutTempCSV)
+			remove(tFileOutTempCSV)
+			close(tFileOutCSV)
+
+			bfMajtraceRubrica9740("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+		endif
+	endif
+endline
+
+line(1:"97.50")
+	bEDuplicado := FALSE
+	tCODACTLido := S_GEEX9750_CODACT
+	nNumeroLinhasDH := 0
+	nNumeroLinhasDHExp := 0
+	nNumeroLinhasDD := 0
+	nTotalProdutos := 0
+	nNumeroLinhasDDExp := 0
+
+	if S_GEEX9750_CODACT = "DAN" then
+		if S_GEEX9750_ETALIV = "30" then
+			tREFLIV := S_GEEX9750_REFLIV
+			fmbrasil_crnf_dana_validacao := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=tREFLIV)
+			if valid(fmbrasil_crnf_dana_validacao) then	
+				log("etaliv = 30 DUPLICADO! saindo! ",NL)
+				exit(0)
+			endif
+		endif
+
+		if S_GEEX9750_ETALIV = "10"  then 
+			tREFLIV := S_GEEX9750_REFLIV
+			tNUMLIV := S_GEEX9750_NUMLIV
+			tOndaCancelar := S_GEEX9750_NUMVAG
+			
+			fmbrasil_crnf_dana_validacao := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=tREFLIV)
+			if valid(fmbrasil_crnf_dana_validacao) then	
+				fmbrasil_crnf_dana_validacao2 := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=tREFLIV)
+				while valid(fmbrasil_crnf_dana_validacao2) do
+					remove(fmbrasil_crnf_dana_validacao2)
+					fmbrasil_crnf_dana_validacao2 := find()
+				endwhile
+				
+				tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GELIVE  SET "\
+										"BLOPRP='0'    "\
+										"WHERE REFLIV ='",tREFLIV,"'  WITH NONE")					
+															
+				log(NL,tQueryUpdade,NL)
+			
+				if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(27)
+				endif
+
+				if not bfSqlExec(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(28)
+				endif
+
+				if not bfSqlCommit(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(29)
+				endif
+
+				if not bfSqlFree(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(30)
+				endif	
+					
+				tQueryUpdade := build("DELETE FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB WHERE NUMLIV ='",tNUMLIV,"' AND CODRUB NOT IN ('PRIO','TPCO')  WITH NONE")					
+
+				log(NL,tQueryUpdade,NL)
+			
+				if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(27)
+				endif
+
+				if not bfSqlExec(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(28)
+				endif
+
+				if not bfSqlCommit(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(29)
+				endif
+
+				if not bfSqlFree(tDbBase2, "Updatedb2") then
+					log(tfSqlErrorStr(), NL)
+					bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+					exit(30)
+				endif
+				
+				TRACE := find(build(sHOME,"/trace"),NUMDOC=tREFLIV,MENSAGEM="M97 - CONF SEPARAÇÃO",PERFIL="DANA")
+
+				while valid(TRACE) do
+					log("apagando M97 - CONF SEPARAÇÃO TRACE.INDEX ",TRACE.INDEX,NL)
+					log("apagando M97 - CONF SEPARAÇÃO TRACE.SYSLOG_INDEX ",TRACE.SYSLOG_INDEX,NL)
+					remove(TRACE)
+					TRACE := find()
+				endwhile
+				
+				!apaga do trace
+				TRACE := find(build(sHOME,"/trace"),NUMDOC=tREFLIV,MENSAGEM="M97 - UPDATE",PERFIL="DANA")
+				while valid(TRACE) do
+					log("apagando M97 - M97 - UPDATE TRACE.INDEX ",TRACE.INDEX,NL)
+					log("apagando M97 - M97 - UPDATE TRACE.SYSLOG_INDEX ",TRACE.SYSLOG_INDEX,NL)
+					remove(TRACE)
+					TRACE := find()
+				endwhile
+				
+				bfMajtraceCancelamento("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+			endif
+		endif
+
+		if S_GEEX9750_ETALIV = "30" then 
+			tPickingStaDate := S_GEEX9750_DATEXC
+			tPickingStaTime := S_GEEX9750_HEUEXC
+			tREFLIV := S_GEEX9750_REFLIV
+			tNUMLIV := S_GEEX9750_NUMLIV
+			tNUMVAG := S_GEEX9750_NUMVAG
+			tCODCLI := S_GEEX9750_CODCLI
+									
+			nSeqCsv := cSeqCsvHasbro
+			tFileOutCSV := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GECLRUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+			tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GECLRUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+			tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GECLRUB_DAN_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+			
+			tQuery := build("SELECT CODEMB CODRUB "\
+							",PDBEMB VALRUB "\
+							"FROM  FGE50FM",tToInfologPrefixFilename,".GEZEMB")
+				
+			log("tQuery ",tQuery,NL)	
+
+				
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+			
+			nResulqurtu := 0
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				nResulqurtu++
+				if nResulqurtu= 1 then
+					print("CODACT;CODCLI;TYPRUB;CODRUB;VALRUB;VALNUM;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTempCSV
+				endif
+				tCODRUBQur := peel(taDb2Array["CODRUB"]," ")
+				tVALRUBQur := peel(taDb2Array["VALRUB"]," ")
+				tCODACTCSV := "DAN"
+				tCODCLICSV := tCODCLI
+				tTYPRUBCSV := "2"
+				tCODRUBCSV := tCODRUBQur
+				tVALRUBCSV := tVALRUBQur
+				tVALNUMCSV := ""
+				tDISPOCSV  := ""
+				tMAJCRECSV := S_GEEX9750_DATEXC
+				tMAJDATCSV := S_GEEX9750_DATEXC
+				tMAJHMSCSV := S_GEEX9750_HEUEXC
+				tMAJPGMCSV := "GEFI1RUB2"
+				tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+				tMAJECRCSV := "QPADEV0N1"
+
+				print(tCODACTCSV,";",tCODCLICSV,";",tTYPRUBCSV \
+						,";",tCODRUBCSV,";",tVALRUBCSV,";",tVALNUMCSV \
+						,";",tDISPOCSV,";",tMAJCRECSV,";",tMAJDATCSV,";" \
+						,tMAJHMSCSV,";",tMAJPGMCSV,";",tMAJUTICSV,";" \
+						,tMAJECRCSV,";", NL) >> tFileOutTempCSV
+
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			close(tFileOutTempCSV)
+			copy(tFileOutTempCSV,tFileOutCSV)
+			close(tFileOutTempCSV)
+			remove(tFileOutTempCSV)
+			close(tFileOutCSV)
+
+			bfMajtraceRubrica("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+
+			tQuery := build("SELECT 'N' DESDOBRO "\
+							"       ,TRIM (LE.CRILIV) ORDEM_DE_CARGA "\
+							"       ,LE.REFLIV PEDIDO "\
+							"       ,LE.NUMVAG ONDA_WMS "\
+							"       ,SE.CIRPIC CIRCUITO "\
+							"       ,LE.CODTLI CODTLI "\
+							"       ,SD.NUMSUP SUPORTE "\
+							"       ,SD.PRPPIC PRPPIC "\
+							"       ,SD.SEQSUP SEQUENCIA_SUPPORTE "\
+							"       ,TRIM (SD.CODPRO) SKU "\
+							"       ,SUM (SD.UVCLIV) UNIDADES_SUPORTE "\
+							"       ,SD.PCBPRO PCB "\
+							"       ,INTEGER (SUM(SD.UVCLIV/SD.PCBPRO)) VOLUMES_ALOCADOS "\
+							"       ,'' QTD_TOTAL_VOL_PEDIDO "\
+							"       ,'' NF1 "\
+							"       ,'' NF2 "\
+							"       ,'' NF3 "\
+							"       ,'' SERIE_NF1 "\
+							"       ,'' SERIE_NF2 "\
+							"       ,'' SERIE_NF3 "\
+							"       ,'' DATA_NF1 "\
+							"       ,'' DATA_NF2 "\
+							"       ,'' DATA_NF3 "\
+							"       ,'' PESO_NF1 "\
+							"       ,'' PESO_NF2 "\
+							"       ,'' PESO_NF3 "\
+							"       ,'' UNI_SKU_NF1 "\
+							"       ,'' UNI_SKU_NF2 "\
+							"       ,'' UNI_SKU_NF3 "\
+							"       ,'' VOL_SKU_NF1 "\
+							"       ,'' VOL_SKU_NF2 "\
+							"       ,'' VOL_SKU_NF3 "\
+							"       ,'' VOL_INICIAL_NF1 "\
+							"       ,'' VOL_INICIAL_NF2 "\
+							"       ,'' VOL_INICIAL_NF3       "\
+							"       ,'' QTD_TOTAL_VOL_NF1 "\
+							"       ,'' QTD_TOTAL_VOL_NF2 "\
+							"       ,'' QTD_TOTAL_VOL_NF3 "\
+							"       ,'' DIPLIV_NF1 "\
+							"       ,'' MSGLIG_NF2 "\
+							"       ,'' ZONSPF_NF3 "\
+							" FROM FGE50FM",tToInfologPrefixFilename,".GELIVE LE "\
+							" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD "\
+							" ON LE.NUMLIV=SD.NUMLIV "\
+							" AND LE.CODACT=SD.CODACT "\
+							" LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE SE "\
+							" ON SD.NUMSUP=SE.NUMSUP "\
+							" WHERE LE.NUMLIV='",tNUMLIV,"'    "\
+							" AND SD.NUMLIV<>0 "\
+							" AND SD.UVCLIV>0 "\
+							" GROUP BY LE.CRILIV "\
+							"         ,LE.REFLIV "\
+							"         ,LE.NUMVAG "\
+							"         ,SD.CODPRO "\
+							"         ,SD.NLILIV "\
+							"         ,SD.PCBPRO "\
+							"            ,LE.CODTLI "\
+							"         ,SD.NUMSUP   "\
+							"           ,SD.PRPPIC "\
+							"         ,SE.CIRPIC "\
+							"         ,SD.SEQSUP "\
+							"     ORDER BY 3,7,9") 
+
+			log(NL,tQuery,NL)
+								
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			tVOL_INICIALAnterior := "1"
+			nNumeroTotalVolPorSalesOrder := 0
+			tPEDIDOAnterior := ""
+			bFezInsertaTabCRNF := FALSE
+			nConyAucQuery := 0
+
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				nConyAucQuery++
+				tCODTLI := peel(taDb2Array["CODTLI"]," ")
+					
+				fmbrasil_crnf_dana_validacao := find(build(sHOME,"/fmbrasil_crnf_dana"),PRODUCTCODE=peel(taDb2Array["SKU"]," "),SEQUENCIASUPPORT=peel(taDb2Array["SEQUENCIA_SUPPORTE"]," "),SALESORDERNUMBER=peel(taDb2Array["PEDIDO"]," "),SUPORTE=peel(taDb2Array["SUPORTE"]," "))
+				if valid(fmbrasil_crnf_dana_validacao) then	
+					!nao faz nada
+					!fmbrasil_crnf_dana_validacao.ONDAWMS := tNUMVAG
+				else									
+					bFezInsertaTabCRNF := TRUE	
+					fmbrasil_crnf_dana := new(build(sHOME,"/fmbrasil_crnf_dana"))
+					fmbrasil_crnf_dana.DESDOBRO := peel(taDb2Array["DESDOBRO"]," ")
+					fmbrasil_crnf_dana.SHIPMENTNUMBER := peel(taDb2Array["ORDEM_DE_CARGA"]," ")
+					if index(peel(taDb2Array["PEDIDO"]," "),".") = 0 then 
+						fmbrasil_crnf_dana.SALESORDERNUMBER := peel(taDb2Array["PEDIDO"]," ")
+						tPedidoTabela := peel(taDb2Array["PEDIDO"]," ")
+					else
+						fmbrasil_crnf_dana.SALESORDERNUMBER := replace(peel(taDb2Array["PEDIDO"]," "),".","")
+						tPedidoTabela := replace(peel(taDb2Array["PEDIDO"]," "),".","")
+					endif
+					fmbrasil_crnf_dana.ONDAWMS := peel(taDb2Array["ONDA_WMS"]," ")
+					fmbrasil_crnf_dana.PRODUCTCODE := peel(taDb2Array["SKU"]," ")
+					fmbrasil_crnf_dana.SEQUENCIASUPPORT := peel(taDb2Array["SEQUENCIA_SUPPORTE"]," ")
+					fmbrasil_crnf_dana.SUPORTE := peel(taDb2Array["SUPORTE"]," ")
+					fmbrasil_crnf_dana.CIRCUITO := peel(taDb2Array["CIRCUITO"]," ")
+					fmbrasil_crnf_dana.TYPSUP := peel(taDb2Array["TYPSUP"]," ")
+					fmbrasil_crnf_dana.PRPPIC := peel(taDb2Array["PRPPIC"]," ")
+					fmbrasil_crnf_dana.CODTLI := peel(taDb2Array["CODTLI"]," ")
+					if peel(taDb2Array["SEQUENCIASUPPORT"]," ") = "1" then
+						tVOL_INICIALAnterior := "1"
+					endif
+					log("taDb2Array[CODTLI] ",taDb2Array["CODTLI"],NL)
+					if peel(taDb2Array["CODTLI"]," ") = "EX" or peel(taDb2Array["CODTLI"]," ") = "MN" then
+						bCODTLIIgualEX := TRUE
+					endif								
+					fmbrasil_crnf_dana.QUANTITYPICKEDSHIPPED := peel(taDb2Array["UNIDADES_SUPORTE"]," ")
+					fmbrasil_crnf_dana.UNIDADESCAIXA := peel(taDb2Array["PCB"]," ")
+									
+					nPosicaoPonto := 0
+					
+					tCont1 := build(number(peel(taDb2Array["VOLUMES_ALOCADOS"]," ")) )
+					nPosicaoPonto := index(tCont1,".")
+					if (nPosicaoPonto) > 0 then
+						if number(substr(tCont1,(nPosicaoPonto+1),(length(tCont1)-(nPosicaoPonto+1) + 1))) > 0 then
+						tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1))+1)
+						else
+						tCont1 := build(number(substr(tCont1,1,nPosicaoPonto-1)))
+						endif
+					endif
+
+					if peel(taDb2Array["CODTLI"]," ") <> "5" then
+						fmbrasil_crnf_dana.QTDVOLSKU := tCont1
+					else
+						tCont1 := "0"
+						fmbrasil_crnf_dana.QTDVOLSKU := tCont1
+					endif
+									
+					if peel(taDb2Array["PEDIDO"]," ") <> tPEDIDOAnterior and nConyAucQuery > 1 then
+						fmbrasil_crnf_dana_numTotal := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=tSalesOrderNumberAnterior)
+						while valid(fmbrasil_crnf_dana_numTotal) do
+							fmbrasil_crnf_dana_numTotal.NUMBEROFVOLUMESTOTAL := build(nNumeroTotalVolPorSalesOrder)
+							fmbrasil_crnf_dana_numTotal := find()
+						endwhile
+						nNumeroTotalVolPorSalesOrder := number(tCont1)
+					else
+						nNumeroTotalVolPorSalesOrder := nNumeroTotalVolPorSalesOrder + number(tCont1)
+					endif
+				
+					tVOL_INICIALAnterior := build(number(tCont1) + number(tVOL_INICIALAnterior))
+					tSalesOrderNumberAnterior := peel(taDb2Array["PEDIDO"]," ")
+					
+					flush(fmbrasil_crnf_dana)
+				endif
+				tPEDIDOAnterior := peel(taDb2Array["PEDIDO"]," ")
+				remove(taDb2Array)
+			endwhile
+						
+			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+				print("FATAL", tfSqlErrorStr())
+				bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+			
+			if nConyAucQuery > 0 then
+				!CONTA O TOTAL VOLUMES DELIVERY
+				nContCicloAuxx := 0
+				fmbrasil_crnf_dana_numTotal := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=tSalesOrderNumberAnterior,PRPPIC="5")aSUPORTE
+				while valid(fmbrasil_crnf_dana_numTotal) do
+					nContCicloAuxx++
+					if nContCicloAuxx = 1 or fmbrasil_crnf_dana_numTotal.SUPORTE <> tSuporteAnterior then
+						nNumeroTotalVolPorSalesOrder++
+					endif
+					tSuporteAnterior := fmbrasil_crnf_dana_numTotal.SUPORTE
+					fmbrasil_crnf_dana_numTotal := find()
+				endwhile
+				
+				!faz a ultima sales order number
+				fmbrasil_crnf_dana_numTotal := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=tSalesOrderNumberAnterior)
+				while valid(fmbrasil_crnf_dana_numTotal) do
+					fmbrasil_crnf_dana_numTotal.NUMBEROFVOLUMESTOTAL := build(nNumeroTotalVolPorSalesOrder)
+					fmbrasil_crnf_dana_numTotal := find()
+				endwhile
+				
+				nTempNumeroResultadosQueryped := 1
+				bTemresultadosVld := FALSE
+				while nTempNumeroResultadosQueryped <= nNumeroResultadosQueryped do
+					fmbrasil_crnf_dana := find(build(sHOME,"/fmbrasil_crnf_dana"),SALESORDERNUMBER=taPEDIDOQueryResult[nTempNumeroResultadosQueryped])
+					if valid(fmbrasil_crnf_dana) then
+						bTemresultadosVld := TRUE
+					endif
+					nTempNumeroResultadosQueryped++
+				endwhile
+															
+				if tCODTLI	= "VD" and bFezInsertaTabCRNF = TRUE then		
+					
+					tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPE    "\
+											"SET BLOECR='FALTA_NF'  , CODPRP='FALTA_NF' "\
+											"WHERE REFLIV ='",tREFLIV,"' AND TYPSUP<>'3'   "\
+											"  WITH NONE")					
+
+					log(NL,tQueryUpdade,NL)
+					
+					if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(27)
+					endif
+
+					if not bfSqlExec(tDbBase2, "Updatedb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(28)
+					endif
+
+					if not bfSqlCommit(tDbBase2, "Updatedb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(29)
+					endif
+
+					if not bfSqlFree(tDbBase2, "Updatedb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(30)
+					endif
+						
+					tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GELIVE    "\
+											"SET BLOPRP='1'     "\
+											"WHERE REFLIV ='",tREFLIV,"'   "\
+											"  WITH NONE")					
+														
+
+					log(NL,tQueryUpdade,NL)
+					
+					if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdade) then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(27)
+					endif
+
+					if not bfSqlExec(tDbBase2, "Updatedb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(28)
+					endif
+
+					if not bfSqlCommit(tDbBase2, "Updatedb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(29)
+					endif
+					
+					if not bfSqlFree(tDbBase2, "Updatedb2") then
+						log(tfSqlErrorStr(), NL)
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+						exit(30)
+					endif
+				endif			   
+				bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")		
+			endif
+		endif
+
+		tTIPO_OPERACAO := ""
+		
+		if S_GEEX9750_ETALIV = "50" or S_GEEX9750_ETALIV = "30" then 
+			tPickingStaDate := S_GEEX9750_DATEXC
+			tPickingStaTime := S_GEEX9750_HEUEXC
+			tREFLIV := S_GEEX9750_REFLIV
+			tNUMLIV := S_GEEX9750_NUMLIV
+			split(tREFLIV,taREFLIVSplitExp,".")
+			tCODPRO := ""
+
+			tQuery := build("SELECT  CASE WHEN SE.CODACT='DAN' THEN '00253137002282' END CNPJ_ORIGEM  ",NL," "\
+							"            ,'002462805002045'  CNPJ_DESTINATARIO          ",NL," "\
+							"            ,LE.CODTLI  TIPO_OPERACAO   ",NL," "\
+							"            ,SE.DATPRP  DATA_SEPARACAO    ",NL," "\
+							"            ,LE.CRILIV   ORDEM_CARGA   ",NL," "\
+							"            ,SE.REFLIV  PEDIDO    ",NL," "\
+							"            ,LE.CODTRA   CNPJ_TRANSPORTADORA   ",NL," "\
+							"            ,SE.NUMSUP  VOLUME    ",NL," "\
+							"            ,CASE   ",NL," "\
+							"             WHEN SUP.TOT_PESO_LIQ_SUP>SE.CUMPOI THEN SUP.TOT_PESO_LIQ_SUP  -- Caso Peso Bruto menor que Peso Líquido, assume o peso líquido   ",NL," "\
+							"             WHEN SE.CUMPOI=0 THEN SUP.TOT_PESO_LIQ_SUP -- Caso Peso Bruto zerado, assume o peso líquido com informações da GEPRO  ",NL," "\
+							"             ELSE SE.CUMPOI   ",NL," "\
+							"             END  TOTAL_PESO_BRUTO_EX_OH_MK_MN_5  ",NL," "\
+							"            ,SUM(PR.PDBCOL)  TOTAL_PESO_BRUTO_OH_MK_MN_3 -- Peso da Caixa GEPRO   ",NL," "\
+							"            ,SUP.TOT_PESO_LIQ_SUP TOTAL_PESO_LIQ_EX_OH_MK_MN_5 -- Soma do peso líquido de acordo com as informações da GEPRO       ",NL," "\
+							"            ,SUM(PR.PDBCOL)  TOTAL_PESO_LIQ_OH_MK_MN_3 -- Peso da Caixa GEPRO   ",NL," "\
+							"            ,sum(SD.PDBCOL) PESOBRUTO_VD_EX_OH_CX_3_1 -- Para suportes do tipo 2 (homogêneo), considerar o peso bruto da caixa  ",NL," "\
+							"            ,sum(SD.PDBCOL) PESOLIQ_VD_EX_OH_CX_3_1 -- Para suportes do tipo 2 (homogêneo), considerar o peso bruto da caixa         ",NL," "\
+							"            ,CASE   ",NL," "\
+							"             WHEN SE.CUMPOI=0 THEN SUP.TOT_PESO_BRT_SUP+ZE.PDBEMB -- Caso peso acumulado zerado, assume o peso líquido da GESUPD + peso da embalagem   ",NL," "\
+							"             ELSE (SE.CUMPOI + ZE.PDBEMB) -- Peso acumulado + Peso da embalagem  ",NL," "\
+							"             END PESOBRUTOVD_UN_5                 ",NL," "\
+							"            ,CASE   ",NL," "\
+							"             WHEN SE.CUMPOI=0 THEN SUP.TOT_PESO_BRT_SUP+ZE.PDBEMB -- Caso peso acumulado zerado, assume o peso líquido da GESUPD + peso da embalagem   ",NL," "\
+							"             ELSE SE.CUMPOI -- Peso acumulado  ",NL," "\
+							"             END PESOLIQVD_UN_5                ",NL," "\
+							"            ,SD.NLILIV  ITEM   ",NL," "\
+							"            ,SD.CODPRO  CODIGO_DO_PRODUTO    ",NL," "\
+							"            ,sum(SD.UVCLIV)  QUANTIDADE   ",NL," "\
+							"            ,CASE WHEN SUM(SD.UVCLIV/SD.PCBPRO) <1 THEN 1  ELSE CEILING(SUM(SD.UVCLIV/SD.PCBPRO)) END CXS    ",NL," "\
+							"            ,AC.VALRUB  DEPOSITO_DO_CLIENTE   ",NL," "\
+							"            ,CASE WHEN SD.CODLOT= '' THEN '00000000000000000000'  ELSE SD.CODLOT END LOTE    ",NL," "\
+							"            ,BANC.VOLUMES   ",NL," "\
+							"            ,CASE WHEN LE.CODTLI='EX' THEN 5 ELSE SD.PRPPIC END PRPPIC    ",NL," "\
+							"            ,SE.CODLDP CODLDP   ",NL," "\
+							"            ,CASE WHEN SD.MOTIMM= '' THEN 'NM'  ELSE SD.MOTIMM END IMO    ",NL," "\
+							"            ,SE.ETASUP   ",NL," "\
+							"     FROM      FGE50FM",tToInfologPrefixFilename,".GELIVE  LE      ",NL," "\
+							"     LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE  SE ON LE.NUMLIV=SE.NUMLIV AND LE.CODACT=SE.CODACT   ",NL," "\
+							"     LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD  SD ON SE.NUMSUP=SD.NUMSUP AND SE.NUMSUP=SD.NUMSUP AND SE.CODACT=SD.CODACT    ",NL," "\
+							"     LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO  PR ON SD.CODPRO=PR.CODPRO AND SD.CODACT=PR.CODACT   ",NL," "\
+							"     LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AC ON AC.CODACT=SD.CODACT    ",NL," "\
+							"     LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZEMB ZE  ON SE.CODEMB = ZE.CODEMB   ",NL," "\
+							"     LEFT JOIN(SELECT S.NUMLIV, sum(case S.CODLDP when 'PCK' then 1 else S.CUMCOL end ) as VOLUMES    ",NL," "\
+							"                                                    FROM  FGE50FM",tToInfologPrefixFilename,".GESUPE S   ",NL," "\
+							"                                                    WHERE S.TYPSUP <> 3     ",NL," "\
+							"                                                    AND s.NUMLIV=  '",tNUMLIV,"'  ",NL," "\
+							"                                                    AND CODACT='DAN'    ",NL," "\
+							"                                                    GROUP BY S.NUMLIV ) BANC on BANC.NUMLIV = SE.NUMLIV       ",NL," "\
+							"     LEFT JOIN     ",NL," "\
+							"            (select SD2.CODACT   ",NL," "\
+							"                  , sd2.numsup    ",NL," "\
+							"                  , SUM(SD2.UVCLIV*PRO.PDNUVC) TOT_PESO_LIQ_SUP  ",NL," "\
+							"                  , SUM((SD2.PDBCOL/SD2.PCBPRO)*SD2.UVCLIV) TOT_PESO_BRT_SUP ",NL," "\
+							"              from FGE50FM",tToInfologPrefixFilename,".GESUPD  SD2 INNER JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PRO     ",NL," "\
+							"              ON SD2.CODPRO = PRO.CODPRO AND SD2.NUMLIV=  '",tNUMLIV,"'   ",NL," "\
+							"              group by SD2.CODACT, SD2.NUMSUP)     ",NL," "\
+							"              SUP    ",NL," "\
+							"     ON SUP.NUMSUP = SD.NUMSUP AND SE.NUMSUP=SUP.NUMSUP     ",NL," "\
+							"     AND SUP.CODACT=SD.CODACT AND SUP.CODACT=SE.CODACT AND SUP.CODACT=PR.CODACT AND SUP.CODACT=LE.CODACT    ",NL," "\
+							"     WHERE   SE.NUMLIV= '",tNUMLIV,"'   ",NL," "\
+							"     GROUP BY  SE.CODACT   ",NL," "\
+							"              ,LE.CODTLI    ",NL," "\
+							"              ,SE.DATPRP        ",NL," "\
+							"              ,LE.CRILIV            ",NL," "\
+							"              ,SE.REFLIV   ",NL," "\
+							"              ,LE.CODTRA    ",NL," "\
+							"              ,SE.NUMSUP   ",NL," "\
+							"              ,SE.CUMPOI    ",NL," "\
+							"              ,SD.NLILIV   ",NL," "\
+							"              ,SD.CODPRO    ",NL," "\
+							"              ,AC.VALRUB   ",NL," "\
+							"              ,SD.CODLOT    ",NL," "\
+							"              ,CASE WHEN LE.CODTLI='EX' THEN 5 ELSE SD.PRPPIC END   ",NL," "\
+							"              ,SE.CODLDP    ",NL," "\
+							"              ,SD.MOTIMM   ",NL," "\
+							"              ,ze.pdbemb    ",NL," "\
+							"              ,SE.ETASUP   ",NL," "\
+							"              ,banc.volumes           ",NL," "\
+							"              ,SUP.TOT_PESO_LIQ_SUP    ",NL," "\
+							"              ,SUP.TOT_PESO_BRT_SUP ",NL," "\
+							"     ORDER BY 8  ")
+		
+		
+			log(NL,tQuery,NL)
+				
+			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceSeparacao("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+				print("FATAL ", tfSqlErrorStr())
+				bfMajtraceSeparacao("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			tVOLUMES    := ""
+			nContadorResultadosQuery := 0
+			nPesoBrutoTotal := 0
+			nPesoLiquidoTotal := 0
+			nNumeroLinhasVolume := 0
+			nNumeroSupVirtual := 0
+			bTemDiferenteDeCODLDP := FALSE
+			bGeraMsg := FALSE
+			bNaoGeraSCO := FALSE
+			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+				if number(peel(taDb2Array["QUANTIDADE"]," ")) > 0 then !ignora QUANTIDADE = 0
+					nContadorResultadosQuery++
+					
+					if peel(taDb2Array["TIPO_OPERACAO"]," ") = "MK" then
+						log("TIPO_OPERACAO = MK , saindo do CONFSEP",NL)
+						break
+					endif
+					
+					if peel(taDb2Array["TIPO_OPERACAO"]," ") = "VD" then
+						if peel(taDb2Array["PRPPIC"]," ") = "5" then
+							taDb2Array["TOTAL_PESO_BRUTO"] := peel(taDb2Array["PESOBRUTOVD_UN_5"]," ")
+							taDb2Array["TOTAL_PESO_LIQUIDO"] := peel(taDb2Array["PESOLIQVD_UN_5"]," ")
+						endif
+
+						if peel(taDb2Array["PRPPIC"]," ") = "3" or peel(taDb2Array["PRPPIC"]," ") = "1" then
+							taDb2Array["TOTAL_PESO_BRUTO"] := peel(taDb2Array["PESOBRUTO_VD_EX_OH_CX_3_1"]," ")
+							taDb2Array["TOTAL_PESO_LIQUIDO"] := peel(taDb2Array["PESOLIQ_VD_EX_OH_CX_3_1"]," ")
+						endif
+					else
+						if peel(taDb2Array["PRPPIC"]," ") = "5" then
+							taDb2Array["TOTAL_PESO_BRUTO"] := peel(taDb2Array["TOTAL_PESO_BRUTO_EX_OH_MK_MN_5"]," ")
+							taDb2Array["TOTAL_PESO_LIQUIDO"] := peel(taDb2Array["TOTAL_PESO_LIQ_EX_OH_MK_MN_5"]," ")
+						endif
+
+						if peel(taDb2Array["PRPPIC"]," ") = "3"  or peel(taDb2Array["PRPPIC"]," ") = "1" then
+							taDb2Array["TOTAL_PESO_LIQUIDO"] := peel(taDb2Array["TOTAL_PESO_LIQ_OH_MK_MN_3"]," ")
+							taDb2Array["TOTAL_PESO_BRUTO"] := peel(taDb2Array["TOTAL_PESO_BRUTO_OH_MK_MN_3"]," ")
+						endif
+					endif
+						
+					if nContadorResultadosQuery = 1 then
+						tTIPO_OPERACAO := peel(taDb2Array["TIPO_OPERACAO"]," ")
+					endif
+					
+					if number(peel(taDb2Array["ETASUP"]," ")) < 30 and peel(taDb2Array["TIPO_OPERACAO"]," ") <> "VD" then
+						log("tem SE.ETASUP inferior a 30: ",number(peel(taDb2Array["ETASUP"]," ")),NL)
+						bGeraMsg := FALSE
+						break
+					endif
+						
+					if nContadorResultadosQuery = 1 then
+						tTIPO_OPERACAO := peel(taDb2Array["TIPO_OPERACAO"]," ")
+						log("TIPO_OPERACAO ", peel(taDb2Array["TIPO_OPERACAO"]," "),NL)
+						log("ETALIV ", S_GEEX9750_ETALIV,NL)
+						log("tREFLIV ", tREFLIV,NL)
+							
+						if S_GEEX9750_ETALIV = "30" and peel(taDb2Array["TIPO_OPERACAO"]," ") = "VD" then
+							TRACE := find(build(sHOME,"/trace"),NUMDOC=tREFLIV,MENSAGEM="M97 - CONF SEPARAÇÃO",PERFIL="DANA")
+							if valid(TRACE) then
+								!nao faz nada porque é duplicado
+								log("duplicado!",NL)
+							else	
+								bGeraMsg := TRUE
+								log("gera mensagem ETALIV 30")
+							endif
+						endif
+
+						if S_GEEX9750_ETALIV = "50" and (peel(taDb2Array["TIPO_OPERACAO"]," ") = "OH" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "EX" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "MK" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "MN") then
+							TRACE := find(build(sHOME,"/trace"),NUMDOC=tREFLIV,MENSAGEM="M97 - CONF SEPARAÇÃO",PERFIL="DANA")
+							if valid(TRACE) then
+								!nao faz nada porque é duplicado
+								log("duplicado!",NL)
+							else	
+								bGeraMsg := TRUE
+								log("gera mensagem ETALIV 50")
+							endif
+						endif
+					endif
+					
+					if S_GEEX9750_ETALIV = "50" and (peel(taDb2Array["TIPO_OPERACAO"]," ") = "OH" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "MK" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "MN") then
+						if peel(taDb2Array["PRPPIC"]," ") = "5" then
+							if peel(taDb2Array["CODLDP"]," ") = "PCK" then
+								!gera normalmente
+							else
+								bNaoGeraSCO := TRUE
+								log("bNaoGeraSCO = TRUE",NL)
+							endif
+						endif
+					endif
+						
+					if S_GEEX9750_ETALIV = "50" and (peel(taDb2Array["TIPO_OPERACAO"]," ") = "EX") then
+						if peel(taDb2Array["CODLDP"]," ") = "PCK" then
+							!gera normalmente
+						else
+							bNaoGeraSCO := TRUE
+							log("bNaoGeraSCO = TRUE",NL)
+						endif
+					endif
+				
+					if bGeraMsg = FALSE then
+						break
+					endif
+
+					tCODPRO := peel(taDb2Array["CODPRO"]," ")
+					
+					if peel(taDb2Array["CODLDP"]," ") <> "PCK" then
+						bTemDiferenteDeCODLDP := TRUE
+						!break
+					endif
+
+					if nContadorResultadosQuery = 1 then
+						nMessageID := cMessageID
+						tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"DAN_DASCONFSEP_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFLIV,".txt")
+						tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"DAN_DASCONFSEP_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFLIV,".txt")
+						tNameOut := build("FM",tToInfologPrefixFilename,"DAN_DASCONFSEP_",time("now" ,"%Y%m%d%H%M%S"),"_",tREFLIV,".txt")
+
+						R_HeaderSIS_TIPODEREGISTRO("0")
+						R_HeaderSIS_CNPJORIGEM(peel(taDb2Array["CNPJ_ORIGEM"]," "))
+						R_HeaderSIS_CNPJDESTINATARIO("002462805000859")
+						R_HeaderSIS_COMPLHEADER("                                                              ")
+
+						flush(0,0,NL) >> tFileOutTemp
+
+						R_HeaderOCSIS_TIPODEREGISTRO("1")
+						R_HeaderOCSIS_TIPOOPERACAO(peel(taDb2Array["TIPO_OPERACAO"]," "))
+						R_HeaderOCSIS_DATASEPARACAO(tfConvertDate(S_GEEX9750_DATEXC, "YYYYMMDD" , "DDMMYYYY"))
+						R_HeaderOCSIS_ORDEMCARGA(S_GEEX9750_REFLIV)
+						R_HeaderOCSIS_CNPJTRANSP(peel(taDb2Array["CNPJ_TRANSPORTADORA"]," "))
+						R_HeaderOCSIS_esp("                                               ")
+
+						flush(0,0,NL) >> tFileOutTemp
+
+						R_HeaderPedSIS_Identificacaodoregistro("2")
+						R_HeaderPedSIS_NumerodoPedidodeCompra(build(number(S_GEEX9750_REFLIV)))
+						R_HeaderPedSIS_comnf("                                                                        ")
+
+						flush(0,0,NL) >> tFileOutTemp
+					endif
+				
+					if (nContadorResultadosQuery = 1 or tVolumeAnterior <> peel(taDb2Array["VOLUME"]," ")) and (peel(taDb2Array["PRPPIC"]," ") = "5" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "EX")then
+						R_HeaderVolSIS_Identificacaodoregistro("3")
+						nNumeroSupVirtual++
+						R_HeaderVolSIS_IdentVolume(build(S_GEEX9750_REFLIV,nNumeroSupVirtual:R06))
+						R_HeaderVolSIS_CodEmb("EMBALAGEM VIRTUAL")					
+						nContaAuxxxBruto := number(taDb2Array["TOTAL_PESO_BRUTO"]) * 1000
+						R_HeaderVolSIS_PesoBrutoVol(build(nContaAuxxxBruto:R08))
+						nPesoBrutoTotal := nPesoBrutoTotal + number(peel(taDb2Array["TOTAL_PESO_BRUTO"]," "))
+						nContaAuxxx := number(taDb2Array["TOTAL_PESO_LIQUIDO"]) * 1000
+						R_HeaderVolSIS_PesoLiqVol(build(nContaAuxxx:R08))
+						nPesoLiquidoTotal := nPesoLiquidoTotal + number(peel(taDb2Array["TOTAL_PESO_LIQUIDO"]," "))
+						R_HeaderVolSIS_TipoVol("CA")
+						R_HeaderVolSIS_comnf("            ")
+						nNumeroLinhasVolume++
+						
+						flush(0,0,NL) >> tFileOutTemp
+					endif
+				
+					if peel(taDb2Array["PRPPIC"]," ") = "5" or peel(taDb2Array["TIPO_OPERACAO"]," ") = "EX" then
+						R_DetalheSIS_Identificacaodoregistro("4")
+						R_DetalheSIS_SequenciadoprodutonaNotaFiscal(build(number(peel(taDb2Array["ITEM"]," ")):R06))
+						R_DetalheSIS_CodigodoSKU(peel(taDb2Array["CODIGO_DO_PRODUTO"]," "))
+						tContAux := build(number(peel(taDb2Array["QUANTIDADE"]," ")) * 1000)
+						R_DetalheSIS_QuantidadeSeparada(build(number(tContAux):R07))
+						R_DetalheSIS_Deposito(peel(taDb2Array["IMO"]," "))
+						R_DetalheSIS_Lote(peel(taDb2Array["LOTE"]," "))
+						R_DetalheSIS_UnidadedeMedidadoproduto("EA")
+						
+						flush(0,0,NL) >> tFileOutTemp
+					endif
+				
+					log("TOTAL_PESO_BRUTO ",peel(taDb2Array["TOTAL_PESO_BRUTO"]," "),NL)
+					taDb2Array["TOTAL_PESO_BRUTO"] := replace(taDb2Array["TOTAL_PESO_BRUTO"],",",".")
+
+					log("aqui2",NL)
+
+					taDb2Array["TOTAL_PESO_BRUTO"] := build(number(taDb2Array["TOTAL_PESO_BRUTO"])*1000)
+
+					if peel(taDb2Array["PRPPIC"]," ") <> "5" and peel(taDb2Array["TIPO_OPERACAO"]," ") <> "EX" then
+						!nContAuxtttmp := number(peel(taDb2Array["QUANTIDADE"]," ")) / number(peel(taDb2Array["CXS"]," "))
+						nContAuxtttmp :=  number(peel(taDb2Array["CXS"]," "))
+						nContaAux := 1
+						while nContaAux <= nContAuxtttmp do
+							R_HeaderVolSIS_Identificacaodoregistro("3")
+							nNumeroSupVirtual++
+							R_HeaderVolSIS_IdentVolume(build(S_GEEX9750_REFLIV,nNumeroSupVirtual:R06))
+							R_HeaderVolSIS_CodEmb("EMBALAGEM VIRTUAL")
+							
+							log("aqui1",NL)
+							log("aqui3",NL)
+							log("TOTAL_PESO_BRUTO ",peel(taDb2Array["TOTAL_PESO_BRUTO"]," "),NL)
+
+							nContaAuxxxBruto := number(taDb2Array["TOTAL_PESO_BRUTO"])
+							R_HeaderVolSIS_PesoBrutoVol(build(nContaAuxxxBruto:R08))
+
+							log("aqui4",NL)
+
+							nPesoBrutoTotal := nPesoBrutoTotal + number(peel(taDb2Array["TOTAL_PESO_BRUTO"]," "))
+
+							log("aqui5",NL)
+
+							nContaAuxxx := number(taDb2Array["TOTAL_PESO_LIQUIDO"]) * 1000
+							R_HeaderVolSIS_PesoLiqVol(build(nContaAuxxx:R08))
+							R_HeaderVolSIS_TipoVol("CA")
+							R_HeaderVolSIS_comnf("            ")
+
+							nNumeroLinhasVolume++
+							flush(0,0,NL) >> tFileOutTemp
+							
+							R_DetalheSIS_Identificacaodoregistro("4")
+							R_DetalheSIS_SequenciadoprodutonaNotaFiscal(build(number(peel(taDb2Array["ITEM"]," ")):R06))
+							R_DetalheSIS_CodigodoSKU(peel(taDb2Array["CODIGO_DO_PRODUTO"]," "))
+							tContAux := build(number(peel(taDb2Array["QUANTIDADE"]," ")) / number(peel(taDb2Array["CXS"]," ")))
+							tContAux :=  build(number(tContAux) * 1000)
+							R_DetalheSIS_QuantidadeSeparada(build(number(tContAux):R07))
+							R_DetalheSIS_Deposito(peel(taDb2Array["IMO"]," "))
+							R_DetalheSIS_Lote(peel(taDb2Array["LOTE"]," "))
+							R_DetalheSIS_UnidadedeMedidadoproduto("EA")
+							R_DetalheSIS_INSTRUCAOEMBALAGEM(peel(taDb2Array["INSTRUCAO_EMBALAGEM"]," "))
+							
+							flush(0,0,NL) >> tFileOutTemp
+							nContaAux++
+						endwhile
+					endif
+				
+					tVolumeAnterior := peel(taDb2Array["VOLUME"]," ")
+					tTipoOeracaoQueryAux := peel(taDb2Array["TIPO_OPERACAO"]," ")
+					taCODPRODUTO[nContadorResultadosQuery] := peel(taDb2Array["CODIGO_DO_PRODUTO"]," ")
+					baProdutoDUp[nContadorResultadosQuery] := FALSE
+				endif
+				remove(taDb2Array)
+			endwhile
+				
+			if bGeraMsg = TRUE then
+				!fazer um ciclo para determinar quantos produtos distintos temos
+				nTempAuxxxxx := 1
+				
+				while nTempAuxxxxx <= nContadorResultadosQuery do
+					nTempAuxxxxx2 := nTempAuxxxxx+1
+					while nTempAuxxxxx2 <= nContadorResultadosQuery do
+						if taCODPRODUTO[nTempAuxxxxx2] = taCODPRODUTO[nTempAuxxxxx] then
+							baProdutoDUp[nTempAuxxxxx2] := TRUE
+						endif
+						nTempAuxxxxx2++
+					endwhile
+					nTempAuxxxxx++
+				endwhile
+				
+				nTempAuxxxxx := 1
+				nContadorProdDistintos := 0
+				
+				while nTempAuxxxxx <= nContadorResultadosQuery do
+					if baProdutoDUp[nTempAuxxxxx] = FALSE then
+						nContadorProdDistintos++
+					endif
+					nTempAuxxxxx++
+				endwhile
+				
+				if nContadorResultadosQuery > 0 then
+					R_TraillerSIS_Identificacaodoregistro("9")
+					R_TraillerSIS_Totaldelinhasdodetalhe(build(nContadorProdDistintos:R03))
+					nContaAuxxx3 := nPesoBrutoTotal * 1000
+					R_TraillerSIS_TotalPesoBruto(build(nContaAuxxx3:R09.0))
+					nContaAuxxx2 := nPesoLiquidoTotal * 1000
+					R_TraillerSIS_TotalPesoLiq(build(nContaAuxxx2:R09.0))
+					R_TraillerSIS_QtdVolumes(build(nNumeroLinhasVolume:R07,"00"))
+					R_TraillerSIS_COMPLHEADER3("                                                              ")
+					
+					flush(0,0,NL) >> tFileOutTemp
+					
+					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtraceSeparacao("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+						
+					if bNaoGeraSCO = TRUE then
+						log("apaga aqui no bNaoGeraSCO",NL)
+						close(tFileOutTemp)
+						remove(tFileOutTemp)
+					else
+						close(tFileOutTemp)
+						bfMajtraceSeparacao("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+						
+						close(tFileOutTemp)
+						copy(tFileOutTemp,tFileOut)
+						close(tFileOutTemp)
+						remove(tFileOutTemp)
+						close(tFileOut)
+					endif
+				endif
+			endif
+		endif
+		
+		! processo UPDATE
+		log("tTIPO_OPERACAO ",tTIPO_OPERACAO,NL)
+
+		if tTIPO_OPERACAO = "OH" or tTIPO_OPERACAO = "EX" or tTIPO_OPERACAO = "MK" or tTIPO_OPERACAO = "MN" then
+			bGeraArquivo := FALSE
+
+			if S_GEEX9750_ETALIV = "30" then
+				tPickingStaDate := S_GEEX9750_DATEXC
+				tPickingStaTime := S_GEEX9750_HEUEXC
+				bGeraArquivo := TRUE
+				tREFLIV := S_GEEX9750_REFLIV
+				tNUMLIV := S_GEEX9750_NUMLIV
+			endif
+
+			if bGeraArquivo = TRUE then
+
+				tQuery := build("SELECT SD.NUMSUP  "\
+								",SE.TYPSUP  "\
+								",SD.SEQSUP  "\
+								",SE.CIRPIC  "\
+								",SD.CODPRO  "\
+								",SD.UVCSRV  "\
+								",SD.UVCLIV  "\
+								",SD.PCBPRO  "\
+								",SD.PRPPIC  "\
+								",CASE  "\
+								"WHEN SD.PRPPIC=5 THEN CEILING(BANC.VOL)  "\
+								"ELSE (SD.UVCSRV/SD.PCBPRO)  "\
+								"END VOLUMES  "\
+								",TRIM(SD.MSGLIG) MSGLIG  "\
+								",TRIM(SD.DIPLIV) DIPLIV  "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE SE  "\
+								", FGE50FM",tToInfologPrefixFilename,".GESUPD SD  "\
+								", FGE50FM",tToInfologPrefixFilename,".GEPRO PD  "\
+								", (  "\
+								"SELECT (SUM(UVCSRV/PCBPRO)) VOL  "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GESUPD  "\
+								"WHERE NUMLIV='",tNUMLIV,"'  "\
+								") BANC  "\
+								"WHERE SE.NUMSUP=SD.NUMSUP  "\
+								"AND SE.CODACT=SD.CODACT  "\
+								"AND SD.CODPRO=PD.CODPRO  "\
+								"AND SD.CODACT=PD.CODACT  "\
+								"AND SD.NUMLIV='",tNUMLIV,"'  "\
+								"AND SE.TYPSUP<>3  "\
+								"GROUP BY SD.NUMSUP  "\
+								",SE.TYPSUP  "\
+								",SD.SEQSUP  "\
+								",SE.CIRPIC  "\
+								",SD.CODPRO  "\
+								",SD.UVCSRV  "\
+								",SD.UVCLIV  "\
+								",SD.PCBPRO  "\
+								",SD.MSGLIG  "\
+								",SD.DIPLIV  "\
+								",SD.PRPPIC  "\
+								",BANC.VOL  "\
+								"ORDER BY SE.TYPSUP DESC  "\
+								", SD.NUMSUP ASC  "\
+								", SD.SEQSUP ASC")
+
+
+				log(tQuery,NL)
+
+				if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				tVOLUMES    := ""
+				nContadorResultadosQuery := 0
+				bJaTemPRPPICIgualCinco := FALSE
+				
+				while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+					nContadorResultadosQuery++
+					taVOLUMESAux[nContadorResultadosQuery] := peel(taDb2Array["VOLUMES"]," ")
+					taMSGLIGOriginal[nContadorResultadosQuery] := peel(taDb2Array["MSGLIG"]," ")
+					split(taMSGLIGOriginal[nContadorResultadosQuery],taDIPLIVCalculadoSplitado,"/")
+					taDIPLIVCalculado[nContadorResultadosQuery] := peel(taDb2Array["DIPLIV"]," ")
+					taPRPPIC[nContadorResultadosQuery] := peel(taDb2Array["PRPPIC"]," ")
+					
+					if taPRPPIC[nContadorResultadosQuery] = "5"  then
+						if bJaTemPRPPICIgualCinco = FALSE then
+							bJaTemPRPPICIgualCinco := TRUE
+							if nContadorResultadosQuery = 1 then
+								taVOLUMES[nContadorResultadosQuery] := "1"
+							else
+								taVOLUMES[nContadorResultadosQuery] := build(number(taVOLUMES[nContadorResultadosQuery-1])+number(taVOLUMESAux[nContadorResultadosQuery-1]))
+							endif
+						else
+							taVOLUMES[nContadorResultadosQuery] := build(number(taVOLUMES[nContadorResultadosQuery-1]))
+						endif
+					else
+						if nContadorResultadosQuery = 1 then
+							taVOLUMES[nContadorResultadosQuery] := "1"
+						else
+							taVOLUMES[nContadorResultadosQuery] := build(number(taVOLUMES[nContadorResultadosQuery-1])+number(taVOLUMESAux[nContadorResultadosQuery-1]))
+						endif
+					endif
+								
+					TRACE := find(build(sHOME,"/trace"),NUMDOC=tREFLIV,MENSAGEM="M97 - UPDATE",PERFIL="DANA")
+					if valid(TRACE) then
+						log("M97 - UPDATE ja no trace ",NL)
+						bFazUpdateOutrosTipos := FALSE
+					else
+						bFazUpdateOutrosTipos := TRUE
+					endif
+					
+					if bFazUpdateOutrosTipos = TRUE then
+						if tTIPO_OPERACAO = "EX" then
+							taQueryUpdade[nContadorResultadosQuery] := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD "\
+							"SET MSGLIG='","00001","/","00001","'  "\
+							"WHERE NUMSUP='",peel(taDb2Array["NUMSUP"]," "),"' "\
+							"AND SEQSUP='",peel(taDb2Array["SEQSUP"]," "),"' "\
+							"AND CODPRO='",peel(taDb2Array["CODPRO"]," "),"' "\
+							"AND UVCSRV='",peel(taDb2Array["UVCSRV"]," "),"' WITH NONE")
+						else
+							taQueryUpdade[nContadorResultadosQuery] := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GESUPD "\
+							"SET MSGLIG='",build(number(taVOLUMES[nContadorResultadosQuery]):R05),"/",build(number(taVOLUMESAux[nContadorResultadosQuery]):R05),"'  "\
+							"WHERE NUMSUP='",peel(taDb2Array["NUMSUP"]," "),"' "\
+							"AND SEQSUP='",peel(taDb2Array["SEQSUP"]," "),"' "\
+							"AND CODPRO='",peel(taDb2Array["CODPRO"]," "),"' "\
+							"AND UVCSRV='",peel(taDb2Array["UVCSRV"]," "),"' WITH NONE")
+						endif
+
+						log(taQueryUpdade[nContadorResultadosQuery],NL)								
+						
+						if not bfSqlSet(tDbBase2, "Updatedb2", taQueryUpdade[nContadorResultadosQuery]) then
+							log(tfSqlErrorStr(), NL)
+							bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("1 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+							exit(27)
+						endif
+
+						if not bfSqlExec(tDbBase2, "Updatedb2") then
+							log(tfSqlErrorStr(), NL)
+							bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("2 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+							exit(28)
+						endif
+
+						if not bfSqlCommit(tDbBase2, "Updatedb2") then
+							log(tfSqlErrorStr(), NL)
+							bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("3 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+							exit(29)
+						endif
+
+						if not bfSqlFree(tDbBase2, "Updatedb2") then
+							log(tfSqlErrorStr(), NL)
+							bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("4 - Erro na execucao da query ",taQueryUpdade[nContadorResultadosQuery]," do banco de dados: ",tfSqlErrorStr()))
+							exit(30)
+						endif
+					endif
+					remove(taDb2Array)
+				endwhile
+
+				if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtraceUPDATE("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if nContadorResultadosQuery > 0 and bFazUpdateOutrosTipos = TRUE then
+					bfMajtraceUPDATE("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+				endif
+			endif
+		endif	
+	endif
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	bfSqlClose(tDbBase)
+	bfSqlClose(tDbBase2)
+	bfSqlClose(tDbBase3)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	if tCODACTLido = "DAN" then
+		TRACE.PERFIL := "DANA"
+	else
+		TRACE.PERFIL := tToInfologPrefixFilename
+	endif
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "Tabela CRNF NF"
+	TRACE.NUMDOC := build(tREFLIV)
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail   
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	if nMainIndex = 0 then
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	flush(TRACE)
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+	system("sleep 1")
+endfunction
+
+!===========================================================
+
+function bfMajtraceCancelamento(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	if tCODACTLido = "DAN" then
+		TRACE.PERFIL := "DANA"
+	else
+		TRACE.PERFIL := tToInfologPrefixFilename
+	endif
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M97 - CANCELAMENTO(ONDA)"
+	TRACE.NUMDOC := tREFLIV
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	if nMainIndex = 0 then
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	flush(TRACE)
+	system("sleep 1")
+endfunction
+
+!===========================================================
+
+function bfMajtraceSeparacao(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "DANA"
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M97 - CONF SEPARAÇÃO"
+	TRACE.NUMDOC := tREFLIV
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail  
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	if nMainIndex = 0 then
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	flush(TRACE)
+
+	close(tFileOutTemp)
+	copy(tFileOutTemp,TRACE.Out)
+	close(tFileOutTemp)
+	close(TRACE.Out)
+endfunction
+
+!===========================================================
+
+function bfMajtraceUPDATE(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "DANA"
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "M97 - UPDATE"
+	TRACE.NUMDOC := tREFLIV
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	if nMainIndex = 0 then
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	flush(TRACE)
+
+	nTmpContadorResultadosQuery := 1
+	while nTmpContadorResultadosQuery <= nContadorResultadosQuery do
+		print(taQueryUpdade[nTmpContadorResultadosQuery],NL) >> TRACE.Out
+		nTmpContadorResultadosQuery++
+	endwhile
+
+	close(TRACE.Out)
+endfunction
+
+!===========================================================
+
+function bfMajtraceRubrica(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "DANA"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "M97 - RUBRICA"
+	TRACE.NUMDOC := tREFLIV
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOutCSV
+	TRACE.LIBEXC := tLIBEXC
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tNameOutCSV,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	close(tFileOutCSV)
+	copy(tFileOutCSV,TRACE.OutCSV)
+	close(tFileOutCSV)
+	close(TRACE.OutCSV)
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfMajtraceRubrica9740(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := "DANA"
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "M97.40 - RUBRICA"
+	TRACE.NUMDOC := tNUMREC_9740
+	TRACE.DATDOC := time("now","%Y-%m-%d")
+	TRACE.MESSAGEID := build(nMessageID:R010)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOutCSV
+	TRACE.LIBEXC := tLIBEXC
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tNameOutCSV,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	close(tFileOutCSV)
+	copy(tFileOutCSV,TRACE.OutCSV)
+	close(tFileOutCSV)
+	close(TRACE.OutCSV)
+
+	flush(TRACE)
+endfunction

@@ -1,0 +1,264 @@
+%@(#)  M51_LASA_TXT.rte     modif:01-12-2017
+!==============================================================================
+% File          : M51_LASA_TXT.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 01-12-2017  XX  Creation
+! 01-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+!base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "M51_LASA_TXT"
+#include "include/generix_func.inc"
+#include "include/M51_LASA_TXT.inc"
+#include "include/GEEXM51.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+    
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameGAMAITALY"]
+
+	tDbBase		:= "FMWMS"
+	tDbUsername	:= taPARAM["WMSDBUSER"]
+	tDbPassword	:= taPARAM["WMSDBPASS"]
+	tDbUrl		:= taPARAM["WMSDBURL"]
+
+    bfSqlInit()
+    if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBase)
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tNumeroDocumento, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE PEDIDO", \
+                        build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
+
+	nWhileHeader := 0
+endbegin
+
+!===========================================================
+line(1:"00.00")
+	tSYSDATE := build(S_GEEX0000_DATEXC,S_GEEX0000_HEUEXC)
+endline
+
+line(1:"51.00")
+	if S_GEEX5100_CODACL <> "" then
+		exit(1)
+	endif
+
+    nCount5120 := 0
+	nCount5100++
+	log("51.00 - ", nCount5100, NL)
+
+    taREFLIV[nCount5100] := S_GEEX5100_REFLIV
+    taCODCLI[nCount5100] := S_GEEX5100_CODCLI
+    tCODACT := S_GEEX5100_CODACT
+endline
+
+line(1:"51.01")
+    taDIPLIV[nCount5100] := S_GEEX5101_DIPLIV
+endline
+
+line(1:"51.20")
+    nCount5120++
+	log("51.20 - ", nCount5120,"-",taREFLIV[nCount5100], NL)
+    taCODPRO[build(nCount5120,"-",taREFLIV[nCount5100])] := S_GEEX5120_CODPRO
+    taUVCLIV[build(nCount5120,"-",taREFLIV[nCount5100])] := build(number(S_GEEX5120_UVCLIV) / number(S_GEEX5120_PCBPRO))
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	while nWhileHeader < nCount5100 do
+		nWhileDetail := 0
+		nWhileHeader++
+
+		tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACT,"_bol.L",taDIPLIV[nWhileHeader],".PR.",time("now","%y%m%d.%H%M%S"),"_",substr(build(nMessageID), length(build(nMessageID)) - 2, 3),nWhileHeader,".txt")
+		tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACT,"_bol.L",taDIPLIV[nWhileHeader],".PR.",time("now","%y%m%d.%H%M%S"),"_",substr(build(nMessageID), length(build(nMessageID)) - 2, 3),nWhileHeader,".txt")
+		tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_bol.L",taDIPLIV[nWhileHeader],".PR.",time("now","%y%m%d.%H%M%S"),"_",substr(build(nMessageID), length(build(nMessageID)) - 2, 3),nWhileHeader,".txt")
+
+		tQuery := build("SELECT EDICLI ", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GECLI ", NL," "\
+						"WHERE CODCLI = '",taCODCLI[nWhileHeader],"' ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+							"1", \
+							tNumeroDocumento, \
+							tDataDocumento, \
+							tFileOut, \
+							"CONFIRMAÇÃO DE PEDIDO", \
+							build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+							"1", \
+							tNumeroDocumento, \
+							tDataDocumento, \
+							tFileOut, \
+							"CONFIRMAÇÃO DE PEDIDO", \
+							build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			tCODCLI := peel(taDb2Array["EDICLI"]," ")
+			remove(taDb2Array)
+		endwhile
+		
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+							"1", \
+							tNumeroDocumento, \
+							tDataDocumento, \
+							tFileOut, \
+							"CONFIRMAÇÃO DE PEDIDO", \
+							build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		R_HEADER_REGISTRO("1")
+		R_HEADER_LOCATION(build(number(taDIPLIV[nWhileHeader]):R04))
+		R_HEADER_BATCH_NUMBER(build(number(build(number(substr(build(nMessageID), length(build(nMessageID)) - 2, 3)):R03, nWhileHeader:R02)):R07))
+		R_HEADER_BOL_NUMBER_LOJA(build(number(tCODCLI):R04))
+		R_HEADER_BOL_NUMBER_SEQUENCIA(build(number(build(number(substr(build(nMessageID), length(build(nMessageID)) - 2, 3)):R03, nWhileHeader:R02)):R05))
+		R_HEADER_SCHEDULED_ARRIVAL_DATE_TIME(tSYSDATE)
+
+		flush(0,0,NL) >> tFileOutTemp
+
+		while tIndex in taCODPRO do
+			nWhileDetail++
+			if length(taCODPRO[build(nWhileDetail,"-",taREFLIV[nWhileHeader])]) > 0 then
+				R_DETAIL_REGISTRO("2")
+				R_DETAIL_LOCATION(build(number(taDIPLIV[nWhileHeader]):R04))
+				R_DETAIL_BATCH_NUMBER(build(number(build(number(substr(build(nMessageID), length(build(nMessageID)) - 2, 3)):R03, nWhileHeader:R02)):R07))
+				R_DETAIL_BOL_NUMBER_LOJA(build(number(tCODCLI):R04))
+				R_DETAIL_BOL_NUMBER_SEQUENCIA(build(number(build(number(substr(build(nMessageID), length(build(nMessageID)) - 2, 3)):R03, nWhileHeader:R02)):R05))
+				R_DETAIL_ITEM_ID(build(number(strip(taCODPRO[build(nWhileDetail,"-",taREFLIV[nWhileHeader])], " ")):R016))
+				R_DETAIL_DISTRIBUTION_ORDER_NUMBER(build(number(taREFLIV[nWhileHeader]):R09))
+				R_DETAIL_UNIT_QUANTITY(build(number(taUVCLIV[build(nWhileDetail,"-",taREFLIV[nWhileHeader])]):R08))
+				R_DETAIL_SHIPPED_WEIGHT("00000000.0000")
+				R_DETAIL_ALLOCATED_WEIGHT("00000000.0000")
+				R_DETAIL_OLD_DEST_ID("0000")
+
+				flush(0,0,NL) >> tFileOutTemp
+			endif
+		endwhile
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+		bfMajtrace("Recebida", \
+					"0", \
+					taREFLIV[nWhileHeader], \
+					time("now","%Y-%m-%dT%H:%M:%S"), \
+					tFileOut, \
+					"CONFIRMAÇÃO DE PEDIDO", \
+					"")
+	endwhile
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tMensagem
+	TRACE.PERFIL := "LASA"
+	TRACE.SENTIDO := "O"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)   
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError="0" then
+		close(tFileOutDoc)
+		copy(tFileOutDoc,TRACE.Out)
+		close(tFileOutDoc)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction

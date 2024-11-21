@@ -1,0 +1,47 @@
+%@(#) $Id:  DataInjection_PlanTMS.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: DataInjection_PlanTMS.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : DataInjection_PlanTMS
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! DataInjection_PlanTMS teste teste
+!
+!===========================================================================================================
+
+base "syslog.cfg" SYSLOG
+#define TX_PROG_INFO "ConvertExcel"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	! PROCESS_ERRONEOUS := TRUE
+    SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    tNomeArquivoOriginal := build("inbox/",pEDISEND.ORIGINAL.NAME)
+    tNomeArquivoConvertido := build("inbox/Convertido_",substr(pEDISEND.ORIGINAL.NAME, 1, index(pEDISEND.ORIGINAL.NAME, ".xlsx") - 1),".csv")
+    tNomeArquivoFormatado := build("inbox/Formatado_",substr(pEDISEND.ORIGINAL.NAME, 1, index(pEDISEND.ORIGINAL.NAME, ".xlsx") - 1),".csv")
+    log("tNomeArquivoConvertido = |",tNomeArquivoConvertido,"|",NL)
+    log("tNomeArquivoFormatado = |",tNomeArquivoFormatado,"|",NL)
+
+    tCmd := build("in2csv ",tNomeArquivoOriginal," > ",tNomeArquivoConvertido)
+    log("tCmd = |",tCmd,"|",NL)
+    system(tCmd)
+
+    remove(tNomeArquivoOriginal)
+
+    tCmd2 := build("csvformat -D ';' ",tNomeArquivoConvertido," > ",tNomeArquivoFormatado)
+    log("tCmd2 = |",tCmd2,"|",NL)
+    system(tCmd2)
+
+    remove(tNomeArquivoConvertido)
+
+    exit(1)
+endbegin
+
+!===========================================================

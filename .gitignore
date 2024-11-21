@@ -1,0 +1,7 @@
+# Ignorar arquivos de log
+*.log
+*.pdf
+
+# Ignorar diretório node_modules
+Geral/
+WebService/

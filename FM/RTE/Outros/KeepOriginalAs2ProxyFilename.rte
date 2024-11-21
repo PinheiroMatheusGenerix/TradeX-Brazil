@@ -1,0 +1,24 @@
+base "syslog.cfg" SYSLOG
+
+begin
+
+SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+close(SYSLOG.a)
+close(SYSLOG.rp)
+load(SYSLOG.rp,taInfo)
+close(SYSLOG.rp)
+if length(taInfo["MPRP.DATA.ORIGINALNAME"]) > 0 then
+	tFileOut := build(sHOME,"/FromAS2Proxy/",taInfo["MPRP.DATA.ORIGINALNAME"])
+else
+	log(NL,"could not find MPRP.DATA.ORIGINALNAME on SYSLOG.rp",NL)
+exit(1)
+endif
+log("copying file to ",tFileOut,NL)
+copy(SYSLOG.a,tFileOut)
+close(SYSLOG.a)
+close(tFileOut)
+ 
+
+exit(0)
+
+endbegin

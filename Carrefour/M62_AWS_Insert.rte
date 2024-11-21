@@ -1,0 +1,274 @@
+%@(#) $Id:  M62_AWS_Insert.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M62_AWS_Insert.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M62_AWS_Insert
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M62_AWS_Insert
+!
+!===========================================================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M62_AWS_Insert"
+
+#include "include/generix_func.inc"
+#include "include/GEEXM63.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMessageID := cMessageID
+
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+	! AWS
+	tDbBaseInsert := "CRFWMSI"
+	tDbBase		:= "datapowerDB"
+	tDbUsername	:= taPARAM["AWS_USER"]
+	tDbPassword	:= "Vd9PVBbnLArnBhUKIthf"
+	tDbUrl		:= taPARAM["AWS_URL"]
+
+	bfSqlInit()
+
+	tAmbiente := substr(pEDISEND.ORIGINAL.NAME, 1, index(pEDISEND.ORIGINAL.NAME, "M62") - 1) !********************* MUDAR
+
+	! COVERTENDO NOME DO AMBIENTE
+        switch tAmbiente
+            case "CDA":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDA"])
+            case "PTAM":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenamePTAM"])
+            case "CDAM":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDAM"])
+            case "PTDC":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenamePTDC"])
+            case "CDD":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDD"])
+            case "PTSP":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenamePTSP"])
+            case "PTMG":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenamePTMG"])
+            case "CDMG":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDMG"])
+            case "CDCJ":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDCJ"])
+            case "CDX":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDX"])
+            case "CDPE":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDPE"])
+            case "CDRS":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDRS"])
+            case "CDRE":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDRE"])
+            case "CDMR":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDMR"])
+            case "CDPH":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDPH"])
+            case "CDBA":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenameCDBA"])
+            case "PLCJ":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenamePLCJ"])
+            case "PTBF":
+                tAmbienteCompleto := build("CARREFOURBRESIL_", taPARAM["ToInfologPrefixFilenamePTBF"])
+        endswitch
+    ! FIM COVERTENDO NOME DO AMBIENTE
+
+	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+		print("FATAL ",tfSqlErrorStr())
+		bfSqlClose(tDbBase)
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), tAmbiente)
+		exit(1)
+	endif
+
+	if not bfSqlJdbc(tDbBaseInsert, tDbUsername, tDbPassword, tDbUrl) then
+        print("FATAL ",tfSqlErrorStr())
+        bfSqlClose(tDbBaseInsert)
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), tAmbiente)
+     	exit(1)
+    endif
+endbegin
+
+!===========================================================
+line(1:"63.00")
+	tNUMTOU := S_GEEX6300_NUMTOU
+endline
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	tQuery := build("SELECT LPAD(TE.TOULIV ||'', 4, '0') || REPLACE(SUBSTR(CL.NOMCLI, 1, 4),'.','') AS TMSKEY, ", NL," "\
+					"		TE.NUMTOU AS NUMTOU, ", NL," "\
+					"		COUNT(SE.NUMSUP) AS CUMSUP, ", NL," "\
+					"		SUM(CUMCOL) AS CUMCOL, ", NL," "\
+					"		SUM(CUMVOL) AS CUMVOL, ", NL," "\
+					"		SUM(CUMPOI) AS CUMPOI ", NL," "\
+					"FROM ",tAmbienteCompleto,".GETOUE TE ", NL," "\
+					"LEFT JOIN ",tAmbienteCompleto,".GESUPE SE ", NL," "\
+					"ON SE.NUMTOU = TE.NUMTOU ", NL," "\
+					"LEFT JOIN ",tAmbienteCompleto,".GECLI CL ", NL," "\
+					"ON SE.CLILIV = CL.CLILIV ", NL," "\
+					"WHERE TE.NUMTOU = '",tNUMTOU,"' ", NL," "\
+					"GROUP BY TE.NUMTOU, TE.TOULIV, CL.NOMCLI ")
+
+	log("QUERY SELECT -------------------------------------", NL)
+	log(NL,tQuery,NL)
+	log("--------------------------------------------------", NL)
+
+	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), tAmbiente)
+		remove(tFileOut)
+		exit(1)
+	endif
+
+	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+		print("FATAL ", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), tAmbiente)
+		remove(tFileOut)
+		exit(1)
+	endif
+
+	if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+		bfQueryInsert(taDb2Array["tmskey"], \
+					  taDb2Array["numtou"], \
+					  taDb2Array["cumsup"], \
+					  taDb2Array["cumcol"], \
+					  taDb2Array["cumvol"], \
+					  taDb2Array["cumpoi"])
+		remove(taDb2Array)
+	endif
+
+	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+		print("FATAL", tfSqlErrorStr())
+		bfMajtrace("Erro de Traducao", "1", tNumeroDocumento, time("now", "%Y-%m-%d"), " ", build("Erro na abertura do banco de dados: ", tfSqlErrorStr()), tAmbiente)
+		remove(tFileOut)
+		exit(1)
+	endif
+
+	! PASSA AS INFORMAÇÕES DA VARIÁVEL TEMPORÁRIA PARA A FINAL
+	close(tFileOutTemp)
+	copy(tFileOutTemp,tFileOut)
+	close(tFileOutTemp)
+	remove(tFileOutTemp)
+	close(tFileOut)
+
+	bfMajtrace("Recebida", "0", "PICKING NEGATIVO", time("now","%Y-%m-%d"), tFileOut, "", tAmbiente)
+
+	remove(tFileOut)
+
+	bfSqlClose(tDbBase)
+	bfSqlClose(tDbBaseInsert)
+	exit(0)
+endend
+
+!===========================================================
+
+function bfMajtrace(tStatus, tError, tNumDoc, tDataDoc, tFileOut, tMensagemErrro, tPerfil)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := tAmbiente
+	TRACE.SENTIDO := "I"
+	TRACE.MENSAGEM := "M62 AWS"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R06)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := "M62 AWS"
+
+	SYSLOG.REFERENCE := build(nMessageID:R06)
+	
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Executado com Sucesso",NL,NL) >> TRACE.Detail
+		print(tQueryUpdade,NL,NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErrro,NL) >> TRACE.Detail	   
+		endif
+	endif
+
+	if tError="0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	close(TRACE.Detail)
+	close(SYSLOG.a)
+
+	flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfQueryInsert(tTMSKEY, tNUMTOU, tCUMSUP, tCUMCOL, tCUMVOL, tCUMPOI)
+	! CRIANDO OS DOCUMENTOS DE LOG
+		tFileOut := build(sHOME,"/DocTemp/","M62_AWS_INSERT_",taAmbiente[tIndex],"_",build(nMessageID:R015),".txt")
+		tFileOutTemp := build(sHOME,"/DocTemp/Temp/","M62_AWS_INSERT_",taAmbiente[tIndex],"_",build(nMessageID:R015),".txt")
+		tNameOut := build("M62_AWS_INSERT_",taAmbiente[tIndex],"_",build(nMessageID:R015),".txt")
+	!FIM CRIANDO OS DOCUMENTOS DE LOG
+
+    tQueryInsert := build("INSERT INTO ",tAmbienteCompleto,"_ANALYTICS.SVM62PLAN ", NL," "\
+                          "VALUES('",tTMSKEY,"', ", NL," "\
+                          "'",tNUMTOU,"', ", NL," "\
+                          "'",tCUMSUP,"', ", NL," "\
+                          "'",tCUMCOL,"', ", NL," "\
+                          "'",tCUMVOL,"', ", NL," "\
+                          "'",tCUMPOI,"') ")
+
+    log("QUERY INSERT -------------------------------------", NL)
+    log(tQueryInsert,NL)
+    print(tQueryInsert,NL,NL) >> tFileOutTemp
+    log("--------------------------------------------------", NL, NL)
+
+    if not bfSqlSet(tDbBaseInsert, "INSERTdb2", tQueryInsert) then
+        log(tfSqlErrorStr(), NL)
+        exit(27)
+    endif
+
+    if not bfSqlExec(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(28)
+    endif
+
+    if not bfSqlCommit(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(29)
+    endif
+
+    if not bfSqlFree(tDbBaseInsert, "INSERTdb2") then
+        log(tfSqlErrorStr(), NL)
+        exit(30)
+    endif
+endfunction
+
+!===========================================================
