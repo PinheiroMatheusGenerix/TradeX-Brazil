@@ -25,7 +25,7 @@ base "../trace/trace.cfg" TRACE,autoflush off
 
 !===========================================================================================================
 
-! Initialization section
+! Initialization section 
 begin
 	nPos := 1
 	nRec := 1
