@@ -416,7 +416,7 @@ line(not "")
 			R_GEEX0600_SEPEXC(".")
 			R_GEEX0600_SCOEXC("00")
 			R_GEEX0600_TRTEXC("2")
-			R_GEEX0600_CODACT(S_REGISTRO_Atividade)
+			R_GEEX0600_CODACT(S_REGISTRO_Atividade) 
 			R_GEEX0600_CODPAL(S_REGISTRO_CodPalete)
 			R_GEEX0600_MOTIMM(S_REGISTRO_Qualidade)
 			if length(S_REGISTRO_Qualidade) > 0 and length(S_REGISTRO_CodPalete) > 0 then 
