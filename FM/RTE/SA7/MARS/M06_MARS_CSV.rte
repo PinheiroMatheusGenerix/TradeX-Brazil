@@ -76,6 +76,63 @@ endbegin
 line(not "")
     S_REGISTRO
 	
+	! QUERY CODTRE
+		tQuery := build("SELECT CODTRE", NL," "\
+			"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS GEP", NL," "\
+			"JOIN FGE50FM",tToInfologPrefixFilename,".GERECE AS GERE", NL," "\
+			"ON GEP.NUMREC = GERE.NUMREC AND GERE.NUMREC = GEP.NUMREC", NL," "\
+			"WHERE CODTRE = 'DV' AND GEP.CODPAL = '",S_REGISTRO_CodPalete,"'")
+			
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						tNumeroDocumento, \
+						tDataDocumento, \
+						tFileOut, \
+						tMENSAGEM, \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL ", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						tNumeroDocumento, \
+						tDataDocumento, \
+						tFileOut, \
+						tMENSAGEM, \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+				
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			if peel(taDb2Array["CODTRE"]," ") = 'DV'
+				log("O trace não foi gerado porque o CODTRE = DV", NL)
+				exit(1) 
+			endif 
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			print("FATAL", tfSqlErrorStr())
+			bfMajtrace("Erro de Traducao", \
+						"1", \
+						tNumeroDocumento, \
+						tDataDocumento, \
+						tFileOut, \
+						tMENSAGEM, \
+						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+			exit(1)
+		endif
+	! FIM QUERY CODTRE
+	
 	! QUERY tLIBACT
 		tQuery := build("SELECT LIBACT ", NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GEACT ", NL," "\
