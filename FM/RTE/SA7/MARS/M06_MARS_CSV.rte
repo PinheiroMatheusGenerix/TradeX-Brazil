@@ -562,4 +562,3 @@ function bfMajtrace(tStatus, tError, tNumDoc, tDataDoc, tFileOut, tFileMessage, 
 	flush(TRACE)
 endfunction
 
-
