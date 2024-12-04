@@ -131,6 +131,7 @@ endline
         tDTRREC := S_GEEX4100_DTRREC
         tHERREC := S_GEEX4100_HERREC
         tCODACT := S_GEEX4100_CODACT
+        tCODTRE := S_GEEX4100_CODTRE
 
         tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACT,"_RC",time("now","%Y%m%d%H%M%S"),"_",tNUMREC,".txt")
         tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACT,"_RC",time("now","%Y%m%d%H%M%S"),"_",tNUMREC,".txt")
@@ -785,190 +786,177 @@ end
         endif
     ! FIM M06
 
-    R_S0_TIPO_REGISTRO("S0")
-    R_S0_DATA(tDTRREC)
-    R_S0_HORA(build(tHERREC, "00"))
+    if tCODTRE <> "DV" then
+        R_S0_TIPO_REGISTRO("S0")
+        R_S0_DATA(tDTRREC)
+        R_S0_HORA(build(tHERREC, "00"))
 
-    flush(0,0,NL) >> tFileOutTemp
-    nContLineEscritas++
+        flush(0,0,NL) >> tFileOutTemp
+        nContLineEscritas++
 
-    tQuery := build("SELECT  TRIM(RD.DIPREC)                   AS DIPREC", NL," "\
-                    "       ,RD.CODPRO                         AS MATERIAL", NL," "\
-                    "       ,TRIM(RD.CODLOT)                   AS CODLOT", NL," "\
-                    "       ,RD.NLIREC                         AS EBELP", NL," "\
-                    "       ,TRIM(RL.VALRUB)                   AS MBLNR", NL," "\
-                    "       ,TRIM(RB.VALRUB)                   AS DOCNUM", NL," "\
-                    "       ,INTEGER(RD.UVCREA / RD.PCBPRO) AS QTD_ESPERADA", NL," "\
-                    "FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
-                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERERUB AS RB", NL," "\
-                    "ON RB.CODRUB = 'DOCN' AND RB.NUMREC = RD.NUMREC", NL," "\
-                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERALR AS RL", NL," "\
-                    "ON RL.CODRUB = 'DOCR' AND RD.NUMREC = RL.NUMREC AND RD.SEQREC = RL.SEQREC", NL," "\
-                    "WHERE RD.NUMREC = '",tNUMREC,"'", NL," "\
-                    "ORDER BY RD.CODLOT, RD.DIPREC")
+        tQuery := build("SELECT  TRIM(RD.DIPREC)                   AS DIPREC", NL," "\
+                        "       ,RD.CODPRO                         AS MATERIAL", NL," "\
+                        "       ,TRIM(RD.CODLOT)                   AS CODLOT", NL," "\
+                        "       ,RD.NLIREC                         AS EBELP", NL," "\
+                        "       ,TRIM(RL.VALRUB)                   AS MBLNR", NL," "\
+                        "       ,TRIM(RB.VALRUB)                   AS DOCNUM", NL," "\
+                        "       ,INTEGER(RD.UVCREA / RD.PCBPRO) AS QTD_ESPERADA", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERERUB AS RB", NL," "\
+                        "ON RB.CODRUB = 'DOCN' AND RB.NUMREC = RD.NUMREC", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERALR AS RL", NL," "\
+                        "ON RL.CODRUB = 'DOCR' AND RD.NUMREC = RL.NUMREC AND RD.SEQREC = RL.SEQREC", NL," "\
+                        "WHERE RD.NUMREC = '",tNUMREC,"'", NL," "\
+                        "ORDER BY RD.CODLOT, RD.DIPREC")
 
-    log("***********************************", NL)
-    log(tQuery, NL)
-    log("***********************************", NL)
+        log("***********************************", NL)
+        log(tQuery, NL)
+        log("***********************************", NL)
 
-	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
-
-	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
-
-    nLineCount := 0
-	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-        nLineCount++
-
-        tDIPREC := peel(taDb2Array["DIPREC"]," ")
-        tCODPRO := peel(taDb2Array["MATERIAL"]," ")
-        tCODLOT := peel(taDb2Array["CODLOT"]," ")
-
-        taLineCount[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := build(nLineCount)
-        taEBELP[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["EBELP"]," ")
-        taMBLNR[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["MBLNR"]," ")
-        taDOCNUM[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["DOCNUM"]," ")
-        taQTD_ESPERADA[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["QTD_ESPERADA"]," ")
-		remove(taDb2Array)
-	endwhile
-				
-	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
-
-    tQuery := build("SELECT	TRIM(RP.CODPRO)                                                 AS MATERIAL     ", NL," "\
-                    "       ,RP.CODLOT                                                      AS LOTE         ", NL," "\
-                    "       ,CASE RP.MOTIMM WHEN '' THEN IMRB.STOSAP1 ELSE IMRP.STOSAP1 END AS STATUS       ", NL," "\
-                    "       ,INTEGER(SUM(RP.UVCMVT / RP.PCBPRO))                            AS QUANTIDADE   ", NL," "\
-                    "FROM FGE50FM",tToInfologPrefixFilename,".GERECP AS RP                                  ", NL," "\
-                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERALR AS RB                             ", NL," "\
-                    "ON RP.NUMREC = RB.NUMREC AND RP.SEQREC = RB.SEQREC AND RB.CODRUB = 'STLT'              ", NL," "\
-                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IMRB                           ", NL," "\
-                    "ON RB.VALRUB = IMRB.MOTIMM                                                             ", NL," "\
-                    "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IMRP                           ", NL," "\
-                    "ON RP.MOTIMM = IMRP.MOTIMM                                                             ", NL," "\
-                    "WHERE 1 = 1                                                                            ", NL," "\
-                    "AND RP.NUMREC = '",tNUMREC,"'                                                          ", NL," "\
-                    "AND RP.CODACT = '",tCODACT,"'                                                          ", NL," "\
-                    "GROUP BY  RP.CODPRO                                                                    ", NL," "\
-                    "         ,RP.CODLOT                                                                    ", NL," "\
-                    "         ,CASE RP.MOTIMM WHEN '' THEN IMRB.STOSAP1 ELSE IMRP.STOSAP1 END               ", NL," "\
-                    "ORDER BY 1, 2, 3")
-
-    log("***********************************", NL)
-    log(tQuery, NL)
-    log("***********************************", NL)
-
-	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
-
-	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
-
-	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-        tCODPRO2 := peel(taDb2Array["MATERIAL"]," ")
-        tCODLOT2 := peel(taDb2Array["LOTE"]," ")
-
-        taSTATUS[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["STATUS"]," ")
-        taQUANTIDADE[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["QUANTIDADE"]," ")
-
-		remove(taDb2Array)
-	endwhile
-				
-	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
-
-    while tIndex in taLineCount do
-        split(tIndex, taIndexSplit, "-")
-
-        tDIPREC_Split := taIndexSplit[1]
-        tCODPRO_Split := taIndexSplit[2]
-        tCODLOT_Split := taIndexSplit[3]
-
-        if not number(peel(tCODPRO_Split," ")) = 0 then 
-            tCODPRO_aux := build(number(peel(tCODPRO_Split," ")):R018)
-        else
-            tCODPRO_aux := peel(tCODPRO_Split," ")
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
         endif
-        log(tCODPRO_aux,NL)
 
-        log("Quantidade: ",taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)], NL)
-        log("Quantidade2: ",taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)], NL)
-        if number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) and length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > 0 then
-            log("IF 1", NL)
-            R_S1_TIPO_REGISTRO("S1")
-            R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
-            R_S1_MATERIAL(tCODPRO_aux)
-            R_S1_QUANTIDADE(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R016))
-            taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)] := build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) - number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]))
-            R_S1_STATUS(peel(taSTATUS[build(tCODPRO_Split,"-",tCODLOT_Split)]," "))
-            R_S1_LOTE(peel(tCODLOT_Split," "))
-            R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
-            R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
-            
-            flush(0,0,NL) >> tFileOutTemp
-            nContLineEscritas++
-        else
-            if number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) < number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) and length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > 0 then
-                log("IF 2", NL)
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        nLineCount := 0
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            nLineCount++
+
+            tDIPREC := peel(taDb2Array["DIPREC"]," ")
+            tCODPRO := peel(taDb2Array["MATERIAL"]," ")
+            tCODLOT := peel(taDb2Array["CODLOT"]," ")
+
+            taLineCount[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := build(nLineCount)
+            taEBELP[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["EBELP"]," ")
+            taMBLNR[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["MBLNR"]," ")
+            taDOCNUM[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["DOCNUM"]," ")
+            taQTD_ESPERADA[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["QTD_ESPERADA"]," ")
+            remove(taDb2Array)
+        endwhile
+                    
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        tQuery := build("SELECT	TRIM(RP.CODPRO)                                                 AS MATERIAL     ", NL," "\
+                        "       ,RP.CODLOT                                                      AS LOTE         ", NL," "\
+                        "       ,CASE RP.MOTIMM WHEN '' THEN IMRB.STOSAP1 ELSE IMRP.STOSAP1 END AS STATUS       ", NL," "\
+                        "       ,INTEGER(SUM(RP.UVCMVT / RP.PCBPRO))                            AS QUANTIDADE   ", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GERECP AS RP                                  ", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GERALR AS RB                             ", NL," "\
+                        "ON RP.NUMREC = RB.NUMREC AND RP.SEQREC = RB.SEQREC AND RB.CODRUB = 'STLT'              ", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IMRB                           ", NL," "\
+                        "ON RB.VALRUB = IMRB.MOTIMM                                                             ", NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IMRP                           ", NL," "\
+                        "ON RP.MOTIMM = IMRP.MOTIMM                                                             ", NL," "\
+                        "WHERE 1 = 1                                                                            ", NL," "\
+                        "AND RP.NUMREC = '",tNUMREC,"'                                                          ", NL," "\
+                        "AND RP.CODACT = '",tCODACT,"'                                                          ", NL," "\
+                        "GROUP BY  RP.CODPRO                                                                    ", NL," "\
+                        "         ,RP.CODLOT                                                                    ", NL," "\
+                        "         ,CASE RP.MOTIMM WHEN '' THEN IMRB.STOSAP1 ELSE IMRP.STOSAP1 END               ", NL," "\
+                        "ORDER BY 1, 2, 3")
+
+        log("***********************************", NL)
+        log(tQuery, NL)
+        log("***********************************", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL ", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            tCODPRO2 := peel(taDb2Array["MATERIAL"]," ")
+            tCODLOT2 := peel(taDb2Array["LOTE"]," ")
+
+            taSTATUS[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["STATUS"]," ")
+            taQUANTIDADE[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["QUANTIDADE"]," ")
+
+            remove(taDb2Array)
+        endwhile
+                    
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            print("FATAL", tfSqlErrorStr())
+            bfMajtrace("Erro de Traducao", \
+                            "1", \
+                            tREFREC, \
+                            tDataDocumento, \
+                            tFileOut, \
+                            "CONFIRMAÇÃO DE RECEBIMENTO", \
+                            build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+            exit(1)
+        endif
+
+        while tIndex in taLineCount do
+            split(tIndex, taIndexSplit, "-")
+
+            tDIPREC_Split := taIndexSplit[1]
+            tCODPRO_Split := taIndexSplit[2]
+            tCODLOT_Split := taIndexSplit[3]
+
+            if not number(peel(tCODPRO_Split," ")) = 0 then 
+                tCODPRO_aux := build(number(peel(tCODPRO_Split," ")):R018)
+            else
+                tCODPRO_aux := peel(tCODPRO_Split," ")
+            endif
+            log(tCODPRO_aux,NL)
+
+            log("Quantidade: ",taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)], NL)
+            log("Quantidade2: ",taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)], NL)
+            if number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) and length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > 0 then
+                log("IF 1", NL)
                 R_S1_TIPO_REGISTRO("S1")
                 R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
                 R_S1_MATERIAL(tCODPRO_aux)
-                R_S1_QUANTIDADE(build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                R_S1_QUANTIDADE(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)] := build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) - number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]))
                 R_S1_STATUS(peel(taSTATUS[build(tCODPRO_Split,"-",tCODLOT_Split)]," "))
                 R_S1_LOTE(peel(tCODLOT_Split," "))
                 R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
@@ -976,34 +964,9 @@ end
                 
                 flush(0,0,NL) >> tFileOutTemp
                 nContLineEscritas++
-
-                R_S1_TIPO_REGISTRO("S1")
-                R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
-                R_S1_MATERIAL(tCODPRO_aux)
-                R_S1_QUANTIDADE(build(number(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) - number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]))):R016))
-                R_S1_STATUS("HOLD")
-                R_S1_LOTE(peel(tCODLOT_Split," "))
-                R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
-                R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
-                
-                flush(0,0,NL) >> tFileOutTemp
-                nContLineEscritas++
             else
-                if length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) = 0 then
-                    log("IF 3", NL)
-                    R_S1_TIPO_REGISTRO("S1")
-                    R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
-                    R_S1_MATERIAL(tCODPRO_aux)
-                    R_S1_QUANTIDADE(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R016))
-                    R_S1_STATUS("HOLD")
-                    R_S1_LOTE(peel(tCODLOT_Split," "))
-                    R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
-                    R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
-                    
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContLineEscritas++
-                else
-                    log("IF 4", NL)
+                if number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) < number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) and length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) > 0 then
+                    log("IF 2", NL)
                     R_S1_TIPO_REGISTRO("S1")
                     R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
                     R_S1_MATERIAL(tCODPRO_aux)
@@ -1015,24 +978,64 @@ end
                     
                     flush(0,0,NL) >> tFileOutTemp
                     nContLineEscritas++
+
+                    R_S1_TIPO_REGISTRO("S1")
+                    R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    R_S1_MATERIAL(tCODPRO_aux)
+                    R_S1_QUANTIDADE(build(number(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]) - number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]))):R016))
+                    R_S1_STATUS("HOLD")
+                    R_S1_LOTE(peel(tCODLOT_Split," "))
+                    R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                    R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                    
+                    flush(0,0,NL) >> tFileOutTemp
+                    nContLineEscritas++
+                else
+                    if length(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]) = 0 then
+                        log("IF 3", NL)
+                        R_S1_TIPO_REGISTRO("S1")
+                        R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                        R_S1_MATERIAL(tCODPRO_aux)
+                        R_S1_QUANTIDADE(build(number(taQTD_ESPERADA[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                        R_S1_STATUS("HOLD")
+                        R_S1_LOTE(peel(tCODLOT_Split," "))
+                        R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                        R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                        
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContLineEscritas++
+                    else
+                        log("IF 4", NL)
+                        R_S1_TIPO_REGISTRO("S1")
+                        R_S1_DOCNUM(peel(taDOCNUM[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                        R_S1_MATERIAL(tCODPRO_aux)
+                        R_S1_QUANTIDADE(build(number(taQUANTIDADE[build(tCODPRO_Split,"-",tCODLOT_Split)]):R016))
+                        R_S1_STATUS(peel(taSTATUS[build(tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                        R_S1_LOTE(peel(tCODLOT_Split," "))
+                        R_S1_EBELP(build(number(taEBELP[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]):R05))
+                        R_S1_MBLNR(peel(taMBLNR[build(tDIPREC_Split,"-",tCODPRO_Split,"-",tCODLOT_Split)]," "))
+                        
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContLineEscritas++
+                    endif
                 endif
             endif
-        endif
-    endwhile
+        endwhile
 
-    close(tFileOutTemp)
-    copy(tFileOutTemp,tFileOut)
-    close(tFileOutTemp)
-    remove(tFileOutTemp)
-    close(tFileOut)
+        close(tFileOutTemp)
+        copy(tFileOutTemp,tFileOut)
+        close(tFileOutTemp)
+        remove(tFileOutTemp)
+        close(tFileOut)
 
-    bfMajtrace("Recebida", \
-                "0", \
-                tREFREC, \
-                time("now","%Y-%m-%dT%H:%M:%S"), \
-                tFileOut, \
-                "CONFIRMAÇÃO DE RECEBIMENTO", \
-                "")
+        bfMajtrace("Recebida", \
+                    "0", \
+                    tREFREC, \
+                    time("now","%Y-%m-%dT%H:%M:%S"), \
+                    tFileOut, \
+                    "CONFIRMAÇÃO DE RECEBIMENTO", \
+                    "")
+    endif
 
     if tCODACT = "MAR" then
         close(tFileOutTempBP)
