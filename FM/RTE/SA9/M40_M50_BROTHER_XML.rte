@@ -76,6 +76,10 @@ endbegin
 
 !==============================================================================
 
+segment SnatOp gGnfeProc,gGNFe,gGinfNFe,gGide
+	tNatOp := eENatOp
+endsegment
+
 segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide
 	tREFLIV := build(number(eEserie))
 	tNumeroSerie := eEserie 
@@ -293,6 +297,10 @@ endsegment
 segment SvNF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
 	tTotalvNF := eEvNF
 	tVALRUBVNF := eEvNF
+endsegment
+
+segment SmodFrete gGnfeProc,gGNFe,gGinfNFe,gGtransp
+	tModFrete := eEmodFrete
 endsegment
 
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
@@ -916,6 +924,32 @@ end
 				flush(0,0,NL) >> tFileOutTemp
 				nContadorLinhasEscritas++
 
+				R_GEEX5005_CODEXC("50")
+				R_GEEX5005_SEPEXC(".")
+				R_GEEX5005_SCOEXC("05")
+				R_GEEX5005_TRTEXC(tTRTEXC)
+				R_GEEX5005_CODACT(tCODACT)
+				R_GEEX5005_CODCLI(tCODCLI)
+				R_GEEX5005_REFLIV(tREFLIV)
+				R_GEEX5005_CODRUB("NTOP")
+				R_GEEX5005_VALRUB(tNatOp)
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				R_GEEX5005_CODEXC("50")
+				R_GEEX5005_SEPEXC(".")
+				R_GEEX5005_SCOEXC("05")
+				R_GEEX5005_TRTEXC(tTRTEXC)
+				R_GEEX5005_CODACT(tCODACT)
+				R_GEEX5005_CODCLI(tCODCLI)
+				R_GEEX5005_REFLIV(tREFLIV)
+				R_GEEX5005_CODRUB("MFRE")
+				R_GEEX5005_VALRUB(tModFrete)
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
 				if bPedidoExiste = FALSE then
 					R_GEEX5005_CODEXC("50")
 					R_GEEX5005_SEPEXC(".")
@@ -1125,6 +1159,38 @@ end
 						R_GEEX5020_CODPRO(taCprod[nContadorTmpTOTAL])
 						R_GEEX5020_UNICDE(taUNICDE[nContadorTmpTOTAL])
 
+						! INICIO QUERY tIMMFRG
+							tQuery := build("SELECT valrub", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".geacrub", NL," "\
+											"WHERE codact = '",tCODACT,"'", NL," "\
+											"AND codrub = 'IERR'")
+
+							log("------------------------------------------------------------", NL)
+							log(tQuery,NL)
+							log("------------------------------------------------------------", NL)
+
+							if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+
+							if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+
+							while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+								tIMMFRG := peel(taDb2Array["valrub"]," ")
+
+								remove(taDb2Array)
+							endwhile
+
+							if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+						! FIM QUERY tIMMFRG
+
 						! INICIO QUERY tCVTUVC
 							tQuery := build("SELECT CVTUVC", NL," "\
 											"FROM FGE50FM",tToInfologPrefixFilename,".GEZUNI", NL," "\
@@ -1203,6 +1269,7 @@ end
 						R_GEEX5020_NLILIV(build(nContadorTmpTOTAL))
 						R_GEEX5020_AIGPRI("1")
 						R_GEEX5020_PRILIV(strip(substr(taUnCom[nContadorTmpTOTAL], 1, index(taUnCom[nContadorTmpTOTAL], ".") + 3), "."))
+						R_GEEX5020_IMMFRG(tIMMFRG)
 
 						flush(0,0,NL) >> tFileOutTemp
 						nContadorLinhasEscritas++
