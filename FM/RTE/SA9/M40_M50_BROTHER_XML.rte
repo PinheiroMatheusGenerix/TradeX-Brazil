@@ -77,7 +77,7 @@ endbegin
 !==============================================================================
 
 segment SnatOp gGnfeProc,gGNFe,gGinfNFe,gGide
-	tNatOp := eENatOp
+	tNatOp := eEnatOp
 endsegment
 
 segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide
@@ -1160,10 +1160,10 @@ end
 						R_GEEX5020_UNICDE(taUNICDE[nContadorTmpTOTAL])
 
 						! INICIO QUERY tIMMFRG
-							tQuery := build("SELECT valrub", NL," "\
-											"FROM FGE50FM",tToInfologPrefixFilename,".geacrub", NL," "\
-											"WHERE codact = '",tCODACT,"'", NL," "\
-											"AND codrub = 'IERR'")
+							tQuery := build("SELECT VALRUB", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+											"WHERE CODACT = '",tCODACT,"'", NL," "\
+											"AND CODRUB = 'IERR'")
 
 							log("------------------------------------------------------------", NL)
 							log(tQuery,NL)
@@ -1180,7 +1180,7 @@ end
 							endif
 
 							while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-								tIMMFRG := peel(taDb2Array["valrub"]," ")
+								tIMMFRG := peel(taDb2Array["VALRUB"]," ")
 
 								remove(taDb2Array)
 							endwhile

@@ -450,12 +450,12 @@ end
 						nContadorNLILIV++
 
 						! QUERY tIMMFRG
-							tQuery := build("SELECT  mo.ediimo, mo.motimm", NL," "\
-											"FROM FGE50FM",tToInfologPrefixFilename,".gezzru ru", NL," "\
-											"JOIN FGE50FM",tToInfologPrefixFilename,".gezimo mo", NL," "\
-											"ON mo.motimm = ru.valcle", NL," "\
-											"WHERE codrub = 'STCK'", NL," "\
-											"AND valrub = '",taMOTIMM[tLinha],"'")
+							tQuery := build("SELECT  MO.EDIIMO, MO.MOTIMM", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RU", NL," "\
+											"JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO MO", NL," "\
+											"ON MO.MOTIMM = RU.VALCLE", NL," "\
+											"WHERE CODRUB = 'STCK'", NL," "\
+											"AND VALRUB = '",taMOTIMM[tLinha],"'")
 
 							log("------------------------------------------------------------", NL)
 							log(tQuery,NL)
@@ -472,10 +472,12 @@ end
 							endif
 
 							while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
-								if peel(taDb2Array["ediimo"]," ") = "LIV" then
+								log("CODPRO = ", taCODPRO[tLinha], NL)
+								if peel(taDb2Array["EDIIMO"]," ") = "LIV" then
 									tIMMFRG := ""
+									log("IMMFRG igual a vazio!", NL)
 								else
-									tIMMFRG := peel(taDb2Array["motimm"]," ")
+									tIMMFRG := peel(taDb2Array["MOTIMM"]," ")
 								endif
 								remove(taDb2Array)
 							endwhile
