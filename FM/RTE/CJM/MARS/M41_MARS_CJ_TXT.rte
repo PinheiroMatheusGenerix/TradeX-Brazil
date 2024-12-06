@@ -1040,6 +1040,8 @@ end
                     tFileOut, \
                     "CONFIRMAÇÃO DE RECEBIMENTO", \
                     "")
+    else
+        log("O CODTRE é igual a DV, então não gerar Trace da interface CONFIRMAÇÃO DE RECEBIMENTO", NL)
     endif
 
     if tCODACT = "MAC" then
