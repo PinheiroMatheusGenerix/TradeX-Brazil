@@ -543,11 +543,13 @@ end
 			flush(0,0,NL)  >> tFileOutTemp
 			nContadorLinhasEscritas++
 		else
-			log("bPedidoExiste = FALSE",NL)
+			log("bPedidoExiste = TRUE",NL)
 			while tLinha in taREFLIV do
 				! QUERY tIMMFRG
-					tQuery := build("SELECT  VALCLE", NL," "\
-									"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU", NL," "\
+					tQuery := build("SELECT  MO.EDIIMO, MO.MOTIMM", NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RU", NL," "\
+									"JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO MO", NL," "\
+									"ON MO.MOTIMM = RU.VALCLE", NL," "\
 									"WHERE CODRUB = 'STCK'", NL," "\
 									"AND VALRUB = '",taMOTIMM[tLinha],"'")
 
@@ -566,8 +568,13 @@ end
 						exit(1)	
 					endif
 
-					while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
-						tIMMFRG := peel(taDb2Array["VALCLE"]," ")
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+						if peel(taDb2Array["EDIIMO"]," ") = "LIV" then
+							tIMMFRG := ""
+							log("IMMFRG igual a vazio!", NL)
+						else
+							tIMMFRG := peel(taDb2Array["MOTIMM"]," ")
+						endif
 						remove(taDb2Array)
 					endwhile
 
