@@ -89,19 +89,26 @@ end
 						"        END                                                      AS QUANTITY_OF_DOCUMENT_VOLUMES",NL," "\
 						"       ,LD.NLILIV                                                AS PRODUCT_SEQUENCE",NL," "\
 						"       ,LD.CODPRO                                                AS PRODUCT_CODE",NL," "\
-						"       ,'1'		                                                 AS PRODUCT_QUANTITY",NL," "\
+						"       ,'1'		                                              AS PRODUCT_QUANTITY",NL," "\
 						"       ,LD.UNICDE                                                AS PRODUCT_MEASUREMENT_UNIT",NL," "\
 						"       ,CASE",NL," "\
 						"            WHEN TD.KAILIV <> '1'",NL," "\
 						"            THEN PR.PDBCOL * (1 / PR.PCBPRO)",NL," "\
 						"            ELSE (TD.CUMPOI - ZM.PDBEMB)",NL," "\
 						"        END                                                      AS NET_WEIGHT_DOCUMENT",NL," "\
-						"       ,(",NL," "\
-						"            SELECT  RB.VALRUB",NL," "\
-						"            FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
-						"            WHERE RB.CODRUB = 'STCK'",NL," "\
-						"            AND RB.VALCLE = LD.IMMFRG",NL," "\
-						"        )                                                        AS PRODUCT_STOCK_TYPE",NL," "\
+						"       ,CASE",NL," "\
+						"			WHEN LD.IMMFRG <> ''",NL," "\
+						"			THEN LD.IMMFRG",NL," "\
+						"			ELSE (SELECT  RB.VALRUB",NL," "\
+						"					FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+						"					WHERE RB.CODRUB = 'STCK'",NL," "\
+						"					AND RB.VALCLE = (",NL," "\
+						"						SELECT VALRUB",NL," "\
+						"						FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
+						"						WHERE CODACT = 'BRO'",NL," "\
+						"						AND CODRUB = 'BRO')",NL," "\
+						"			)",NL," "\
+						"		 END                                                      AS PRODUCT_STOCK_TYPE",NL," "\
 						",SR.CODSER                                                       AS PRODUCT_SERIAL_NUMBER",NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GESERI SR",NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GETOUD TD",NL," "\
