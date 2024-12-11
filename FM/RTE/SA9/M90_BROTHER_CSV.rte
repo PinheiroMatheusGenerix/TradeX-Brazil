@@ -2529,11 +2529,24 @@ function bfP5_EstoqueOficial_BRO()
 	!P5_EST_OFICIAL_WMS
 	!==============================================================================
 
-	tQuery := build("SELECT   GL.CODPRO                                                                                                                 AS SKU",NL," "\
+	tQuery := build("SELECT   GL.CODPRO                                                                                                                AS SKU",NL," "\
 					"       ,TRIM(GL.DS1PRO)                                                                                                           AS SKU_DESC1_35",NL," "\
 					"       ,TRIM(GL.CODPAL)                                                                                                           AS LP",NL," "\
-					"       ,TRIM(RU.VALRUB)                                                                                                           AS STATUS_SAP",NL," "\
-					"       ,CASE GL.MOTIMM WHEN '' THEN TRIM(RB.VALRUB) ELSE GL.MOTIMM END                                                            AS SP",NL," "\
+					"       ,CASE",NL," "\
+					"			GL.MOTIMM",NL," "\
+					"			WHEN ''",NL," "\
+					"			THEN (SELECT VALRUB",NL," "\
+					"					FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
+					"					WHERE CODRUB = 'STCK'",NL," "\
+					"					AND VALCLE = TRIM(RB.VALRUB))",NL," "\
+					"			ELSE GL.MOTIMM",NL," "\
+					"			END	                                                                                                                   AS STATUS_SAP",NL," "\
+					"		,CASE",NL," "\
+					"			GL.MOTIMM",NL," "\
+					"			WHEN ''",NL," "\
+					"			THEN TRIM(RB.VALRUB)",NL," "\
+					"			ELSE GL.MOTIMM",NL," "\
+					"			END															                                                           AS SP",NL," "\
 					"       ,REPLACE(TO_CHAR(CAST(GL.UVCSTO / GL.PCBPRO AS NUMERIC(15,2))),'.',',')                                                    AS QTDE_CDA",NL," "\
 					"       ,CASE GL.CODLOT WHEN '' THEN 'NOLOT' ELSE GL.CODLOT END                                                                    AS LOT",NL," "\
 					"       ,COALESCE(LT.STATUS,'')                                                                                                    AS STATUS_LOTE",NL," "\
