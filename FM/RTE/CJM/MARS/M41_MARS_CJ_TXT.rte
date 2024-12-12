@@ -791,7 +791,7 @@ end
         endif
     ! FIM M06
 
-    if tCODTRE <> "DV" then
+    if tCODTRE <> "DV" or tCODTRE <> "LO" then
         R_S0_TIPO_REGISTRO("S0")
         R_S0_DATA(tDTRREC)
         R_S0_HORA(build(tHERREC, "00"))
@@ -1041,7 +1041,7 @@ end
                     "CONFIRMAÇÃO DE RECEBIMENTO", \
                     "")
     else
-        log("O CODTRE é igual a DV, então não gerar Trace da interface CONFIRMAÇÃO DE RECEBIMENTO", NL)
+        log("O CODTRE é igual a DV ou LO, então não gerar Trace da interface CONFIRMAÇÃO DE RECEBIMENTO", NL)
     endif
 
     if tCODACT = "MAC" then
