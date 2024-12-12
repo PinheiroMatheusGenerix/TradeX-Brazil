@@ -791,7 +791,8 @@ end
         endif
     ! FIM M06
 
-    if tCODTRE <> "DV" or tCODTRE <> "LO" then
+    log("CODTRE = ", tCODTRE, NL)
+    if peel(tCODTRE, " ") <> "LO" and peel(tCODTRE, " ") <> "DV" then
         R_S0_TIPO_REGISTRO("S0")
         R_S0_DATA(tDTRREC)
         R_S0_HORA(build(tHERREC, "00"))
