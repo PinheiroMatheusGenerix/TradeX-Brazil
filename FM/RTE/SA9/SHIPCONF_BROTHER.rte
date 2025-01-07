@@ -97,16 +97,15 @@ end
 						"            ELSE (TD.CUMPOI - ZM.PDBEMB)",NL," "\
 						"        END                                                      AS NET_WEIGHT_DOCUMENT",NL," "\
 						"       ,CASE",NL," "\
-						"			WHEN LD.IMMFRG <> ''",NL," "\
-						"			THEN LD.IMMFRG",NL," "\
-						"			ELSE (SELECT  RB.VALRUB",NL," "\
-						"					FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
-						"					WHERE RB.CODRUB = 'STCK'",NL," "\
-						"					AND RB.VALCLE = (",NL," "\
-						"						SELECT VALRUB",NL," "\
+						"			WHEN LD.IMMFRG = ''",NL," "\
+						"			THEN (SELECT VALRUB",NL," "\
 						"						FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
 						"						WHERE CODACT = 'BRO'",NL," "\
 						"						AND CODRUB = 'BRO')",NL," "\
+						"			ELSE (SELECT  RB.VALRUB",NL," "\
+						"					FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+						"					WHERE RB.CODRUB = 'STCK'",NL," "\
+						"					AND RB.VALCLE = LD.IMMFRG",NL," "\
 						"			)",NL," "\
 						"		 END                                                      AS PRODUCT_STOCK_TYPE",NL," "\
 						",SR.CODSER                                                       AS PRODUCT_SERIAL_NUMBER",NL," "\
