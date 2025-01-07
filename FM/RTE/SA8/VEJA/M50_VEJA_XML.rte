@@ -133,7 +133,7 @@ endsegment
 
 segment Sshipping_via gGpickticket,gGpickticket_header
     tCODTRA := eEshipping_via
-    tCRILIV := eEshipping_via
+    tCRILIV := tREFLIV
 endsegment
 
 segment Slock_type gGpickticket,gGpickticket_header
