@@ -2471,15 +2471,18 @@ function bfP5_EstoqueOficial_BRO()
 	tQuery := build("SELECT   GL.CODPRO                                                                                                                AS SKU",NL," "\
 					"       ,TRIM(GL.DS1PRO)                                                                                                           AS SKU_DESC1_35",NL," "\
 					"       ,TRIM(GL.CODPAL)                                                                                                           AS LP",NL," "\
-					"       ,CASE",NL," "\
-					"			GL.MOTIMM",NL," "\
-					"			WHEN ''",NL," "\
-					"			THEN (SELECT VALRUB",NL," "\
-					"					FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
-					"					WHERE CODRUB = 'STCK'",NL," "\
-					"					AND VALCLE = TRIM(RB.VALRUB))",NL," "\
-					"			ELSE GL.MOTIMM",NL," "\
-					"			END	                                                                                                                   AS STATUS_SAP",NL," "\
+					"       ,(SELECT VALRUB",NL," "\
+					"			FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
+					"			WHERE CODRUB = 'STCK'",NL," "\
+					"			AND VALCLE = (CASE",NL," "\
+					"							WHEN GL.MOTIMM = ''",NL," "\
+					"							THEN (SELECT VALRUB",NL," "\
+					"									FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
+					"									WHERE CODACT = 'BRO'",NL," "\
+					"									AND CODRUB = 'BRO')",NL," "\
+					"							ELSE GL.MOTIMM",NL," "\
+					"							END)",NL," "\
+					"		) 																														   AS STATUS_SAP",NL," "\
 					"		,CASE",NL," "\
 					"			GL.MOTIMM",NL," "\
 					"			WHEN ''",NL," "\
