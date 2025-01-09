@@ -2763,7 +2763,7 @@ function bfP5_InfSepNaoExp_BRO()
 					"       ,SD.UVCLIV                                                                                  AS QTD",NL," "\
 					"       ,'EA'                                                                                       AS UNID",NL," "\
 					"       ,REPLACE(TO_CHAR(CAST(SUM((SD.PDBCOL/SD.PCBPRO)*SD.UVCLIV) AS NUMERIC(15,3))),'.',',')      AS PESO",NL," "\
-					"       ,REPLACE(TO_CHAR(CAST(SUM((SD.VOLCOL/SD.PCBPRO)*SD.UVCLIV)/1000 AS NUMERIC(15,3))),'.',',') AS CUBAGEMT",NL," "\
+					"       ,REPLACE(TO_CHAR(CAST(SUM((SD.VOLCOL/SD.PCBPRO)*SD.UVCLIV)/1000 AS NUMERIC(15,3))),'.',',') AS CUBAGEM",NL," "\
 					"       ,GP.CODTMD                                                                                  AS COD_ONU",NL," "\
 					"       ,GP.CODSEC                                                                                  AS CLASSE_RISCO",NL," "\
 					"FROM FGE50FM",tToInfologPrefixFilename,".GESUPD AS SD",NL," "\
