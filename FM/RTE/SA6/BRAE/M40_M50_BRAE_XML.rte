@@ -875,7 +875,7 @@ end
 			while nContadorTmpTOTAL <= nContadorItem do
 				tQuery := build("SELECT (FLOOR (",taUVCREA[nContadorTmpTOTAL],"/PCBPRO)) INTEIROS ", NL," "\
 								"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
-								"WHERE CODPRO = '",taCODPRO[nContadorTmpTOTAL],"'  ", NL," "\
+								"WHERE CODPRO = '",taCprod[nContadorTmpTOTAL],"'  ", NL," "\
 								"AND CODACT = '",tCODACT,"' ")
 
 				log("********************", NL)
@@ -993,7 +993,7 @@ end
 					tQuery := build("SELECT A.CVTUVC, B.PCBPRO ", NL," "\
 									"FROM FGE50FM", tToInfologPrefixFilename, ".GEZUNI AS A ", NL," "\
 									"JOIN FGE50FM", tToInfologPrefixFilename, ".GEPRO  AS B ", NL," "\
-									" ON B.CODPRO = '", taCODPRO[nContadorTmpTOTAL], "'", NL," "\
+									" ON B.CODPRO = '", taCprod[nContadorTmpTOTAL], "'", NL," "\
 									"AND B.CODACT = '", tCODACT, "'", NL," "\
 									"AND A.UNIPRO = '", taUNICDE[nContadorTmpTOTAL], "'")
 
@@ -1040,7 +1040,7 @@ end
 				R_GEEX5020_SCOEXC("20")
 				R_GEEX5020_CODACT(tCODACT)
 				R_GEEX5020_CODCLI(tCODCLI)
-				R_GEEX5020_CODPRO(taCODPRO[nContadorTmpTOTAL])
+				R_GEEX5020_CODPRO(taCprod[nContadorTmpTOTAL])
 				R_GEEX5020_UNICDE(taUNICDE[nContadorTmpTOTAL])
 				if tCVTUVC = "3" then
 					R_GEEX5020_UVCCDE(build((number(taUVCCDE[nContadorTmpTOTAL]) * number(tPCBPRO)):R09.0))
