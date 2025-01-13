@@ -107,7 +107,7 @@ line(1:"97.50")
 		tCODACTLido := S_GEEX9750_CODACT
 
 	! GAMMA
-		if S_GEEX9750_CODACT = "GIM" or S_GEEX9750_CODACT = "GIS" or S_GEEX9750_CODACT = "GIE" then
+		if S_GEEX9750_CODACT = "GIC" or S_GEEX9750_CODACT = "GIM" or S_GEEX9750_CODACT = "GIS" or S_GEEX9750_CODACT = "GIE" then
 			bGeraArquivo := FALSE
 			tCODACTLidoConvertido := "GAM"
 			tAmbiente := "GAMA ITALY"
@@ -280,9 +280,16 @@ line(1:"97.50")
 					!nao faz nada porque é duplicado
 				else
 					nMessageID := cMessageID
-					tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GIEXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taREFLIVSplitExp[1],".txt")
-					tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GIEXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taREFLIVSplitExp[1],".txt")
-					tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GIEXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taNumSerie[1],".txt")
+
+					if S_GEEX9750_CODACT = "GIC" then
+						tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taREFLIVSplitExp[1],".txt")
+						tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taREFLIVSplitExp[1],".txt")
+						tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taNumSerie[1],".txt")
+					else
+						tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GIEXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taREFLIVSplitExp[1],".txt")
+						tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GIEXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taREFLIVSplitExp[1],".txt")
+						tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GIEXPEDICAO",time("now" ,"%Y%m%d%H%M%S"),"_",taNumSerie[1],".txt")
+					endif
 					
 					R_CabecalhoArquivo_IDArquivo("COL")
 					flush(0,0,NL) >> tFileOutTemp
@@ -291,6 +298,10 @@ line(1:"97.50")
 					R_CabelhoDocumento_DataColeta(tPickingStaDate)
 					R_CabelhoDocumento_HoraColeta(tPickingStaTime)
 					R_CabelhoDocumento_SerieNF(build(number(taREFLIVSplitExp[2]):R03))
+					
+					if S_GEEX9750_CODACT = "GIC" then 
+						R_CabelhoDocumento_CNPJempOrigem("07293118000790")
+					endif
 					
 					if S_GEEX9750_CODACT = "GIM" then 
 						R_CabelhoDocumento_CNPJempOrigem("07293118000102")
@@ -330,9 +341,16 @@ line(1:"97.50")
 					!nao faz nada porque é duplicado
 				else
 					nMessageID := cMessageID
-					tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
-					tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
-					tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+
+					if S_GEEX9750_CODACT = "GIC" then
+						tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+						tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+						tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+					else
+						tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+						tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+						tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",replace(taREFLIVSplitExp[1], " ", "_"),".txt")
+					endif
 					
 					R_CabecalhoArquivo_IdArquivo("EXP")
 					flush(0,0,NL) >> tFileOutTemp
@@ -366,6 +384,10 @@ line(1:"97.50")
 						R_CabecalhoDocumento_DataLibertacao(tPickingStaDate)
 						R_CabecalhoDocumento_HoraLibertacao(tPickingStaTime)
 						R_CabecalhoDocumento_SeriaNF(build(number(taREFLIVSplitExp[2]):R03))
+						
+						if S_GEEX9750_CODACT = "GIC" then 
+							R_CabecalhoDocumento_CNPJRemetente("07293118000790")
+						endif
 						
 						if S_GEEX9750_CODACT = "GIM" then 
 							R_CabecalhoDocumento_CNPJRemetente("07293118000102")
