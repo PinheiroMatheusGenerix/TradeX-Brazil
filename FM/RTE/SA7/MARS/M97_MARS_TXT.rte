@@ -179,12 +179,12 @@ end
             tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACT,"_SC",time("now","%Y%m%d%H%M%S"),"_",tNUMLIV,".txt")
             tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_SC",time("now","%Y%m%d%H%M%S"),"_",tNUMLIV,".txt")
 
-            tQuery2 := build("SELECT  TRIM(SD.REFLIV)                                                            AS VBELN", NL," "\
-                                "    ,TRIM(LB.VALRUB)                                                            AS TKNUM", NL," "\
-                                "    ,LPAD(MIN(TRIM(SD.NLILIV)) OVER (PARTITION BY SD.CODPRO), 3, '0')           AS POSNR", NL," "\
-                                "    ,TRIM(SD.CODPRO)                                                            AS MATNR", NL," "\
-                                "    ,INTEGER(SUM(SD.UVCLIV/SD.PCBPRO))                                          AS CANTIDAD", NL," "\
-                                "    ,TRIM(UN.LIBVOX)                                                            AS MEINS", NL," "\
+            tQuery2 := build("SELECT  TRIM(SD.REFLIV)                                                             AS VBELN", NL," "\
+                                "    ,TRIM(LB.VALRUB)                                                             AS TKNUM", NL," "\
+                                "    ,LPAD(MIN(TRIM(SD.NLILIV)) OVER (PARTITION BY SD.CODPRO, SD.REFLIV), 3, '0') AS POSNR", NL," "\
+                                "    ,TRIM(SD.CODPRO)                                                             AS MATNR", NL," "\
+                                "    ,INTEGER(SUM(SD.UVCLIV/SD.PCBPRO))                                           AS CANTIDAD", NL," "\
+                                "    ,TRIM(UN.LIBVOX)                                                             AS MEINS", NL," "\
                                 "    ,CASE TRIM(SD.CODLOT) ", NL," "\
                                 "        WHEN '' THEN TRIM(MMD.CODLOT) ", NL," "\
                                 "        ELSE TRIM(SD.CODLOT) END           AS CHARG", NL," "\
