@@ -96,6 +96,11 @@ endsegment
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGemit
 	tEmitCNPJ := eECNPJ
 
+	if tEmitCNPJ = "07293118000790" then
+		tCODACT := "GIC"
+		tPerfil := "GAMA SC"
+	endif
+
 	if tEmitCNPJ = "07293118000102" then
 		tCODACT := "GIM"
 		tPerfil := "GAMA MANAUS"
@@ -357,7 +362,7 @@ end
 	endif
 
 	!GAMA ITALY - XML - NFE - M50 - GAMA
-	if (substr(pEDISEND.ORIGINAL.NAME,4,4) = "vend" and (tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or (substr(pEDISEND.ORIGINAL.NAME,7,4) = "vend" and (tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
+	if (substr(pEDISEND.ORIGINAL.NAME,4,4) = "vend" and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or (substr(pEDISEND.ORIGINAL.NAME,7,4) = "vend" and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
 		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
 		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
 		tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
@@ -943,19 +948,20 @@ end
 	endif
 
 	!GAMA ITALY
-	if ((substr(pEDISEND.ORIGINAL.NAME,4,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rtrf") and (tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or ((substr(pEDISEND.ORIGINAL.NAME,7,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rtrf") and (tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
+	if ((substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rtrf") and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or ((substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rtrf") and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
+		if substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rimp"  then
+			tCODTRE := "IMP"
+		endif
+		
 		if substr(pEDISEND.ORIGINAL.NAME,4,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rdev"  then
-			!tCODTRE := "DEV"
 			tCODTRE := "DV"
 		endif
 		
 		if substr(pEDISEND.ORIGINAL.NAME,4,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rrec" then
-			!tCODTRE := "REC"
 			tCODTRE := "RC"
 		endif
 		
 		if substr(pEDISEND.ORIGINAL.NAME,4,4) = "rtrf" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rtrf" then
-			!tCODTRE := "TRF"
 			tCODTRE := "TR"
 		endif
 				
