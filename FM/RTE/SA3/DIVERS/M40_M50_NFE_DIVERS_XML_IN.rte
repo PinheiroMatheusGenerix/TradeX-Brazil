@@ -361,6 +361,10 @@ end
 		tCODCLI := "EXPORTACAO"
 	endif
 
+	log("1 = ", pEDISEND.ORIGINAL.NAME,4,4, NL)
+	log("2 = ", pEDISEND.ORIGINAL.NAME,7,4, NL)
+	log("CODACT = ", tCODACT, NL)
+
 	!GAMA ITALY - XML - NFE - M50 - GAMA
 	if (substr(pEDISEND.ORIGINAL.NAME,4,4) = "vend" and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or (substr(pEDISEND.ORIGINAL.NAME,7,4) = "vend" and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
 		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
@@ -948,7 +952,7 @@ end
 	endif
 
 	!GAMA ITALY
-	if ((substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rtrf") and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or ((substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rtrf") and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
+	if ((substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,4,4) = "rtrf") and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) or ((substr(pEDISEND.ORIGINAL.NAME,7,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rdev" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rrec" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rtrf") and (tCODACT = "GIC" or tCODACT = "GIM" or tCODACT = "GIS" or tCODACT = "GIE")) then
 		if substr(pEDISEND.ORIGINAL.NAME,4,4) = "rimp" or substr(pEDISEND.ORIGINAL.NAME,7,4) = "rimp"  then
 			tCODTRE := "IMP"
 		endif
