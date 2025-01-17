@@ -667,7 +667,7 @@ line(1:"41.99")
     endif		
 		
     !if tCODACTLido = "583" or tCODACTLido = "602" then !faz o CSV PALETE
-    if (tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") and  (tCODTRE <> "DEV" and tCODTRE <> "DV") then
+    if (tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") and  (tCODTRE <> "DEV" and tCODTRE <> "DV") then
         nTempConta4130 := 1
         while nTempConta4130 <= nConta4130 do
             R_REGISTROCSVPAL_ReferenciaRecepcao(tNumeroDocumento)
@@ -831,7 +831,7 @@ line(1:"41.99")
         nRet := system(tCmdEmailErro)
     else
     !faz CSV que nao é gama italy
-        if (tCODTRE = "DEV" or tCODTRE = "DV") and (tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") then
+        if (tCODTRE = "DEV" or tCODTRE = "DV") and (tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") then
 
             !faz email com dados da tabela fmbrasil_consolidacao_m40gamaitaly
             bFezHeader := FALSE
@@ -1290,7 +1290,7 @@ line(1:"41.99")
     endwhile
 
     !if tCODACTLido = "581" or tCODACTLido = "583" or tCODACTLido = "602" then
-    if tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
+    if tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
         bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
         close(tFileOutTemp)
         copy(tFileOutTemp,tFileOut)
