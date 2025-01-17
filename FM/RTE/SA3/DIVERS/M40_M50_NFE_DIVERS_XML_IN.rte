@@ -805,7 +805,7 @@ end
 	endif
 
 	!divers
-	if ((substr(pEDISEND.ORIGINAL.NAME,4,8) = "VEN_SEP_" and (tCODACT = "VEN")) or (substr(pEDISEND.ORIGINAL.NAME,7,4) = "vend" and (tCODACT <> "GIM" and tCODACT <> "GIS" and tCODACT <> "GIE"))) or ((substr(pEDISEND.ORIGINAL.NAME,7,8) = "VEN_SEP_" and (tCODACT = "VEN")) or (substr(pEDISEND.ORIGINAL.NAME,10,4) = "vend" and (tCODACT <> "GIM" and tCODACT <> "GIS" and tCODACT <> "GIE"))) then
+	if ((substr(pEDISEND.ORIGINAL.NAME,4,8) = "VEN_SEP_" and (tCODACT = "VEN")) or (substr(pEDISEND.ORIGINAL.NAME,7,4) = "vend" and (tCODACT <> "GIC" and tCODACT <> "GIM" and tCODACT <> "GIS" and tCODACT <> "GIE"))) or ((substr(pEDISEND.ORIGINAL.NAME,7,8) = "VEN_SEP_" and (tCODACT = "VEN")) or (substr(pEDISEND.ORIGINAL.NAME,10,4) = "vend" and (tCODACT <> "GIC" and tCODACT <> "GIM" and tCODACT <> "GIS" and tCODACT <> "GIE"))) then
 
 		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
 		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
