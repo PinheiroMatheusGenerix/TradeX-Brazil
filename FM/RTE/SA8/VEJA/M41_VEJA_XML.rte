@@ -27,74 +27,71 @@ base "../trace/trace.cfg" TRACE
 #include "include/GEEXM41.inc"
 #include "include/GEEXM01.inc"
 
-!===========================================================
+!==============================================================================
 
 ! Initialization section
 
 begin
-	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
-	nMainIndex := 0
-	PROCESS_ERRONEOUS := TRUE
-	pXML.INCONVIN := "UTF-8"
-	pXML.INCOVIN := "UTF-8"
-	pXML.ENCODING := "UTF-8"
-	nMessageID := cMessageID
-
 	nPos := 1
 	nRec := 1 
-
-	log("------------------------------------------------------------", NL)
-	log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
-	log("------------------------------------------------------------", NL)
-
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
 	load(0,build(sHOME, "/config/FM_wms_configuration.properties"), taPARAM)
 	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA8"]
 
-	tDbBase		:= "FMWMS"
-	tDbBase2	:= "FMWMS2"
-	tDbUsername	:= taPARAM["WMSDBUSER"]
-	tDbPassword	:= taPARAM["WMSDBPASS"]
-	tDbUrl		:= taPARAM["WMSDBURL"]
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "VEJA"
+		tSentido := "O"
+		tMensagem := "M41-"
+		tDataDocumento := time("now","%Y-%m-%d")
 
-    bfSqlInit()
-	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
-		print("FATAL ",tfSqlErrorStr())
-		bfSqlClose(tDbBase)
-		bfMajtrace("Erro de Traducao", \
-                    "1", \
-                    "", \
-                    time("now","%Y-%m-%d"), \
-                    tFileOut, \
-                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
 
-	if not bfSqlJdbc(tDbBase2, tDbUsername, tDbPassword, tDbUrl) then
-		print("FATAL ",tfSqlErrorStr())
-		bfSqlClose(tDbBase2)
-		bfMajtrace("Erro de Traducao", \
-                    "1", \
-                    "", \
-                    time("now","%Y-%m-%d"), \
-                    tFileOut, \
-                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "FMWMS"
+		tDbBase2	:= "FMWMS2"
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= taPARAM["WMSDBPASS"]
+		tDbUrl		:= taPARAM["WMSDBURL"]
+
+   		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		if not bfSqlJdbc(tDbBase2, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
 	
-	nCountLine := 0
-	nCountItemIn := 0
-	nCount4020_M01 := 0
-	bGeraM01 := TRUE
-	bGeraM41 := TRUE
-	bTodos_Carton_zero := TRUE
+	!Variaveis Gerais
+		PROCESS_ERRONEOUS := TRUE
+		pXML.INCONVIN := "UTF-8"
+		pXML.INCOVIN := "UTF-8"
+		pXML.ENCODING := "UTF-8"
+		nCountLine := 0
+		nCountItemIn := 0
+		nCount4020_M01 := 0
+		nContItemCAR := 0
+		bGeraM01 := TRUE
+		bGeraM41 := TRUE
+		bTodos_Carton_zero := TRUE
 endbegin
 
-!===========================================================
+!==============================================================================
 
 line(1:"00.00")
 	tDATEXC_0000 := S_GEEX0000_DATEXC
 	tHEUEXC_0000 := S_GEEX0000_HEUEXC
 endline
+
+!==============================================================================
 
 line(1:"41.00")
 	tCODTRE := S_GEEX4100_CODTRE
@@ -120,24 +117,12 @@ line(1:"41.00")
 		log("------------------------------------------------------------", NL)
 
 		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtraceM01("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-			exit(1)					
+			bfSqlErro()
+			exit(1)				
 		endif
 
 		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtraceM01("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 
@@ -154,64 +139,33 @@ line(1:"41.00")
 				log("------------------------------------------------------------", NL)
 
 				if not bfSqlSet(tDbBase2, "Updatedb2", tQueryUpdate) then
-					log(tfSqlErrorStr(), NL)
-					bfMajtraceM01("Erro de Traducao",\
-								"1",\
-								tNUMLIV,\
-								time("now","%Y-%m-%d"),\
-								tFileOut, \
-								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-					exit(27)
+					bfSqlErro()
+					exit(1)
 				endif
 
 				if not bfSqlExec(tDbBase2, "Updatedb2") then
-					log(tfSqlErrorStr(), NL)
-					bfMajtraceM01("Erro de Traducao",\
-								"1",\
-								tNUMLIV,\
-								time("now","%Y-%m-%d"),\
-								tFileOut, \
-								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-					exit(28)
+					bfSqlErro()
+					exit(1)
 				endif
 
 				if not bfSqlCommit(tDbBase2, "Updatedb2") then
-					log(tfSqlErrorStr(), NL)
-					bfMajtraceM01("Erro de Traducao",\
-								"1",\
-								tNUMLIV,\
-								time("now","%Y-%m-%d"),\
-								tFileOut, \
-								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-					exit(29)
+					bfSqlErro()
+					exit(1)
 				endif
 
 				if not bfSqlFree(tDbBase2, "Updatedb2") then
-					log(tfSqlErrorStr(), NL)
-					bfMajtraceM01("Erro de Traducao",\
-								"1",\
-								tNUMLIV,\
-								time("now","%Y-%m-%d"),\
-								tFileOut, \
-								build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-					exit(30)
+					bfSqlErro()
+					exit(1)
 				endif
 			! UPDATE ETAREC
 			remove(taDb2Array)
 		endwhile
 
 		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL", tfSqlErrorStr())
-			bfMajtraceM01("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 	! FIM QUERY Validação de SNUREC
-
 
 	! QUERY bGeraM01, taVALRUB_GERERUB[peel(taDb2Array["CODRUB"], " ")]
 		tQuery := build("SELECT  CODRUB, VALRUB", NL," "\
@@ -224,24 +178,12 @@ line(1:"41.00")
 		log("------------------------------------------------------------", NL)
 
 		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtraceM01("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-			exit(1)					
+			bfSqlErro()
+			exit(1)			
 		endif
 
 		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtraceM01("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 
@@ -263,13 +205,7 @@ line(1:"41.00")
 		endif
 
 		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL", tfSqlErrorStr())
-			bfMajtraceM01("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 	! FIM QUERY bGeraM01, taVALRUB_GERERUB[peel(taDb2Array["CODRUB"], " ")]
@@ -285,24 +221,12 @@ line(1:"41.00")
 		log("------------------------------------------------------------", NL)
 
 		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)					
 		endif
 
 		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 
@@ -316,21 +240,19 @@ line(1:"41.00")
 		endif
 
 		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 	! FIM QUERY bINDARV3
 endline
 
+!==============================================================================
+
 line(1:"41.01")   
 	tEDIACT := S_GEEX4101_EDIACT
 endline
+
+!==============================================================================
 
 line(1:"41.05")
 	! QUERY tVALRUB_NRR
@@ -345,24 +267,12 @@ line(1:"41.05")
 		log("------------------------------------------------------------", NL)
 
 		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-			exit(1)					
+			bfSqlErro()
+			exit(1)			
 		endif
 
 		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 
@@ -373,13 +283,7 @@ line(1:"41.05")
 		endwhile
 
 		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 	! FIM QUERY tVALRUB_NRR
@@ -390,7 +294,10 @@ line(1:"41.05")
 	taCODRUB[S_GEEX4105_VALRUB] := S_GEEX4105_CODRUB
 endline
 
+!==============================================================================
+
 line(1:"41.20")
+
 	if S_GEEX4120_UNICDE = "CAR" then
 		tCODPRO_Replicado := S_GEEX4120_CODPRO
 		tCODLOT_Replicado := S_GEEX4120_CODLOT
@@ -431,24 +338,12 @@ line(1:"41.20")
 		log("------------------------------------------------------------", NL)
 
 		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-			exit(1)					
+			bfSqlErro()
+			exit(1)				
 		endif
 
 		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 
@@ -459,13 +354,7 @@ line(1:"41.20")
 		endif
 
 		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao", \
-						"1", \
-						"", \
-						time("now","%Y-%m-%d"), \
-						tFileOut, \
-						build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+			bfSqlErro()
 			exit(1)
 		endif
 	endif
@@ -473,6 +362,13 @@ line(1:"41.20")
 	if number(tUVCREC_Replicado) > 0 and S_GEEX4120_CODPRO <> "__EOF__" then
 		taValidaCODPRO[build(tCODPRO_Replicado,"-",S_GEEX4120_CODPRO,"-",tCODLOT_Replicado,"-",tUVCREC_Replicado)] := "1"
 		log("taValidaCODPRO[build(",tCODPRO_Replicado,"-",S_GEEX4120_CODPRO,"-",tCODLOT_Replicado,"-",tUVCREC_Replicado,")]", NL)
+	
+		if tCODPRO_Replicado = S_GEEX4120_CODPRO then
+			nContItemCAR := 0
+		else 
+			nContItemCAR++
+			taCarton[build(tCODPRO_Replicado)] := build(nContItemCAR)
+		endif
 	endif
 
 	nCountLine++
@@ -526,6 +422,8 @@ line(1:"41.20")
 	! FIM PIECES
 endline
 
+!==============================================================================
+
 line(1:"41.21")
 	taEDIPRO[nCountLine] := S_GEEX4121_EDIPRO
 
@@ -533,6 +431,8 @@ line(1:"41.21")
 		taEDIPRO_PIECES[tCODPRO_IN] := S_GEEX4121_EDIPRO
 	! FIM PIECES
 endline
+
+!==============================================================================
 
 line(1:"99.00")
 	tCODEXC_9900 := S_GEEX9900_CODEXC
@@ -552,12 +452,14 @@ line(1:"99.00")
 	tDISEXC_9900 := S_GEEX9900_DISEXC
 endline
 
+!==============================================================================
+
 ! Default statements section
 default
 
 enddefault
 
-!===========================================================
+!==============================================================================
 
 ! End statements section
 
@@ -569,6 +471,7 @@ end
 		log("1 - CODPRO = ", taIndex[2], NL)
 		log("1 - CODLOT = ", taIndex[3], NL)
 		log("1 - UVCREC = ", taIndex[4], NL)
+		log("1 - nItems = ", taCarton[taIndex[1]], NL)
 		! taIndex[1] = tCODPRO_Replicado
 		! taIndex[2] = S_GEEX4120_CODPRO
 		! taIndex[3] = tCODLOT_Replicado
@@ -858,6 +761,7 @@ end
 								"       ,RD.VALPRO", NL," "\
 								"       ,RD.UVCREA                                                         AS UVCMVT", NL," "\
 								"       ,TRIM(RD.MSGLIG) || 'X' || RIGHT(TRIM(RD.CODPRO),3)                AS CODPAL", NL," "\
+								"		,TRIM(RD.MSGLIG)                                                   AS CARTON", NL," "\
 								"       ,RD.DATFAB", NL," "\
 								"       ,RD.MOTIMM", NL," "\
 								"       ,RE.DTRREC                                                         AS DATREC", NL," "\
@@ -935,6 +839,7 @@ end
 									peel(taDb2Array["VALPRO"], " "), \
 									peel(taDb2Array["UVCMVT"], " "), \
 									peel(taDb2Array["CODPAL"], " "), \
+									peel(taDb2Array["CARTON"], " "), \
 									peel(taDb2Array["DATFAB"], " "), \
 									peel(taDb2Array["MOTIMM"], " "), \
 									peel(taDb2Array["DATREC"], " "), \
@@ -1937,7 +1842,7 @@ function bfCriarBodyInboundDeliveryPieces(tUVCREA_FUNC, tCODPRO_FUNC, tEDIPRO_FU
 endfunction
 
 !===========================================================
-function bfCreateM01(tCODACT_FUNC, tCODLOT_FUNC, tCODCLI_FUNC, tCODPRO_FUNC, tVALPRO_FU41NC, tUVCMVT_FUNC, tCODPAL_FUNC, tDATFAB_FUNC, tMOTIMM_FUNC, tDATREC_FUNC, tPCBPRO_FUNC, tREFREC_FUNC)
+function bfCreateM01(tCODACT_FUNC, tCODLOT_FUNC, tCODCLI_FUNC, tCODPRO_FUNC, tVALPRO_FU41NC, tUVCMVT_FUNC, tCODPAL_FUNC, tCARTON_FUNC, tDATFAB_FUNC, tMOTIMM_FUNC, tDATREC_FUNC, tPCBPRO_FUNC, tREFREC_FUNC)
 	R_GEEX0101_CODEXC("01")
 	R_GEEX0101_SEPEXC(".")
 	R_GEEX0101_SCOEXC("01")
@@ -1958,7 +1863,11 @@ function bfCreateM01(tCODACT_FUNC, tCODLOT_FUNC, tCODCLI_FUNC, tCODPRO_FUNC, tVA
 	R_GEEX0101_NBHIMM("000")
 	R_GEEX0101_MDSPRF("M01")
 	R_GEEX0101_DATREC(tDATREC_FUNC)
-	R_GEEX0101_PCBPRO(tPCBPRO_FUNC)
+	if taCarton[tCARTON_FUNC] = "1" then 
+		R_GEEX0101_PCBPRO(tUVCMVT_FUNC)
+	else
+		R_GEEX0101_PCBPRO(tPCBPRO_FUNC)
+	endif
 	R_GEEX0101_ZONSPE("00")
 	R_GEEX0101_CODEMB("PBR")
 	R_GEEX0101_REFREC(tREFREC_FUNC)
@@ -2057,3 +1966,17 @@ function bfMajtraceM01(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
 	close(tFileOut)
 	close(TRACE.Out)
 endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileOut \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+!==============================================================================

@@ -179,12 +179,12 @@ end
             tFileOutTemp := build(sHOME,"/mdn/auto/Temp/FM",tToInfologPrefixFilename,tCODACT,"_SC",time("now","%Y%m%d%H%M%S"),"_",tNUMLIV,".txt")
             tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_SC",time("now","%Y%m%d%H%M%S"),"_",tNUMLIV,".txt")
 
-            tQuery2 := build("SELECT  TRIM(SD.REFLIV)                        AS VBELN", NL," "\
-                                "    ,TRIM(LB.VALRUB)                       AS TKNUM", NL," "\
-                                "    ,TRIM(LPAD(SD.NLILIV,3,'0'))           AS POSNR", NL," "\
-                                "    ,TRIM(SD.CODPRO)                       AS MATNR", NL," "\
-                                "    ,INTEGER(SUM(SD.UVCLIV/SD.PCBPRO))     AS CANTIDAD", NL," "\
-                                "    ,TRIM(UN.LIBVOX)                       AS MEINS", NL," "\
+            tQuery2 := build("SELECT  TRIM(SD.REFLIV)                                                             AS VBELN", NL," "\
+                                "    ,TRIM(LB.VALRUB)                                                             AS TKNUM", NL," "\
+                                "    ,LPAD(MIN(TRIM(SD.NLILIV)) OVER (PARTITION BY SD.CODPRO, SD.REFLIV), 3, '0') AS POSNR", NL," "\
+                                "    ,TRIM(SD.CODPRO)                                                             AS MATNR", NL," "\
+                                "    ,INTEGER(SUM(SD.UVCLIV/SD.PCBPRO))                                           AS CANTIDAD", NL," "\
+                                "    ,TRIM(UN.LIBVOX)                                                             AS MEINS", NL," "\
                                 "    ,CASE TRIM(SD.CODLOT) ", NL," "\
                                 "        WHEN '' THEN TRIM(MMD.CODLOT) ", NL," "\
                                 "        ELSE TRIM(SD.CODLOT) END           AS CHARG", NL," "\
@@ -260,8 +260,8 @@ end
                     naContLineQuery[peel(taDb2Array2["VBELN"]," ")]++
                     taVBELN[nContLineQuery] := peel(taDb2Array2["VBELN"]," ")
                     taTKNUM[nContLineQuery] := peel(taDb2Array2["TKNUM"]," ")
-                    taPOSNR[nContLineQuery] := peel(taDb2Array2["POSNR"]," ")
                     taMATNR[nContLineQuery] := peel(taDb2Array2["MATNR"]," ")
+                    taPOSNR[nContLineQuery] := peel(taDb2Array2["POSNR"]," ")
                     taCANTIDAD[nContLineQuery] := peel(taDb2Array2["CANTIDAD"]," ")
                     taMEINS[nContLineQuery] := peel(taDb2Array2["MEINS"]," ")
                     taCHARG[nContLineQuery] := peel(taDb2Array2["CHARG"]," ")
@@ -316,7 +316,7 @@ end
                 endif
 
                 R_S2_TIPO_REG("S2")
-                R_S2_POSNR(build(number(taPOSNR[nContWhile]):R03))
+                R_S2_POSNR(taPOSNR[nContWhile])
                 R_S2_MATNR(taMATNR[nContWhile])
                 R_S2_CANTIDAD(build(number(taCANTIDAD[nContWhile])))
                 R_S2_MEINS(taMEINS[nContWhile])

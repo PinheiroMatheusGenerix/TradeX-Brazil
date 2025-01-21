@@ -76,6 +76,10 @@ endbegin
 
 !==============================================================================
 
+segment SnatOp gGnfeProc,gGNFe,gGinfNFe,gGide
+	tNatOp := eEnatOp
+endsegment
+
 segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide
 	tREFLIV := build(number(eEserie))
 	tNumeroSerie := eEserie 
@@ -295,6 +299,10 @@ segment SvNF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
 	tVALRUBVNF := eEvNF
 endsegment
 
+segment SmodFrete gGnfeProc,gGNFe,gGinfNFe,gGtransp
+	tModFrete := eEmodFrete
+endsegment
+
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
 	tTransportaCNPJ := eECNPJ
 	tCODTRA := tTransportaCNPJ
@@ -428,7 +436,7 @@ end
 			tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R010),".DAT")
 			tNameOut := build(tToInfologPrefixFilename,"40",build(nMessageID:R010),".DAT")
 
-			tREFREC := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) )
+			tREFREC := build(number(tNumeroDocumento) ,".",number(tNumeroSerie))
 			tCUMLIG := build(nContadorItem)
 
 			if nContadorLinhasEscritas = 0 then
@@ -506,57 +514,6 @@ end
 					bfSqlErro()
 					exit(1)
 				endif
-
-			! 30.00 - CADASTRO PRODUTO
-				nContadorTmpTOTAL := 1
-				while nContadorTmpTOTAL <= nContadorItem do  
-					if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
-						tQuery := build("SELECT CODPRO", NL," "\
-										"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
-										"WHERE CODPRO = '",taCODPRO[nContadorTmpTOTAL],"'", NL," "\
-										"AND CODACT = '",tCODACT,"'")
-
-						log("------------------------------------------------------------", NL)
-						log(tQuery,NL)
-						log("------------------------------------------------------------", NL)
-
-						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-							bfSqlErro()
-							exit(1)
-						endif
-
-						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-							bfSqlErro()
-							exit(1)
-						endif
-						
-						if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = FALSE then
-							R_GEEX3000_CODEXC("30")
-							R_GEEX3000_SEPEXC(".")
-							R_GEEX3000_SCOEXC("00")
-							R_GEEX3000_TRTEXC("2")
-							R_GEEX3000_CODACT(tCODACT)   
-							R_GEEX3000_CODPRO(taCODPRO[nContadorTmpTOTAL])  
-							R_GEEX3000_CODMDR(tCODACT)
-							R_GEEX3000_CODMDS(tCODACT)
-							R_GEEX3000_CODEMB("PBR")
-							R_GEEX3000_DS1PRO(taProd[nContadorTmpTOTAL])
-							R_GEEX3000_VALPRO("00")
-							R_GEEX3000_UNIPRO(taUNICDE[nContadorTmpTOTAL])
-							
-							nContadorLinhasEscritas++
-							flush(0,0,NL) >> tFileOutTemp
-
-							remove(taDb2Array)
-						endif
-					
-						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-							bfSqlErro()
-							exit(1)
-						endif
-					endif
-					nContadorTmpTOTAL++
-				endwhile
 			
 			! 40.00
 				R_GEEX4000_CODEXC("40")
@@ -602,9 +559,10 @@ end
 				nContadorLinhasEncomenda := 0
 				nContadorTmpTOTAL := 1
 
+			! 40.20
 				while nContadorTmpTOTAL <= nContadorItem do
 					if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
-						! QueryPROD
+						! Query bQueryTemResul, tCVTUVC, tPCBPRO, tSPCPRO
 							tQuery := build("SELECT A.CVTUVC, B.PCBPRO, B.SPCPRO ", NL," "\
 											"FROM FGE50FM", tToInfologPrefixFilename, ".GEZUNI AS A ", NL," "\
 											"JOIN FGE50FM", tToInfologPrefixFilename, ".GEPRO  AS B ", NL," "\
@@ -644,7 +602,79 @@ end
 								bfSqlErro()
 								exit(1)
 							endif
-						! Fim QueryProd
+						! Fim bQueryTemResul, tCVTUVC, tPCBPRO, tSPCPRO
+					
+						! Query Validação CODPRO 1
+							tQuery := build("SELECT CODPRO", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
+											"WHERE CODPRO = '",taCODPRO[nContadorTmpTOTAL],"'", NL," "\
+											"AND CODACT = '",tCODACT,"'")
+
+							log("------------------------------------------------------------", NL)
+							log(tQuery,NL)
+							log("------------------------------------------------------------", NL)
+
+							if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+
+							if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+
+							bCODPROExtistsGEPRO := TRUE
+							if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = FALSE then
+								bCODPROExtistsGEPRO := FALSE
+								remove(taDb2Array)
+							endif
+							
+							if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+						! Fim Validação CODPRO 1
+					
+						if bCODPROExtistsGEPRO = FALSE then
+							! Query Validação CODPRO 2
+								tQuery := build("SELECT CODPRO", NL," "\
+												"FROM FGE50FM",tToInfologPrefixFilename,".GEEAN", NL," "\
+												"WHERE EDIPRO = '",taCODPRO[nContadorTmpTOTAL],"'", NL," "\
+												"AND CODACT = '",tCODACT,"'")
+
+								log("------------------------------------------------------------", NL)
+								log(tQuery,NL)
+								log("------------------------------------------------------------", NL)
+
+								if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+									bfSqlErro()
+									exit(1)
+								endif
+
+								if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+									bfSqlErro()
+									exit(1)
+								endif
+
+								bCODPROExtistsGEEAN := FALSE
+								if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
+									bCODPROExtistsGEPRO := TRUE
+									taCODPRO[nContadorTmpTOTAL] := peel(taDb2Array["CODPRO"]," ")
+									remove(taDb2Array)
+								endif
+								
+								if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+									bfSqlErro()
+									exit(1)
+								endif
+							! Fim Validação CODPRO 2
+						endif
+
+						if bCODPROExtistsGEPRO = FALSE and bCODPROExtistsGEEAN = FALSE then
+							taCODPROdoNotExists[nContadorTmpTOTAL] := taCODPRO[nContadorTmpTOTAL]
+							taDS1PRODoNotExists[nContadorTmpTOTAL] := taProd[nContadorTmpTOTAL]
+						endif
 					
 						! 40.20
 							R_GEEX4020_CODEXC("40")
@@ -674,14 +704,6 @@ end
 									R_GEEX4020_AIGPRI("1")
 									R_GEEX4020_PRIREC(taUnCom[nContadorTmpTOTAL])
 							endswitch
-
-							/* PRECISA VERIFICAR SE TEM PONTO?
-							if index(taUnCom[nContadorTmpTOTAL], ".") = 0 then
-								R_GEEX4020_PRIREC(build(number(taUnCom[nContadorTmpTOTAL])*1000))
-							else
-								R_GEEX4020_PRIREC(strip(substr(taUnCom[nContadorTmpTOTAL], 1, index(taUnCom[nContadorTmpTOTAL], ".") + 3), "."))
-							endif
-							*/
 
 							flush(0,0,NL) >> tFileOutTemp
 							nContadorLinhasEscritas++
@@ -750,6 +772,24 @@ end
 			! Enviar interface para o cliente
 				bfToInfolog()
 
+			if bCODPROExtistsGEPRO = FALSE and bCODPROExtistsGEEAN = FALSE then
+				tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/M40ErroIntegracaoRecebimento.txt")
+				print("Codigo do(s) produto(s) abaixo  inexistente(s) no WMS:", NL) >> tArquivoEmailErro
+				while tIndex in taCODPROdoNotExists do
+					print(taCODPROdoNotExists[tIndex], " - ", taDS1PRODoNotExists[tIndex], NL) >> tArquivoEmailErro
+				endwhile
+				close(tArquivoEmailErro)
+
+				tSubjectEmail := build("BROTHER_M40-Erro_integracao_Recebimento_N_", peel(strip(tREFREC, " "), " "))
+				tNameEMAIL := build("BROTHER_M40-Erro_integracao_Recebimento_N_", peel(strip(tREFREC, " "), " "), ".txt")
+
+				tCmdEmailErro := build("edisend EMAIL.SUBJECT=\"",tSubjectEmail,"\" EMAIL.NAME=",tNameEMAIL," EmailM40ErrorBro ", tArquivoEmailErro)
+				log("executing command ",tCmdEmailErro,NL)
+
+				nRet := system(tCmdEmailErro)
+				close(tArquivoEmailErro)				
+				remove(tArquivoEmailErro)
+			endif
 		endif
 
 	! Faz M50
@@ -912,6 +952,32 @@ end
 				if bPedidoExiste = FALSE then
 					R_GEEX5001_REFCLI(tREFCLI)
 				endif
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				R_GEEX5005_CODEXC("50")
+				R_GEEX5005_SEPEXC(".")
+				R_GEEX5005_SCOEXC("05")
+				R_GEEX5005_TRTEXC(tTRTEXC)
+				R_GEEX5005_CODACT(tCODACT)
+				R_GEEX5005_CODCLI(tCODCLI)
+				R_GEEX5005_REFLIV(tREFLIV)
+				R_GEEX5005_CODRUB("NTOP")
+				R_GEEX5005_VALRUB(tNatOp)
+
+				flush(0,0,NL) >> tFileOutTemp
+				nContadorLinhasEscritas++
+
+				R_GEEX5005_CODEXC("50")
+				R_GEEX5005_SEPEXC(".")
+				R_GEEX5005_SCOEXC("05")
+				R_GEEX5005_TRTEXC(tTRTEXC)
+				R_GEEX5005_CODACT(tCODACT)
+				R_GEEX5005_CODCLI(tCODCLI)
+				R_GEEX5005_REFLIV(tREFLIV)
+				R_GEEX5005_CODRUB("MFRE")
+				R_GEEX5005_VALRUB(tModFrete)
 
 				flush(0,0,NL) >> tFileOutTemp
 				nContadorLinhasEscritas++
@@ -1125,6 +1191,38 @@ end
 						R_GEEX5020_CODPRO(taCprod[nContadorTmpTOTAL])
 						R_GEEX5020_UNICDE(taUNICDE[nContadorTmpTOTAL])
 
+						! INICIO QUERY tIMMFRG
+							tQuery := build("SELECT VALRUB", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+											"WHERE CODACT = '",tCODACT,"'", NL," "\
+											"AND CODRUB = 'IERR'")
+
+							log("------------------------------------------------------------", NL)
+							log(tQuery,NL)
+							log("------------------------------------------------------------", NL)
+
+							if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+
+							if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+
+							while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+								tIMMFRG := peel(taDb2Array["VALRUB"]," ")
+
+								remove(taDb2Array)
+							endwhile
+
+							if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+								bfSqlErro()
+								exit(1)
+							endif
+						! FIM QUERY tIMMFRG
+
 						! INICIO QUERY tCVTUVC
 							tQuery := build("SELECT CVTUVC", NL," "\
 											"FROM FGE50FM",tToInfologPrefixFilename,".GEZUNI", NL," "\
@@ -1203,6 +1301,7 @@ end
 						R_GEEX5020_NLILIV(build(nContadorTmpTOTAL))
 						R_GEEX5020_AIGPRI("1")
 						R_GEEX5020_PRILIV(strip(substr(taUnCom[nContadorTmpTOTAL], 1, index(taUnCom[nContadorTmpTOTAL], ".") + 3), "."))
+						R_GEEX5020_IMMFRG(tIMMFRG)
 
 						flush(0,0,NL) >> tFileOutTemp
 						nContadorLinhasEscritas++

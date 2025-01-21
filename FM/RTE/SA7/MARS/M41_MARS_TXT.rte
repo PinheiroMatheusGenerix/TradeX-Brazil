@@ -811,32 +811,32 @@ end
     log(tQuery, NL)
     log("***********************************", NL)
 
-	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
 
-	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
 
     nLineCount := 0
-	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
         nLineCount++
 
         tDIPREC := peel(taDb2Array["DIPREC"]," ")
@@ -848,20 +848,20 @@ end
         taMBLNR[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["MBLNR"]," ")
         taDOCNUM[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["DOCNUM"]," ")
         taQTD_ESPERADA[build(tDIPREC,"-",tCODPRO,"-",tCODLOT)] := peel(taDb2Array["QTD_ESPERADA"]," ")
-		remove(taDb2Array)
-	endwhile
-				
-	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+        remove(taDb2Array)
+    endwhile
+                
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
 
     tQuery := build("SELECT	TRIM(RP.CODPRO)                                                 AS MATERIAL     ", NL," "\
                     "       ,RP.CODLOT                                                      AS LOTE         ", NL," "\
@@ -886,51 +886,51 @@ end
     log(tQuery, NL)
     log("***********************************", NL)
 
-	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
 
-	if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL ", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL ", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
 
-	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
         tCODPRO2 := peel(taDb2Array["MATERIAL"]," ")
         tCODLOT2 := peel(taDb2Array["LOTE"]," ")
 
         taSTATUS[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["STATUS"]," ")
         taQUANTIDADE[build(tCODPRO2,"-",tCODLOT2)] := peel(taDb2Array["QUANTIDADE"]," ")
 
-		remove(taDb2Array)
-	endwhile
-				
-	if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-		print("FATAL", tfSqlErrorStr())
-		bfMajtrace("Erro de Traducao", \
-						"1", \
-						tREFREC, \
-						tDataDocumento, \
-						tFileOut, \
-						"CONFIRMAÇÃO DE RECEBIMENTO", \
-						build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+        remove(taDb2Array)
+    endwhile
+                
+    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+        print("FATAL", tfSqlErrorStr())
+        bfMajtrace("Erro de Traducao", \
+                        "1", \
+                        tREFREC, \
+                        tDataDocumento, \
+                        tFileOut, \
+                        "CONFIRMAÇÃO DE RECEBIMENTO", \
+                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+        exit(1)
+    endif
 
     while tIndex in taLineCount do
         split(tIndex, taIndexSplit, "-")

@@ -440,6 +440,7 @@ end
 				R_GEEX5011_AD1CLI(taAD1CLI[nRef])
 				R_GEEX5011_AD2CLI(taAD2CLI[nRef])
 				R_GEEX5011_AD3CLI(taAD3CLI[nRef])
+
 				flush(0,0,NL) >> tFileOutTemp
 				nContadorLinhasEscritas++
 
@@ -449,8 +450,10 @@ end
 						nContadorNLILIV++
 
 						! QUERY tIMMFRG
-							tQuery := build("SELECT  VALCLE", NL," "\
-											"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU", NL," "\
+							tQuery := build("SELECT  MO.EDIIMO, MO.MOTIMM", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RU", NL," "\
+											"JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO MO", NL," "\
+											"ON MO.MOTIMM = RU.VALCLE", NL," "\
 											"WHERE CODRUB = 'STCK'", NL," "\
 											"AND VALRUB = '",taMOTIMM[tLinha],"'")
 
@@ -469,7 +472,13 @@ end
 							endif
 
 							while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
-								tIMMFRG := peel(taDb2Array["VALCLE"]," ")
+								log("CODPRO = ", taCODPRO[tLinha], NL)
+								if peel(taDb2Array["EDIIMO"]," ") = "LIV" then
+									tIMMFRG := ""
+									log("IMMFRG igual a vazio!", NL)
+								else
+									tIMMFRG := peel(taDb2Array["MOTIMM"]," ")
+								endif
 								remove(taDb2Array)
 							endwhile
 
@@ -492,6 +501,7 @@ end
 						R_GEEX5020_REFLIV(taREFLIV[tLinha])
 						R_GEEX5020_NLILIV(build(nContadorNLILIV:R05.0))
 						R_GEEX5020_IMMFRG(tIMMFRG)
+						
 						flush(0,0,NL) >> tFileOutTemp
 						nContadorLinhasEscritas++			
 					endif
@@ -533,11 +543,13 @@ end
 			flush(0,0,NL)  >> tFileOutTemp
 			nContadorLinhasEscritas++
 		else
-			log("bPedidoExiste = FALSE",NL)
+			log("bPedidoExiste = TRUE",NL)
 			while tLinha in taREFLIV do
 				! QUERY tIMMFRG
-					tQuery := build("SELECT  VALCLE", NL," "\
-									"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU", NL," "\
+					tQuery := build("SELECT  MO.EDIIMO, MO.MOTIMM", NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RU", NL," "\
+									"JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO MO", NL," "\
+									"ON MO.MOTIMM = RU.VALCLE", NL," "\
 									"WHERE CODRUB = 'STCK'", NL," "\
 									"AND VALRUB = '",taMOTIMM[tLinha],"'")
 
@@ -556,8 +568,13 @@ end
 						exit(1)	
 					endif
 
-					while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
-						tIMMFRG := peel(taDb2Array["VALCLE"]," ")
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+						if peel(taDb2Array["EDIIMO"]," ") = "LIV" then
+							tIMMFRG := ""
+							log("IMMFRG igual a vazio!", NL)
+						else
+							tIMMFRG := peel(taDb2Array["MOTIMM"]," ")
+						endif
 						remove(taDb2Array)
 					endwhile
 
