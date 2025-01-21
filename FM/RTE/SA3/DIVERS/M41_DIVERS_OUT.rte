@@ -210,7 +210,7 @@ line(1:"41.99")
     bEscreveuCSVDIVERS := FALSE
 
     !if tCODACTLido = "581" then !or tCODACTLido = "583" or tCODACTLido = "602" then
-    if tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
+    if tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
         !if tCODTRE = "NAC" then
         if tCODTRE = "DEV" or tCODTRE = "DV" then
             ! inicio
@@ -259,15 +259,27 @@ line(1:"41.99")
                     !faz um M40
                     nMessageID := cMessageID
 
-                    tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-                    tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-                    tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                    if tCODACTLido = "GIC" then
+                        tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                        tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                    else
+                        if tCODACTLido = "GIS" then
+                            tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                            tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                            tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                        endif
+                    endif
 
                     if bFezRegistoZERO = FALSE then
                         bFezRegistoZERO := TRUE
                         R_Header_TIPODEREGISTRO("0")
                         R_Header_CNPJORIGEM(build(number(fmbrasil_consolidacao_m40gamaitaly.CODFOU):R015))
-                        R_Header_CNPJDESTINATARIO("002462805000778")
+                        if tCODACTLido = "GIC" then
+                            R_Header_CNPJDESTINATARIO("07293118000790")
+                        else
+                            R_Header_CNPJDESTINATARIO("002462805000778")
+                        endif
                         R_Header_TIPORECEBIMENTO(tCODTRE)
                         R_Header_DATARECEBIMENTO(tfConvertDate(tData, "YYYYMMDD" , "DDMMYYYY"))
                         !R_Header_NUMEROBL(A)
@@ -487,13 +499,26 @@ line(1:"41.99")
             flush(TRACE)
 
             nMessageID := cMessageID
-            tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-            tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-            tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+
+            if tCODACTLido = "GIC" then
+                tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+            else
+                if tCODACTLido = "GIS" then
+                    tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                    tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                    tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                endif
+            endif
 
             R_Header_TIPODEREGISTRO("0")
             R_Header_CNPJORIGEM(build(number(tCODFOU):R015))
-            R_Header_CNPJDESTINATARIO("002462805000778")
+            if tCODACTLido = "GIC" then
+                R_Header_CNPJDESTINATARIO("07293118000790")
+            else
+                R_Header_CNPJDESTINATARIO("002462805000778")
+            endif
             R_Header_TIPORECEBIMENTO(tCODTRE)
             R_Header_DATARECEBIMENTO(tfConvertDate(tData, "YYYYMMDD" , "DDMMYYYY"))
             !R_Header_NUMEROBL(A)
@@ -642,7 +667,7 @@ line(1:"41.99")
     endif		
 		
     !if tCODACTLido = "583" or tCODACTLido = "602" then !faz o CSV PALETE
-    if (tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") and  (tCODTRE <> "DEV" and tCODTRE <> "DV") then
+    if (tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") and  (tCODTRE <> "DEV" and tCODTRE <> "DV") then
         nTempConta4130 := 1
         while nTempConta4130 <= nConta4130 do
             R_REGISTROCSVPAL_ReferenciaRecepcao(tNumeroDocumento)
@@ -806,7 +831,7 @@ line(1:"41.99")
         nRet := system(tCmdEmailErro)
     else
     !faz CSV que nao é gama italy
-        if (tCODTRE = "DEV" or tCODTRE = "DV") and (tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") then
+        if (tCODTRE = "DEV" or tCODTRE = "DV") and (tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE") then
 
             !faz email com dados da tabela fmbrasil_consolidacao_m40gamaitaly
             bFezHeader := FALSE
@@ -1265,7 +1290,7 @@ line(1:"41.99")
     endwhile
 
     !if tCODACTLido = "581" or tCODACTLido = "583" or tCODACTLido = "602" then
-    if tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
+    if tCODACTLido = "GIC" or tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
         bfMajtrace("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
         close(tFileOutTemp)
         copy(tFileOutTemp,tFileOut)

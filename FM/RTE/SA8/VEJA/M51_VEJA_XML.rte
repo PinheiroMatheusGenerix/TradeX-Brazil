@@ -26,71 +26,142 @@ base "../trace/trace.cfg" TRACE
 #include "include/generix_func.inc"
 #include "include/GEEXM51.inc"
 
-
-!===========================================================
+!==============================================================================
 
 ! Initialization section
 
-begin
-	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
-	nMainIndex := 0
-	PROCESS_ERRONEOUS := TRUE
-	nMessageID := cMessageID
-
-	pXML.INCONVIN := "UTF-8"
-	pXML.INCOVIN := "UTF-8"
-	pXML.ENCODING := "UTF-8"
-
+begin	
 	nPos := 1
 	nRec := 1 
-
-	log("------------------------------------------------------------", NL)
-	log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
-	log("------------------------------------------------------------", NL)
-
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
 	load(0,build(sHOME, "/config/FM_wms_configuration.properties"), taPARAM)
 	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA8"]
 
-	tDbBase		:= "FMWMS"
-	tDbUsername	:= taPARAM["WMSDBUSER"]
-	tDbPassword	:= taPARAM["WMSDBPASS"]
-	tDbUrl		:= taPARAM["WMSDBURL"]
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "VEJA"
+		tSentido := "O"
+		tMensagem := "M51-Confirmação Pedido"
+		tDataDocumento := time("now","%Y-%m-%d")
+	
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
 
-    bfSqlInit()
-	if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
-		print("FATAL ",tfSqlErrorStr())
-		bfSqlClose(tDbBase)
-		bfMajtrace("Erro de Traducao", \
-                    "1", \
-                    "M97", \
-                    time("now","%Y-%m-%d"), \
-                    tFileOut, \
-                    build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
-		exit(1)
-	endif
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "FMWMS"
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= taPARAM["WMSDBPASS"]
+		tDbUrl		:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+
+	!Variaveis Gerais
+		PROCESS_ERRONEOUS := TRUE
+		pXML.INCONVIN := "UTF-8"
+		pXML.INCOVIN := "UTF-8"
+		pXML.ENCODING := "UTF-8"
+
 endbegin
 
-!===========================================================
+!==============================================================================
 
 line(1:"51.00")
+	tCODACT := S_GEEX5100_CODACT
 	tNUMLIV := S_GEEX5100_NUMLIV
 	tREFLIV := S_GEEX5100_REFLIV
 	tDATEXP := S_GEEX5100_DATEXP
 endline
 
+!==============================================================================
 ! Default statements section
 default
 
 enddefault
 
-!===========================================================
+!==============================================================================
 
 ! End statements section
 
 end
-	tFileOut := build(sHOME,"/mdn/auto/FM",tToInfologPrefixFilename,"VEJ_ShipmentConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",strip(peel(tREFLIV, " "), " "),".xml")
-    tFileOutTemp := build(sHOME,"/mdn/auto/Temp/FM",tToInfologPrefixFilename,"VEJ_ShipmentConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",strip(peel(tREFLIV, " "), " "),".xml")
-    tNameOut := build("FM",tToInfologPrefixFilename,"VEJ_ShipmentConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",strip(peel(tREFLIV, " "), " "),".xml")
+	
+    ! Verifica se o REFLIV ja contem TRACE criado
+        TRACE := find(build(sHOME,"/trace"),MENSAGEM=tMensagem,PERFIL=tPerfil,NUMDOC=tREFLIV)
+        if valid(TRACE) then	
+            log("Já existe um Trace de M51 para o pedido: ", tREFLIV, NL)
+			bfSqlClose(tDbBase)
+
+			log("------------------------------------------------------------", NL)
+			log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+			log("------------------------------------------------------------", NL)
+
+            exit(1)
+        endif
+	! FIM Verifica se o REFLIV ja contem TRACE criado
+
+    ! Verifica se todo o pedido esta expedido
+		tQuery := build("SELECT DISTINCT 1 AS VAL", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GELIVE AS LE ", NL," "\
+						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD AS LD ", NL," "\
+						"  ON LE.NUMLIV = LD.NUMLIV ", NL," "\
+						" AND LE.SNULIV = LD.SNULIV ", NL," "\
+						" AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE ", NL," "\
+						"  ON LE.NUMLIV = SE.NUMLIV ", NL," "\
+						" AND LE.SNULIV = SE.SNULIV ", NL," "\
+						" AND SE.ETASUP != '50' ", NL," "\
+						"WHERE 1 = 1 ", NL," "\
+						" AND LE.CODACT = '",tCODACT,"' ", NL," "\
+						" AND LE.REFLIV = '",tREFLIV,"' ")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			bfSqlErro()
+			exit(1)			
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+        endif
+
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			tEXPEDIDO := taDb2Array["VAL"]
+
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+        endif
+
+		if tEXPEDIDO = "1" then	
+            log("Contem suportes pendente de expedicao para o pedido: ", tREFLIV, NL)
+			bfSqlClose(tDbBase)
+
+			log("------------------------------------------------------------", NL)
+			log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+			log("------------------------------------------------------------", NL)
+
+            exit(1)
+        endif
+    ! FIM Verifica se todo o pedido esta expedido
+
+	! Criação dos arquivos
+		tNameOut := build("FM",tToInfologPrefixFilename,"VEJ_ShipmentConfirmation_",time("now" ,"%Y%m%d%H%M%S"),"_",strip(peel(tREFLIV, " "), " "),".xml")
+		tFileOut := build(sHOME,"/mdn/auto/",tNameOut)
+		tFileOutTemp := build(sHOME,"/mdn/auto/Temp/",tNameOut)
 
     ! QUERY tEDIACT
 		tQuery := build("SELECT EDIACT", NL," "\
@@ -102,25 +173,13 @@ end
         log("------------------------------------------------------------", NL)
 
         if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-            print("FATAL ", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)					
+			bfSqlErro()
+			exit(1)			
         endif
 
         if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-            print("FATAL ", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)
+			bfSqlErro()
+			exit(1)
         endif
 
         while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
@@ -130,20 +189,17 @@ end
         endwhile
 
         if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-            print("FATAL", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)
+			bfSqlErro()
+			exit(1)
         endif
     ! FIM QUERY tEDIACT
 
     ! QUERY bfWriteHeader, bfWriteBoxesCarton, bfWriteBoxesSKU
-		tQuery := build("SELECT  TRIM(LE.REFLIV)                           AS REFLIV", NL," "\
-						"       ,CAST(SUM(SE.CUMPOI) AS DECIMAL(10,2))     AS VOL_PED", NL," "\
+		tQuery := build("SELECT   TRIM(LE.REFLIV)                           AS REFLIV", NL," "\
+						"       ,CAST(SUM(", NL," "\
+						"           CASE ROW_NUMBER() OVER (PARTITION BY SD.NUMSUP) ", NL," "\
+						"               WHEN 1 THEN SE.CUMPOI ELSE 0 END", NL," "\
+						"           ) OVER () AS DECIMAL(10,2))            AS VOL_PED", NL," "\
 						"       ,LE.CODTRA", NL," "\
 						"       ,LE.CODTLI", NL," "\
 						"       ,SE.DATPRP", NL," "\
@@ -155,24 +211,27 @@ end
 						"       ,SUM(SD.UVCLIV)                            AS UVCLIV", NL," "\
 						"       ,RP.VALRUB", NL," "\
 						"       ,TRIM(RL.VALRUB) AS RAST", NL," "\
-						"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE", NL," "\
-						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD AS SD", NL," "\
-						"ON SE.NUMSUP = SD.NUMSUP AND SD.UVCLIV > 0 ", NL," "\
-						"JOIN FGE50FM",tToInfologPrefixFilename,".GERILP AS RP", NL," "\
-						"ON SD.NUMLIV = RP.NUMLIV", NL," "\
-						"    AND SD.SNULIV = RP.SNULIV", NL," "\
-						"    AND SD.SEQLIV = RP.SEQLIV", NL," "\
-						"    AND RP.CODRUB = 'PREF'", NL," "\
-						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIVE AS LE", NL," "\
-						"ON SD.NUMLIV = LE.NUMLIV", NL," "\
-						"    AND SD.SNULIV = LE.SNULIV", NL," "\
-						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIRUB AS RL", NL," "\
-						"ON SD.NUMLIV = RL.NUMLIV", NL," "\
-						"    AND SD.SNULIV = RL.SNULIV", NL," "\
-						"    AND RL.CODRUB = 'RAST'", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE     AS SE", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD     AS SD", NL," "\
+						"  ON SE.NUMSUP = SD.NUMSUP ", NL," "\
+						" AND SE.SNUSUP = SD.SNUSUP ", NL," "\
+						" AND SD.UVCLIV > 0 ", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIVE     AS LE", NL," "\
+						"  ON SD.LIVNUM = LE.NUMLIV ", NL," "\
+						" AND SD.LIVSNU = LE.SNULIV", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GERILP     AS RP", NL," "\
+						"  ON SD.LIVNUM = RP.NUMLIV ", NL," "\
+						" AND SD.LIVSNU = RP.SNULIV ", NL," "\
+						" AND SD.SEQLIV = RP.SEQLIV ", NL," "\
+						" AND RP.CODRUB = 'PREF' ", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIRUB    AS RL", NL," "\
+						"  ON SD.LIVNUM = RL.NUMLIV ", NL," "\
+						" AND SD.LIVSNU = RL.SNULIV ", NL," "\
+						" AND RL.CODRUB = 'RAST' ", NL," "\
 						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO AS PR", NL," "\
-						"ON PR.CODPRO = SD.CODPRO", NL," "\
-						"WHERE SE.NUMLIV = '",tNUMLIV,"'", NL," "\
+						"  ON SD.CODACT = PR.CODACT ", NL," "\
+						" AND SD.CODPRO = PR.CODPRO ", NL," "\
+						"WHERE SE.REFLIV = '",tREFLIV,"'", NL," "\
 						"GROUP BY  LE.REFLIV", NL," "\
 						"         ,SE.CUMPOI", NL," "\
 						"         ,LE.CODTRA", NL," "\
@@ -197,25 +256,13 @@ end
         log("------------------------------------------------------------", NL)
 
         if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-            print("FATAL ", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)					
+			bfSqlErro()
+			exit(1)			
         endif
 
         if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-            print("FATAL ", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)
+			bfSqlErro()
+			exit(1)
         endif
 
 		bWriteHeader := FALSE
@@ -246,29 +293,25 @@ end
         endwhile
 
         if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-            print("FATAL", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)
+			bfSqlErro()
+			exit(1)
         endif
     ! FIM QUERY bfWriteHeader, bfWriteBoxesCarton, bfWriteBoxesSKU
 
     ! QUERY bfWritePieces
-		tQuery := build("SELECT  SD.CODPRO", NL," "\
+		tQuery := build("SELECT   SD.CODPRO", NL," "\
 						"       ,TRIM(PR.EDIPRO) AS EDIPRO", NL," "\
 						"       ,SUM(SD.UVCLIV)  AS UVCLIV", NL," "\
 						"       ,SD.DIPLIV", NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GESUPE SE", NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD", NL," "\
-						"ON SE.NUMSUP = SD.NUMSUP", NL," "\
+						"  ON SE.NUMSUP = SD.NUMSUP ", NL," "\
+						" AND SE.SNUSUP = SD.SNUSUP ", NL," "\
+						" AND SD.UVCLIV > 0 ", NL," "\
 						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PR", NL," "\
-						"ON PR.CODPRO = SD.CODPRO", NL," "\
-						"WHERE SE.NUMLIV = '",tNUMLIV,"'", NL," "\
-						"AND SD.UVCLIV > 0", NL," "\
+						"  ON SD.CODACT = PR.CODACT ", NL," "\
+						" AND SD.CODPRO = PR.CODPRO ", NL," "\
+						"WHERE SE.REFLIV = '",tREFLIV,"'", NL," "\
 						"GROUP BY  SD.CODPRO", NL," "\
 						"         ,TRIM(PR.EDIPRO)", NL," "\
 						"         ,SD.DIPLIV", NL," "\
@@ -280,25 +323,13 @@ end
         log("------------------------------------------------------------", NL)
 
         if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-            print("FATAL ", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)					
+			bfSqlErro()
+			exit(1)			
         endif
 
         if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-            print("FATAL ", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)
+			bfSqlErro()
+			exit(1)
         endif
 
         while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
@@ -311,45 +342,44 @@ end
         endwhile
 
         if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-            print("FATAL", tfSqlErrorStr())
-            bfMajtrace("Erro de Traducao",\
-                        "1",\
-                        tREFLIV,\
-                        time("now","%Y-%m-%d"),\
-                        tFileOut, \
-                        build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-            exit(1)
+			bfSqlErro()
+			exit(1)
         endif
     ! FIM QUERY bfWritePieces
  
 	print(MESSAGE) >> tFileOutTemp
 
-    close(tFileOutTemp)
-	copy(tFileOutTemp,tFileOut)
-	close(tFileOutTemp)
-	remove(tFileOutTemp)
-	close(tFileOut)
+	! Tratamento final dos arquivos
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
 
-    bfMajtrace("Recebida", \
-                "0", \
-                tREFLIV, \
-                time("now","%Y-%m-%d"), \
-                tFileOut, \
-                "")
+	! Finalizando com TRACE
+	    bfMajtrace( "Recebida", \
+					"0", \
+					tREFLIV, \
+					time("now","%Y-%m-%d"), \
+					tFileInput, \
+					tFileOut, \
+					tMensagem, \
+					"")
 
 	! Enviar interface para o cliente
-	tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
-	log("executando o comando - ", tCmd, NL)
-	system(tCmd)
+		tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+		log("executando o comando - ", tCmd, NL)
+		system(tCmd)
 
     bfSqlClose(tDbBase)
 
 	log("------------------------------------------------------------", NL)
 	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
 	log("------------------------------------------------------------", NL)
+
 endend
 
-!===========================================================
+!==============================================================================
 
 function bfWriteHeader(tEDIACT_FUNC, tREFLIV_FUNC, tVOLPED_FUNC, tCODTRA_FUNC, tDATEXP_FUNC)
 	segment Swarehouse gGconfirm_shipping,gGconfirm_shipping_header
@@ -377,7 +407,7 @@ function bfWriteHeader(tEDIACT_FUNC, tREFLIV_FUNC, tVOLPED_FUNC, tCODTRA_FUNC, t
 	endsegment
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfWriteBoxesCarton(tNUMSUP_FUNC, tRAST_FUNC, tVOLSUP_FUNC, tCUMVOL_FUNC)
 	segment Scarton_number gGconfirm_shipping,gGconfirm_shipping_header,gGconfirm_shipping_body,gGboxes,gGcarton
@@ -397,7 +427,7 @@ function bfWriteBoxesCarton(tNUMSUP_FUNC, tRAST_FUNC, tVOLSUP_FUNC, tCUMVOL_FUNC
 	endsegment
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfWriteBoxesSKU(tCODPRO_FUNC, tUVCLIV_FUNC, tVALRUB_FUNC)
 	segment Sbarcode_sku gGconfirm_shipping,gGconfirm_shipping_header,gGconfirm_shipping_body,gGboxes,gGcarton,gGskus,gGsku
@@ -417,7 +447,7 @@ function bfWriteBoxesSKU(tCODPRO_FUNC, tUVCLIV_FUNC, tVALRUB_FUNC)
 	endsegment
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfWritePieces(tCODPRO_FUNC, tEDIPRO_FUNC, tUVCLIV_FUNC, tDIPLIV_FUNC)
 	segment Sbarcode_sku gGconfirm_shipping,gGconfirm_shipping_header,gGconfirm_shipping_body,gGpieces,gGsku
@@ -453,16 +483,16 @@ function bfWritePieces(tCODPRO_FUNC, tEDIPRO_FUNC, tUVCLIV_FUNC, tDIPLIV_FUNC)
 	endsegment
 endfunction
 
-!===========================================================
+!==============================================================================
 
-function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileInput,tFileOut,tTipoDocumento, tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
 	TRACE.ESTADO := tStatus
 	TRACE.ERRO := tError
 	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
-	TRACE.PERFIL := "VEJA"
-	TRACE.MENSAGEM := "M51-Confirmação Pedido"
-	TRACE.SENTIDO := "O"
+	TRACE.PERFIL := tPerfil
+	TRACE.MENSAGEM := tMensagem
+	TRACE.SENTIDO := tSentido
 	TRACE.NUMDOC := tNumDoc
 	TRACE.DATDOC := tDataDoc
 	TRACE.MESSAGEID := build(nMessageID)   
@@ -476,11 +506,12 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
 
 	SYSLOG.REFERENCE := build(nMessageID)
 
-	if tStatus = "Recebida" then
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
 		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
 		print("Traduzida com Sucesso",NL) >> TRACE.Detail
 	else
-		if substr(tStatus,1,13) = "Erro de Tradu" then
+		if tError = "1" then
 			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
 			print("Erro de Traducao",NL) >> TRACE.Detail
 			print(tMensagemErro,NL) >> TRACE.Detail
@@ -488,14 +519,41 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagemErro)
 	endif
 
 	close(TRACE.Detail)
-	close(SYSLOG.a)
 
-	copy(SYSLOG.a,TRACE.In)
-	close(SYSLOG.a)
-	close(TRACE.In)
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
 
-	close(tFileOut)
-	copy(tFileOut,TRACE.Out)
-	close(tFileOut)
-	close(TRACE.Out)
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
 endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileInput \
+                ,tFileOut \
+                ,tMensagem \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
+
+!==============================================================================
