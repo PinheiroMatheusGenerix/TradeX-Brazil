@@ -276,7 +276,7 @@ line(1:"41.99")
                         R_Header_TIPODEREGISTRO("0")
                         R_Header_CNPJORIGEM(build(number(fmbrasil_consolidacao_m40gamaitaly.CODFOU):R015))
                         if tCODACTLido = "GIC" then
-                            R_Header_CNPJDESTINATARIO("07293118000790")
+                            R_Header_CNPJDESTINATARIO("02462805002045")
                         else
                             R_Header_CNPJDESTINATARIO("002462805000778")
                         endif
