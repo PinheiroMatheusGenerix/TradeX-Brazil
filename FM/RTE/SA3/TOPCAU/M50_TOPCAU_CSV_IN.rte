@@ -16,7 +16,7 @@
 !base "syslog.cfg" SYSLOG
 base "../trace/trace.cfg" TRACE,autoflush off
 
-!===========================================================
+!===========================================================================================================
 
 ! Input/output macros file
 #define PROG_NAME "$RCSfile: $"
@@ -29,7 +29,7 @@ base "../trace/trace.cfg" TRACE,autoflush off
 #include "include/M35.inc"
 #include "include/M41_LASA_TXT.inc"
 
-!===========================================================
+!===========================================================================================================
 
 ! Initialization section
 
@@ -98,7 +98,7 @@ begin
 	bHeader := TRUE
 endbegin
 
-!===========================================================
+!===========================================================================================================
 
 line(not "")
 	S_Registo
@@ -251,8 +251,9 @@ line(not "")
 			endif
 
 			tQuery := build("SELECT CODMOP ", NL," "\
-			"  FROM FGE50FM",tToInfologPrefixFilename,".GECLI ", NL," "\
-			"  WHERE CODCLI='",taCODCLI[nNumeroMonoRegisto],"'")
+							"  FROM FGE50FM",tToInfologPrefixFilename,".GECLI ", NL, " " \
+							"  WHERE CODCLI = '",taCODCLI[nNumeroMonoRegisto],"'", NL, " " \
+							,"   AND CODACT = '",taCODACT[nNumeroMonoRegisto],"'")
 
 			log("------------------------------------------------------------", NL)
 			log("tQuery ",tQuery,NL)
@@ -299,7 +300,7 @@ default
 
 enddefault
 
-!===========================================================
+!===========================================================================================================
 
 ! End statements section
 
@@ -876,7 +877,7 @@ end
 	exit(0)
 endend
 
-!===========================================================
+!===========================================================================================================
 
 function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErrro)
 	TRACE:=new(build(sHOME,"/trace"))
@@ -935,7 +936,7 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
 	flush(TRACE)
 endfunction
 
-!===========================================================
+!===========================================================================================================
 
 function bfMajtraceM41(tStatus,tError,tNumDoc,tDataDoc,tFileOutDoc,tMensagem,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
