@@ -312,6 +312,10 @@ endsegment
 
 segment SinfCpl gGnfeProc,gGNFe,gGinfNFe,gGinfAdic
 	tREFLIVtemp := substr(eEinfCpl, index(eEinfCpl, "No. Fornecimento: ") + 18, index(eEinfCpl, ". Declaro que os produtos") - (index(eEinfCpl, "No. Fornecimento: ") + 18))	
+	if length(tREFLIVtemp) = 0 then 
+		tREFLIVtemp := substr(eEinfCpl, index(eEinfCpl, "No. Fornecimento: ") + 18, index(eEinfCpl, ". \"Declaro que os produtos") - (index(eEinfCpl, "No. Fornecimento: ") + 18))	
+	endif
+	
 	if substr(tREFLIVtemp,1,1) = "0" then
 		tREFLIV := substr(tREFLIVtemp,2,length(tREFLIVtemp))
 	else

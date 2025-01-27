@@ -466,9 +466,9 @@ line("99.00")
 			bfMajtraceM06("Recebida","0","MARS CAJAMAR",time("now","%Y-%m-%d"),tFileInput,tFileOut,"Produtos","")
 		
             ! Enviar interface para o cliente
-            tCmd := build("edisend SEND_TO_FMBR ", tFileOutM06)
-            log("executando o comando - ", tCmd, NL)
-            system(tCmd) 
+                tCmd := build("edisend ToInfolog ", tFileOutM06)
+                log("executando o comando - ", tCmd, NL)
+                system(tCmd) 
         endif
 	! FIM SHELF LIFE
 
