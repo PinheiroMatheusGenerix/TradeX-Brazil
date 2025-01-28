@@ -97,7 +97,7 @@ line(1:"41.00")
     tNumeroLoja := "00092"
     tCODACTLido := S_4100HEADER_CODACT  
 
-    if  tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" then
+    if  tCODACTLido = "GIM" or tCODACTLido = "GIS" or tCODACTLido = "GIE" or tCODACTLido = "GIC" then
         tCODACTLidoConvertido := "GAM"
     endif
  
