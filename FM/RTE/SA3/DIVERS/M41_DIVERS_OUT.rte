@@ -260,9 +260,9 @@ line(1:"41.99")
                     nMessageID := cMessageID
 
                     if tCODACTLido = "GIC" then
-                        tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-                        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-                        tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                        tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                        tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
                     else
                         if tCODACTLido = "GIS" then
                             tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
@@ -501,9 +501,9 @@ line(1:"41.99")
             nMessageID := cMessageID
 
             if tCODACTLido = "GIC" then
-                tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-                tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
-                tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GICCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
+                tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GAMCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
             else
                 if tCODACTLido = "GIS" then
                     tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"GISCONFREC",tDataSistemaNomeArquivo,"_",replace(taNumSerie[1]," ","_"),".txt")
