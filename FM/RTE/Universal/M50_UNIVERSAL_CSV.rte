@@ -1196,12 +1196,15 @@ function bfTratamento_2()
 			endif
 
 			while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-					bSUP := TRUE
-					nSup++
-					taNUMLIV[nSup] := peel(taDb2Array["NUMLIV"]," ")
-					taNUMSUP[nSup] := peel(taDb2Array["NUMSUP"]," ")
-					taKAILIV[nSup] := peel(taDb2Array["KAILIV"]," ")
-					log(build(nSup:R02, " NUMLIV: ", taNUMLIV[nSup], " NUMSUP: ", taNUMSUP[nSup], " KAILIV: ", taKAILIV[nSup]),NL)
+				remove(taNUMLIV[nSup])
+				remove(taNUMSUP[nSup])
+				remove(taKAILIV[nSup])
+				bSUP := TRUE
+				nSup++
+				taNUMLIV[nSup] := peel(taDb2Array["NUMLIV"]," ")
+				taNUMSUP[nSup] := peel(taDb2Array["NUMSUP"]," ")
+				taKAILIV[nSup] := peel(taDb2Array["KAILIV"]," ")
+				log(build(nSup:R02, " NUMLIV: ", taNUMLIV[nSup], " NUMSUP: ", taNUMSUP[nSup], " KAILIV: ", taKAILIV[nSup]),NL)
 				remove(taDb2Array)
 			endwhile
 			
