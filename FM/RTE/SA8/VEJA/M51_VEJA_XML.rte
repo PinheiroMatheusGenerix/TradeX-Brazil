@@ -112,6 +112,7 @@ end
 						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD AS LD ", NL," "\
 						"  ON LE.NUMLIV = LD.NUMLIV ", NL," "\
 						" AND LE.SNULIV = LD.SNULIV ", NL," "\
+						" AND LD.CODACL = '' ", NL," "\
 						" AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE ", NL," "\
 						"  ON LE.NUMLIV = SE.NUMLIV ", NL," "\

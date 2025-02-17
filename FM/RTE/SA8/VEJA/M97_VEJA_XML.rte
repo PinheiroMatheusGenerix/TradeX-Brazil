@@ -108,6 +108,7 @@ line(1:"97.50")
                             "JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD AS LD ", NL," "\
                             "  ON LE.NUMLIV = LD.NUMLIV ", NL," "\
                             " AND LE.SNULIV = LD.SNULIV ", NL," "\
+						    " AND LD.CODACL = '' ", NL," "\
                             " AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
                             "WHERE 1 = 1 ", NL," "\
                             " AND LE.CODACT = '",tCODACT,"' ", NL," "\
