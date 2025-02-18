@@ -90,6 +90,8 @@ begin
 			bfSqlErro("", "1")
 			exit(1)
 		endif
+
+	nCount9070 := 0
 endbegin
 
 !==============================================================================
@@ -112,8 +114,11 @@ endline
 !==============================================================================
 
 line("90.70")
+	nCount9070++
 	tCODACT := S_GEEX9070_CODACT
-	tDATMVT := S_GEEX9070_DATMVT
+	if nCount9070 = 2 then
+		tDATMVT := S_GEEX9070_DATMVT
+	endif
 	bTem9070 := TRUE
 endline
 
