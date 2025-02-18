@@ -626,8 +626,11 @@ endfunction
 
 !==============================================================================
 
-function bfToInfolog()
-	tCmd := build("edisend ToInfolog ", tFileOut)
+function bfToInfolog(tlTrace)
+	switch tlTrace
+		case "3" :			
+			tCmd := build("edisend ToInfolog ", tFileOutM06)
+	endswitch
 	log("executando o comando - ", tCmd, NL)
 	system(tCmd)
 endfunction
@@ -2280,7 +2283,7 @@ endfunction
 							,TRACE_MESSAGE_SHLF)
 			
 			! Enviar interface para o cliente
-				bfToInfolog()
+				bfToInfolog("3")
 		endif
 
 
