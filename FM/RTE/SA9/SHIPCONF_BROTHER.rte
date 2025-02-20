@@ -96,20 +96,20 @@ end
 						"            THEN PR.PDBCOL * (1 / PR.PCBPRO)",NL," "\
 						"            ELSE (TD.CUMPOI - ZM.PDBEMB)",NL," "\
 						"        END                                                      AS NET_WEIGHT_DOCUMENT",NL," "\
-						"       ,CASE",NL," "\
-						"			WHEN LD.IMMFRG <> ''",NL," "\
-						"			THEN LD.IMMFRG",NL," "\
-						"			ELSE (SELECT  RB.VALRUB",NL," "\
-						"					FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
-						"					WHERE RB.CODRUB = 'STCK'",NL," "\
-						"					AND RB.VALCLE = (",NL," "\
-						"						SELECT VALRUB",NL," "\
-						"						FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
-						"						WHERE CODACT = 'BRO'",NL," "\
-						"						AND CODRUB = 'BRO')",NL," "\
-						"			)",NL," "\
-						"		 END                                                      AS PRODUCT_STOCK_TYPE",NL," "\
-						",SR.CODSER                                                       AS PRODUCT_SERIAL_NUMBER",NL," "\
+						"       ,(SELECT  RB.VALRUB",NL," "\
+						"			FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU RB",NL," "\
+						"			WHERE RB.CODRUB = 'STCK'",NL," "\
+						"			AND RB.VALCLE = (",NL," "\
+						"				CASE",NL," "\
+						"					WHEN LD.IMMFRG = ''",NL," "\
+						"					THEN (SELECT VALRUB",NL," "\
+						"							FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
+						"							WHERE CODACT = 'BRO'",NL," "\
+						"							AND CODRUB = 'BRO')",NL," "\
+						"					ELSE LD.IMMFRG",NL," "\
+						"		 		END)",NL," "\
+						"		)                                             			  AS PRODUCT_STOCK_TYPE",NL," "\
+						"		,SR.CODSER                                                AS PRODUCT_SERIAL_NUMBER",NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GESERI SR",NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GETOUD TD",NL," "\
 						"    ON SR.NUMLIV = TD.NUMLIV",NL," "\

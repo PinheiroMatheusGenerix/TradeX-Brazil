@@ -341,42 +341,11 @@ end
 		exit(1)
 	endif
 
-	! QUERY bGeraM40, bGeraM50
-		tQuery := build("SELECT VALRUB", NL," "\
-						"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
-						"WHERE CODACT = '",tCODACT,"'", NL," "\
-						"AND VALRUB = '",tDestCNPJ,"'")
-
-		log("------------------------------------------------------------", NL)
-		log(tQuery,NL)
-		log("------------------------------------------------------------", NL)
-
-		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-			exit(1)
-		endif
-
-		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL ", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-			exit(1)
-		endif
-
-		bGeraM40 := FALSE
+	if tDestCNPJ = "02462805000778" then
+		bGeraM40 := TRUE
+	else
 		bGeraM50 := TRUE
-		if bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE then
-			bGeraM40 := TRUE
-			bGeraM50 := FALSE
-			remove(taDb2Array)
-		endif
-
-		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-			print("FATAL", tfSqlErrorStr())
-			bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-			exit(1)
-		endif
-	! FIM QUERY bGeraM40, bGeraM50
+	endif
 
 	log("------------------------------------------------------------", NL)
 	log("CNPJ Emissor = ", tEmitCNPJ, NL)
