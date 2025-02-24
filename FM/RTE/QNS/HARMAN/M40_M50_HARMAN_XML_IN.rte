@@ -28,6 +28,7 @@ base "../trace/trace.cfg" TRACE
 #include "include/generix_func.inc"
 #include "include/M50_Harman.inc"
 #include "include/M40.inc"
+#include "include/GEEXM40.inc"
 #include "include/M30.inc"
 
 !===========================================================
@@ -87,10 +88,9 @@ segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide
 endsegment
 
 segment SdhEmi gGnfeProc,gGNFe,gGinfNFe,gGide
-    tDHemi := eEdhEmi   ! M
+    tDHemi := eEdhEmi
     tDATEXP := tfConvertDate(eEdhEmi, "YYYY-MM-DDTHH:MM:SS" , "DDMMYYYY")
     tDTILIV := tfConvertDate(substr(eEdhEmi,1,19), "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD") 
-    log("tDTILIV = ",tDTILIV,NL) 
 endsegment
 
 segment SdhSaiEnt gGnfeProc,gGNFe,gGinfNFe,gGide
@@ -178,7 +178,7 @@ segment SIE gGnfeProc,gGNFe,gGinfNFe,gGemit
 endsegment
 
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest
-   tDestCNPJ := eECNPJ  
+    tDestCNPJ := eECNPJ  
 	tCATCLI := "STD"
 endsegment
 
@@ -390,7 +390,7 @@ end
         exit(1)
     endif
 
-    if (substr(pEDISEND.ORIGINAL.NAME, 1, 11) = "QNSHAR_NSR_" and tDestCNPJ = "02462805002550") or (substr(pEDISEND.ORIGINAL.NAME, 1, 11) <> "QNSHAR_NSR_" and tDestCNPJ = "02462805000859") then
+    if (substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") and tDestCNPJ = "02462805002550") or (substr(pEDISEND.ORIGINAL.NAME, 1, 11) <> build(tToInfologPrefixFilename, "HAR_NSR_") and tDestCNPJ = "02462805000859") then
         bGeraM40 := TRUE
     else
         bGeraM50 := TRUE
@@ -525,6 +525,20 @@ end
 		flush(0,0,NL) >> tFileOutTemp   
 		nContadorLinhasEscritas++
 
+        R_GEEX4005_CODEXC("40")
+        R_GEEX4005_SEPEXC(".")
+        R_GEEX4005_SCOEXC("05")
+        R_GEEX4005_REFREC(tREFREC)
+        R_GEEX4005_CODRUB("CDFM")
+        if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
+            R_GEEX4005_VALRUB(build("02462805002550"))
+        else
+            R_GEEX4005_VALRUB(build("02462805000859"))
+        endif
+        
+        flush(0,0,NL) >> tFileOutTemp   
+        nContadorLinhasEscritas++
+
 		nContadorLinhasEncomenda := 0
 		nContadorTmpTOTAL := 1
 
@@ -594,7 +608,7 @@ end
 		remove(tFileOutTemp)
 		close(tFileOut)
 					
-		bfMajtraceDEVHAR("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+		bfMajtraceDEVHAR("Recebida","0",tNumeroDocumento,substr(tDHemi,1,10),tFileInput,tFileOut,"Produtos","")
 	else
         if bGeraM50 = TRUE then
             nTempNumeroLinha := 1
@@ -945,11 +959,12 @@ end
                 R_GEEX5005_CODCLI(tCODCLI)
                 R_GEEX5005_REFLIV(tREFLIV)
                 R_GEEX5005_CODRUB("CDFM")
-                if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = "QNSHAR_NSR_" then
+                if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
                     R_GEEX5005_VALRUB(build("02462805002550"))
                 else
                     R_GEEX5005_VALRUB(build("02462805000859"))
                 endif
+
                 flush(0,0,NL) >> tFileOutTemp   
                 nContadorLinhasEscritas++
 
@@ -2064,7 +2079,7 @@ function  bfMajtraceDEVHAR(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipo
 	TRACE.MENSAGEM := "XML - RECEBIMENTO"
 	TRACE.SENTIDO := "I"
 	TRACE.NUMDOC := tREFREC
-	TRACE.DATDOC := substr(tVALRUBDtEmi,1,10)
+	TRACE.DATDOC := tDataDoc
 	TRACE.MESSAGEID := build(nMessageID)   
 	TRACE.REDE := build(tCODACT,"_INB",tChNFe)
 	TRACE.FICHEIROSAIDA := tNameOut
