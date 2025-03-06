@@ -28,6 +28,7 @@ base "../trace/trace.cfg" TRACE
 #include "include/generix_func.inc"
 #include "include/M50_Harman.inc"
 #include "include/M40.inc"
+#include "include/GEEXM40.inc"
 #include "include/M30.inc"
 
 !===========================================================
@@ -50,7 +51,7 @@ begin
 	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
 	nMessageID := cMessageID
 
-	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
 
 	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameHARMAN"]
 
@@ -66,27 +67,33 @@ begin
 	nMainIndex := 0
 	tCODCLI := ""
 	tCODMOP := ""
+    bGeraM40 := FALSE
+    bGeraM50 := FALSE
+
+    if pEDISEND.ORIGINAL.NAME = build(SYSLOG.INDEX) then
+    	log("Esta interface não pode ser reprocessada", NL)
+        exit(1)
+    endif
 endbegin
 
 !===========================================================
 
 
-segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-   tNumeroSerie := eEserie   ! M 
+segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide
+   tNumeroSerie := eEserie
 endsegment
 
-segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-   tNumeroDocumento := eEnNF   ! M  
+segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide
+   tNumeroDocumento := eEnNF 
 endsegment
 
-segment SdhEmi gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-    tDHemi := eEdhEmi   ! M
+segment SdhEmi gGnfeProc,gGNFe,gGinfNFe,gGide
+    tDHemi := eEdhEmi
     tDATEXP := tfConvertDate(eEdhEmi, "YYYY-MM-DDTHH:MM:SS" , "DDMMYYYY")
     tDTILIV := tfConvertDate(substr(eEdhEmi,1,19), "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD") 
-    log("tDTILIV = ",tDTILIV,NL) 
 endsegment
 
-segment SdhSaiEnt gGnfeProc,gGNFe,gGinfNFe,gGide     ! C 1/1 
+segment SdhSaiEnt gGnfeProc,gGNFe,gGinfNFe,gGide
     tSaiEnt := eEdhSaiEnt
     tDTIREC := tfConvertDate(eEdhSaiEnt, "YYYY-MM-DDTHH:MM:SS" , "YYYYMMDD") 
     tHEIREC := tfConvertDate(eEdhSaiEnt, "YYYY-MM-DDTHH:MM:SS" , "HHMMSS") 
@@ -94,1488 +101,274 @@ segment SdhSaiEnt gGnfeProc,gGNFe,gGinfNFe,gGide     ! C 1/1
     tHEILIV := tfConvertDate(eEdhSaiEnt, "YYYY-MM-DDTHH:MM:SS" , "HHMMSS")
 endsegment
 
-segment StpNF gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-  ! tTipoDocumento := eEtpNF   ! M  
-  ! if tTipoDocumento = "0" then
-  ! tTipoDocumento := "E"
-  ! endif
-  !    if tTipoDocumento = "1" then
-  ! tTipoDocumento := "S"
-  ! endif
+segment StpNF gGnfeProc,gGNFe,gGinfNFe,gGide
   tTPNF := eEtpNF
-   
 endsegment
 
-segment SidDest gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment ScMunFG gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment StpImp gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment StpEmis gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-  ! tIdeTPEmis := eEtpEmis   ! M 
+segment StpEmis gGnfeProc,gGNFe,gGinfNFe,gGide
  tTpEmis:= eEtpEmis  
 endsegment
 
-segment ScDV gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGemit
+   tEmitCNPJ := eECNPJ
 
+    if tEmitCNPJ = "88315379000170" then
+        tCODACT := "HAR"
+        tPerfil := "HARMAN"
+    endif
+
+    tCODFOU := tEmitCNPJ
+    tEDIFOU := tEmitCNPJ
 endsegment
 
-segment StpAmb gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGemit
+    tEmitCNPJ := eECNPJ
 
+    if tEmitCNPJ = "88315379000170" then
+        tCODACT := "HAR"
+        tPerfil := "HARMAN"
+    endif
+
+    tCODFOU := tEmitCNPJ
+    tEDIFOU := tEmitCNPJ
 endsegment
 
-segment SfinNFe gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment SindFinal gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment SindPres gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment SprocEmi gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment SverProc gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment SdhCont gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-segment SxJust gGnfeProc,gGNFe,gGinfNFe,gGide     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref : C 1/500 
-segment SrefNFe gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF : C 1/1 
-segment ScUF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
-
-endsegment
-
-segment SAAMM gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
-
-endsegment
-
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
-
-endsegment
-
-segment Smod gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
-
-endsegment
-
-segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
-
-endsegment
-
-segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNF     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP : C 1/1 
-segment ScUF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
-
-endsegment
-
-segment SAAMM gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
-
-endsegment
-
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! C 1/1 
-
-endsegment
-
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! C 1/1 
-
-endsegment
-
-segment SIE gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
-
-endsegment
-
-segment Smod gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
-
-endsegment
-
-segment Sserie gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
-
-endsegment
-
-segment SnNF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefNFP     ! M 1/1 
-
-endsegment
-
-segment SrefCTe gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF : C 1/1 
-segment Smod gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF     ! M 1/1 
-
-endsegment
-
-segment SnECF gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF     ! M 1/1 
-
-endsegment
-
-segment SnCOO gGnfeProc,gGNFe,gGinfNFe,gGide,gGNFref,gGrefECF     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGemit : M 1/1 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
-   tEmitCNPJ := eECNPJ   ! C
-/*
-SE "07293118000102" então CODACT = GIM
-SE "07293118000285" então CODACT = GIS
-SE "07293118000609 " então CODACT = GIE
-
-SE "09545532000189" então CODACT = ALE (ALES GROUP)
-SE "16587166000439" então CODACT = SIS (SISLEY)
-SE "19108458000278" então CODACT = VEN (VENTEO)
-*/
-if tEmitCNPJ = "88315379000170" then
-	tCODACT := "HAR"
-	tPerfil := "HARMAN"
-endif
-
-
-
-
-tCODFOU := tEmitCNPJ
-tEDIFOU := tEmitCNPJ
-
-!tCODCLI  := tEmitCNPJ
-
-endsegment
-
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
-
-   tEmitCNPJ := eECNPJ   ! C
-/*
-SE "07293118000102" então CODACT = GIM
-SE "07293118000285" então CODACT = GIS
-SE "07293118000609 " então CODACT = GIE
-
-SE "09545532000189" então CODACT = ALE (ALES GROUP)
-SE "16587166000439" então CODACT = SIS (SISLEY)
-SE "19108458000278" então CODACT = VEN (VENTEO)
-*/
-if tEmitCNPJ = "88315379000170" then
-	tCODACT := "HAR"
-	tPerfil := "HARMAN"
-endif
-
-
-
-
-tCODFOU := tEmitCNPJ
-tEDIFOU := tEmitCNPJ
-
-!tCODCLI  := tEmitCNPJ
-
-endsegment
-
-segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGemit
 	tNOMFOU := eExNome
-	!tNOMCLI := eExNome
 endsegment
 
-segment SxFant gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit : M 1/1 
-segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tAD1FOU := eExLgr
-	!tAD1CLI := eExLgr
 endsegment
 
-segment Snro gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+segment Snro gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tAD1FOU := build(tAD1FOU," ",eEnro)
-	!tAD1CLI := build(tAD1CLI," ",eEnro)
 endsegment
 
-segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tAD2FOU := eExCpl
-	!tAD2CLI := eExCpl
 endsegment
 
-segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tAD2FOU := build(tAD2FOU," ",eExBairro)
-	!tAD2CLI := build(tAD2CLI," ",eExBairro)
 endsegment
 
-segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
-
-endsegment
-
-segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tVILFOU := eExMun
-	!tVILCLI := eExMun
 endsegment
 
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tVILFOU := build(tVILFOU,"/",eEUF)
-	!tVILCLI := build(tVILCLI,"/",eEUF)
 endsegment
 
-segment SCEP gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! M 1/1 
+segment SCEP gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tCPIFOU := eECEP
-	!tCPICLI := eECEP
 endsegment
 
-segment ScPais gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
-
-endsegment
-
-segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tPAYFOU := eExPais
-	!tPAYCLI := eExPais
 endsegment
 
-segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit     ! C 1/1 
+segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGemit,gGenderEmit
 	tTELFOU := eEfone
-	!tTELCLI := eEfone
 endsegment
 
-segment SIE gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGemit
 	tEmitIE := eEIE
 endsegment
 
-segment SIEST gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
-
-endsegment
-
-segment SIM gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
-
-endsegment
-
-segment SCNAE gGnfeProc,gGNFe,gGinfNFe,gGemit     ! C 1/1 
-
-endsegment
-
-segment SCRT gGnfeProc,gGNFe,gGinfNFe,gGemit     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGavulsa : C 1/1 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
-
-endsegment
-
-segment SxOrgao gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
-
-endsegment
-
-segment Smatr gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
-
-endsegment
-
-segment SxAgente gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
-
-endsegment
-
-segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
-
-endsegment
-
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
-
-endsegment
-
-segment SnDAR gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
-
-endsegment
-
-segment SdEmi gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
-
-endsegment
-
-segment SvDAR gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
-
-endsegment
-
-segment SrepEmi gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! M 1/1 
-
-endsegment
-
-segment SdPag gGnfeProc,gGNFe,gGinfNFe,gGavulsa     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdest : C 1/1 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-   tDestCNPJ := eECNPJ   ! C  
-	tCODCLI  := tDestCNPJ
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest
+    tDestCNPJ := eECNPJ  
 	tCATCLI := "STD"
 endsegment
 
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-	tDestCPF  := eECPF
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGdest
+	tDestCPF := eECPF
 	tCATCLI := "CPF"
+    tCODCLI := tDestCNPJ
 endsegment
 
-segment SidEstrangeiro gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-
-endsegment
-
-segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-   tDestNome := eExNome   ! C  
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGdest
+   tDestNome := eExNome  
    tNOMCLI := tDestNome
 endsegment
 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest : C 1/1 
-segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
-    tDestLgr := eExLgr   ! M 
+segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+    tDestLgr := eExLgr
     tAD1CLI := eExLgr   
 endsegment
 
-segment Snro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
-   tDestNRO := eEnro   ! M  
+segment Snro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+   tDestNRO := eEnro 
    tAD2CLI := build(", ",eEnro)
 endsegment
 
-segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
-   tDestCpl := eExCpl   ! C  
+segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+   tDestCpl := eExCpl  
    tAD2CLI := build(tAD2CLI,", ",eExCpl)
 endsegment
 
-segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
-   tDestBairro := eExBairro   ! M  
+segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+   tDestBairro := eExBairro 
    tXbairro := eExBairro
 endsegment
 
-segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
-
-endsegment
-
-segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
-   tDestMun := eExMun   ! M  
+segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+   tDestMun := eExMun 
    tVILCLI := eExMun
 endsegment
 
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! M 1/1 
-   tDestUF := eEUF   ! M 
+segment SUF gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+    tDestUF := eEUF
     tVILCLI := build(tVILCLI,"/",eEUF)   
 endsegment
 
-segment SCEP gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
-    tDestCEP := eECEP   ! C  
+segment SCEP gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+    tDestCEP := eECEP  
     tCPICLI := eECEP
 endsegment
 
-segment ScPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
-
-endsegment
-
-segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
+segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
     tPAYCLI := substr(toupper(eExPais),1,3)
-    if tNumeroSerie = "8" then
+    if tNumeroSerie = "8" or tNumeroSerie = "25" then
         tCODMOP := "ECO"
         tCODTLI := "EC"
     endif
-    if (tNumeroSerie = "9" or tNumeroSerie = "18") and toupper(tPAYCLI) = "BRA" then
+    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26") and eExPais = "BRASIL" then
         tCODMOP := "VEN"
         tCODTLI := "VD"
     endif
-    if (tNumeroSerie = "9" or tNumeroSerie = "18") and toupper(tPAYCLI) <> "BRA" then
+    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26") and eExPais <> "BRASIL"  then
         tCODMOP := "EXP"
         tCODTLI := "EX"
     endif
 endsegment
 
-segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest     ! C 1/1 
-   tDestFone := eEfone   ! C  
+segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+   tDestFone := eEfone  
    tTELCLI := eEfone
 endsegment
 
-segment SindIEDest gGnfeProc,gGNFe,gGinfNFe,gGdest     ! M 1/1 
-
-endsegment
-
-segment SIE gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGdest
     tIEdest := build("IE: ",eEIE)
 endsegment
 
-segment SISUF gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-
+segment Semail gGnfeProc,gGNFe,gGinfNFe,gGdest
+   tDestEmail := eEemail  
 endsegment
 
-segment SIM gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-
-endsegment
-
-segment Semail gGnfeProc,gGNFe,gGinfNFe,gGdest     ! C 1/1 
-   tDestEmail := eEemail   ! C  
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGretirada : C 1/1 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! C 1/1 
-
-endsegment
-
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! C 1/1 
-
-endsegment
-
-segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
-
-endsegment
-
-segment Snro gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
-
-endsegment
-
-segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! C 1/1 
-
-endsegment
-
-segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
-
-endsegment
-
-segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
-
-endsegment
-
-segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
-
-endsegment
-
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGretirada     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGentrega : C 1/1 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! C 1/1 
-
-endsegment
-
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! C 1/1 
-
-endsegment
-
-segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
-
-endsegment
-
-segment Snro gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
-
-endsegment
-
-segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! C 1/1 
-
-endsegment
-
-segment SxBairro gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
-
-endsegment
-
-segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
-
-endsegment
-
-segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
-
-endsegment
-
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGentrega     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGautXML : C 1/10 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGautXML     ! C 1/1 
-
-endsegment
-
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGautXML     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet : M 1/990 
-segment Sdet gGnfeProc,gGNFe,gGinfNFe,gGdet     ! M 1/990 
+segment Sdet gGnfeProc,gGNFe,gGinfNFe,gGdet
     nContadorItem++
-    taNumeroItem[nContadorItem] := eAnItem   ! M 
+    taNumeroItem[nContadorItem] := eAnItem
     taNLIREC[nContadorItem] := taNumeroItem[nContadorItem]  
     taNLILIV[nContadorItem] := taNumeroItem[nContadorItem] 
 endsegment
 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod : M 1/1 
-segment ScProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-    taCprod[nContadorItem] := eEcProd   ! M 
-    taCODPRO[nContadorItem] := taCprod[nContadorItem]   ! M  
+segment ScProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
+    taCprod[nContadorItem] := eEcProd
+    taCODPRO[nContadorItem] := taCprod[nContadorItem] 
 endsegment
 
-segment ScEAN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-   taCean[nContadorItem] := eEcEAN   ! M  
+segment ScEAN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
+   taCean[nContadorItem] := eEcEAN 
 endsegment
 
-segment SxProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-   taProd[nContadorItem] := eExProd   ! M  
+segment SxProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
+   taProd[nContadorItem] := eExProd 
 endsegment
 
-segment SNCM gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SNVE gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/8 
-
-endsegment
-
-segment SCEST gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SindEscala gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SCNPJFab gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment ScBenef gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SEXTIPI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SCFOP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SuCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-   taUcom[nContadorItem] := eEuCom   ! M  
+segment SuCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
+   taUcom[nContadorItem] := eEuCom 
    taUNICDE[nContadorItem] := taUcom[nContadorItem]
 endsegment
 
-segment SqCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1
+segment SqCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
     split(eEqCom,taQcomSplit,".")
     taUVCREA[nContadorItem] := taQcomSplit[1]
     taUVCCDE[nContadorItem] := taQcomSplit[1]
     nQcomSomado := nQcomSomado + number(eEqCom) 
 endsegment
 
-segment SvUnCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-   taUnCom[nContadorItem] := eEvUnCom   ! M  
-   taUnCom50[nContadorItem] := replace(eEvUnCom,".","")   ! M  
+segment SvUnCom gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
+    taUnCom[nContadorItem] := eEvUnCom 
+    taUnCom50[nContadorItem] := replace(eEvUnCom,".","") 
 endsegment
 
-segment SvProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1
-	taVProd[nContadorItem] := build(number(eEvProd) * 1000)
+segment SvProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod
+    taVProd[nContadorItem] := build(number(eEvProd) * 1000)
 endsegment
 
-segment ScEANTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SuTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SqTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SvUnTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-segment SvFrete gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SvSeg gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SvDesc gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SindTot gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI : C 1/100 
-segment SnDI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment SdDI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment SxLocDesemb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment SUFDesemb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment SdDesemb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment StpViaTransp gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment SvAFRMM gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! C 1/1 
-
-endsegment
-
-segment StpIntermedio gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! C 1/1 
-
-endsegment
-
-segment SUFTerceiro gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! C 1/1 
-
-endsegment
-
-segment ScExportador gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi : M 1/100 
-segment SnAdicao gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! M 1/1 
-
-endsegment
-
-segment SnSeqAdic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! M 1/1 
-
-endsegment
-
-segment ScFabricante gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! M 1/1 
-
-endsegment
-
-segment SvDescDI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! C 1/1 
-
-endsegment
-
-segment SnDraw gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGDI,gGadi     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport : C 1/500 
-segment SnDraw gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd : C 1/1 
-segment SnRE gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd     ! M 1/1 
-
-endsegment
-
-segment SchNFe gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd     ! M 1/1 
-
-endsegment
-
-segment SqExport gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGdetExport,gGexportInd     ! M 1/1 
-
-endsegment
-
-segment SxPed gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SnItemPed gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-segment SnFCI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro : C 1/500 
-segment SnLote gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
-taNumeroLote[nContadorItem] := eEnLote 
-endsegment
-
-segment SqLote gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
-
-endsegment
-
-segment SdFab gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
-
-endsegment
-
-segment SdVal gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! M 1/1 
-
-endsegment
-
-segment ScAgreg gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd : C 1/1 
-segment StpOp gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment Schassi gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment ScCor gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SxCor gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment Spot gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment Scilin gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SpesoL gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SpesoB gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SnSerie gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment StpComb gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SnMotor gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SCMT gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment Sdist gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SanoMod gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SanoFab gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment StpPint gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment StpVeic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SespVeic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment SVIN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment ScondVeic gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment ScMod gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment ScCorDENATRAN gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment Slota gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-segment StpRest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGveicProd     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGmed : C 1/1 
-segment ScProdANVISA gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGmed     ! M 1/1 
-
-endsegment
-
-segment SvPMC gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGmed     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma : C 1/500 
-segment StpArma gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
-
-endsegment
-
-segment SnSerie gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
-
-endsegment
-
-segment SnCano gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
-
-endsegment
-
-segment Sdescr gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGarma     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb : C 1/1 
-segment ScProdANP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! M 1/1 
-
-endsegment
-
-segment SdescANP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! M 1/1 
-
-endsegment
-
-segment SpGLP gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
-
-endsegment
-
-segment SpGNn gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
-
-endsegment
-
-segment SpGNi gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
-
-endsegment
-
-segment SvPart gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
-
-endsegment
-
-segment SCODIF gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
-
-endsegment
-
-segment SqTemp gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! C 1/1 
-
-endsegment
-
-segment SUFCons gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE : C 1/1 
-segment SqBCProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE     ! M 1/1 
-
-endsegment
-
-segment SvAliqProd gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE     ! M 1/1 
-
-endsegment
-
-segment SvCIDE gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGCIDE     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante : C 1/1 
-segment SnBico gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
-
-endsegment
-
-segment SnBomba gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! C 1/1 
-
-endsegment
-
-segment SnTanque gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
-
-endsegment
-
-segment SvEncIni gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
-
-endsegment
-
-segment SvEncFin gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGcomb,gGencerrante     ! M 1/1 
-
-endsegment
-
-segment SnRECOPI gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto : M 1/1 
-segment SvTotTrib gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGPISST : C 1/1 
-segment SvPIS gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGPISST     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGCOFINSST : C 1/1 
-segment SvCOFINS gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGCOFINSST     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest : C 1/1 
-segment SvBCUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SpFCPUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SpICMSUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SpICMSInter gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SpICMSInterPart gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SvFCPUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SvICMSUFDest gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-segment SvICMSUFRemet gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimposto,gGICMSUFDest     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol : C 1/1 
-segment SpDevol gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol,gGIPI : M 1/1 
-segment SvIPIDevol gGnfeProc,gGNFe,gGinfNFe,gGdet,gGimpostoDevol,gGIPI     ! M 1/1 
-
-endsegment
-
-segment SinfAdProd gGnfeProc,gGNFe,gGinfNFe,gGdet     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal : M 1/1 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot : M 1/1 
-segment SvBC gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvICMS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvICMSDeson gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvFCPUFDest gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
-
-endsegment
-
-segment SvICMSUFDest gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
-
-endsegment
-
-segment SvICMSUFRemet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
-
-endsegment
-
-segment SvFCP gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvBCST gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvST gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvFCPST gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvFCPSTRet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvProd gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-   tProd := eEvProd   ! M  
-endsegment
-
-segment SvFrete gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-   tFrete := eEvFrete   ! M  
-endsegment
-
-segment SvSeg gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvDesc gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvII gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvIPI gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvIPIDevol gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvPIS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvCOFINS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-
-endsegment
-
-segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1 
-   tOutro := eEvOutro   ! M  
-endsegment
-
-segment SvNF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! M 1/1
-  tTotalvNF := eEvNF   ! M  
-endsegment
-
-segment SvTotTrib gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot : C 1/1 
-segment SvServ gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvBC gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvISS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvPIS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvCOFINS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SdCompet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! M 1/1 
-
-endsegment
-
-segment SvDeducao gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvDescIncond gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvDescCond gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment SvISSRet gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-segment ScRegTrib gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGISSQNtot     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib : C 1/1 
-segment SvRetPIS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-segment SvRetCOFINS gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-segment SvRetCSLL gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-segment SvBCIRRF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-segment SvIRRF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-segment SvBCRetPrev gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-segment SvRetPrev gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGretTrib     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp : M 1/1 
-segment SmodFrete gGnfeProc,gGNFe,gGinfNFe,gGtransp     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta : C 1/1 
-segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-   tTransportaCNPJ := eECNPJ   ! C  
-   tCODTRA := substr(tTransportaCNPJ,(length(tTransportaCNPJ)-14+1),14)
-endsegment
-
-segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-
-endsegment
-
-segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-   tNomeIE := eExNome   ! C 
-	tNOMTRA := eExNome   ! C     
-endsegment
-
-segment SIE gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-    tTransportaIE := eEIE   ! C  
-endsegment
-
-segment SxEnder gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-
-endsegment
-
-segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-
-endsegment
-
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp : C 1/1 
-segment SvServ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
-
-endsegment
-
-segment SvBCRet gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
-
-endsegment
-
-segment SpICMSRet gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
-
+segment SnLote gGnfeProc,gGNFe,gGinfNFe,gGdet,gGprod,gGrastro
+    taNumeroLote[nContadorItem] := eEnLote 
 endsegment
 
-segment SvICMSRet gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
-
-endsegment
-
-segment SCFOP gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
-
-endsegment
-
-segment ScMunFG gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGretTransp     ! M 1/1 
-
+segment SvProd gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
+    tProd := eEvProd 
 endsegment
 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp : C 1/1 
-segment Splaca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp     ! M 1/1 
-   tPlaca := eEplaca   ! M  
-   endsegment
-
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp     ! M 1/1 
-
+segment SvFrete gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
+    tFrete := eEvFrete 
 endsegment
 
-segment SRNTC gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp     ! C 1/1 
-
+segment SvOutro gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
+    tOutro := eEvOutro 
 endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque : C 1/5 
-segment Splaca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque     ! M 1/1 
 
+segment SvNF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
+    tTotalvNF := eEvNF 
 endsegment
 
-segment SUF gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque     ! M 1/1 
-
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
+    tTransportaCNPJ := eECNPJ  
+    tCODTRA := substr(tTransportaCNPJ,(length(tTransportaCNPJ)-14+1),14)
 endsegment
-
-segment SRNTC gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGreboque     ! C 1/1 
 
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
+    tNomeIE := eExNome 
+	tNOMTRA := eExNome     
 endsegment
 
-segment Svagao gGnfeProc,gGNFe,gGinfNFe,gGtransp     ! C 1/1 
-
+segment SIE gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
+    tTransportaIE := eEIE  
 endsegment
-
-segment Sbalsa gGnfeProc,gGNFe,gGinfNFe,gGtransp     ! C 1/1 
 
+segment Splaca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGveicTransp
+   tPlaca := eEplaca 
 endsegment
 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol : C 1/5000 
-segment SqVol gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+segment SqVol gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol
 	taDIPLIV5121[nContadorItem] := eEqVol
-	! tDIPLIV5121 := eEqVol
     tQtdVolumes := build(number(eEqVol) + number(tQtdVolumes))
 endsegment
 
-segment Sesp gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
-	
+segment SpesoL gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol
+    tPesoL := eEpesoL
 endsegment
 
-segment Smarca gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
-
-endsegment
-
-segment SnVol gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
-
-endsegment
-
-segment SpesoL gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
-tPesoL := eEpesoL
-endsegment
-
-segment SpesoB gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol     ! C 1/1 
+segment SpesoB gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol
     tPesoB := build(number(eEpesoB) + number(tPesoB))
 endsegment
 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol,gGlacres : C 1/5000 
-segment SnLacre gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol,gGlacres     ! M 1/1 
-
-endsegment
-
-segment Scobr gGnfeProc,gGNFe,gGinfNFe     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGpag : M 1/1 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGpag,gGdetPag : M 1/100 
-segment StPag gGnfeProc,gGNFe,gGinfNFe,gGpag,gGdetPag     ! M 1/1 
-
-endsegment
-
-segment SvPag gGnfeProc,gGNFe,gGinfNFe,gGpag,gGdetPag     ! M 1/1 
-
-endsegment
-
-segment SinfAdic gGnfeProc,gGNFe,gGinfNFe     ! C 1/1 
-
-endsegment
-
-segment SobsCont gGnfeProc,gGNFe,gGinfNFe,gGinfAdic    ! C 1/1
+segment SobsCont gGnfeProc,gGNFe,gGinfNFe,gGinfAdic
     tXCampo := eAxCampo
 endsegment
 
-segment SxTexto gGnfeProc,gGNFe,gGinfNFe,gGinfAdic,gGobsCont     ! C 1/1
+segment SxTexto gGnfeProc,gGNFe,gGinfNFe,gGinfAdic,gGobsCont 
     if tXCampo = "xCub" then
         tXtexto := eExTexto
     endif
 endsegment
 
-! Group gGnfeProc,gGNFe,gGinfNFe,gGexporta : C 1/1 
-segment SUFSaidaPais gGnfeProc,gGNFe,gGinfNFe,gGexporta     ! M 1/1 
-
+segment SchNFe gGnfeProc,gGprotNFe,gGinfProt
+    tDIPREC := build("Ch NF:", eEchNFe)
+    tDIPLIV := build("Ch NF:", eEchNFe)
+    tChNFe := eEchNFe
 endsegment
 
-segment SxLocExporta gGnfeProc,gGNFe,gGinfNFe,gGexporta     ! M 1/1 
-
+segment SnProt gGnfeProc,gGprotNFe,gGinfProt
+    tNProt := eEnProt
 endsegment
 
-segment Scompra gGnfeProc,gGNFe,gGinfNFe     ! C 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGcana : C 1/1 
-segment Ssafra gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-segment Sref gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFe,gGcana,gGforDia : M 1/31 
-segment SforDia gGnfeProc,gGNFe,gGinfNFe,gGcana,gGforDia     ! M 1/31 
-
-endsegment
-
-segment Sqtde gGnfeProc,gGNFe,gGinfNFe,gGcana,gGforDia     ! M 1/1 
-
-endsegment
-
-segment SqTotMes gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-segment SqTotAnt gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-segment SqTotGer gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-segment SvFor gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-segment SvTotDed gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-segment SvLiqFor gGnfeProc,gGNFe,gGinfNFe,gGcana     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGNFe,gGinfNFeSupl : C 1/1 
-segment SqrCode gGnfeProc,gGNFe,gGinfNFeSupl     ! M 1/1 
-
-endsegment
-
-segment SurlChave gGnfeProc,gGNFe,gGinfNFeSupl     ! M 1/1 
-
-endsegment
-
-segment Sds:Signature gGnfeProc,gGNFe,gGds:Signature     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGprotNFe : M 1/1 
-segment SprotNFe gGnfeProc,gGprotNFe     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGprotNFe,gGinfProt : M 1/1 
-segment SinfProt gGnfeProc,gGprotNFe,gGinfProt     ! C 1/1 
-
-endsegment
-
-segment StpAmb gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
-
-endsegment
-
-segment SverAplic gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
-
-endsegment
-
-segment SchNFe gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
- tDIPREC := build("Ch NF:", eEchNFe)
-  tDIPLIV := build("Ch NF:", eEchNFe)
-  tChNFe := eEchNFe
-endsegment
-
-segment SdhRecbto gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
-
-endsegment
-
-segment SnProt gGnfeProc,gGprotNFe,gGinfProt     ! C 1/1 
-tNProt := eEnProt
-endsegment
-
-segment SdigVal gGnfeProc,gGprotNFe,gGinfProt     ! C 1/1 
-
-endsegment
-
-segment ScStat gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
-
-endsegment
-
-segment SxMotivo gGnfeProc,gGprotNFe,gGinfProt     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGprotNFe,gGds:Signature : C 1/1 
-! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo : M 1/1 
-segment Sds:CanonicalizationMethod gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo     ! M 1/1 
-
-endsegment
-
-segment Sds:SignatureMethod gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference : M 1/1 
-segment Sds:Reference gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference,gGds:Transforms : M 1/1 
-segment Sds:Transform gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference,gGds:Transforms     ! M 1/2 
-
-endsegment
-
-segment Sds:DigestMethod gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference     ! M 1/1 
-
-endsegment
-
-segment Sds:DigestValue gGnfeProc,gGprotNFe,gGds:Signature,gGds:SignedInfo,gGds:Reference     ! M 1/1 
-
-endsegment
-
-segment Sds:SignatureValue gGnfeProc,gGprotNFe,gGds:Signature     ! M 1/1 
-
-endsegment
-
-! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:KeyInfo : M 1/1 
-! Group gGnfeProc,gGprotNFe,gGds:Signature,gGds:KeyInfo,gGds:X509Data : M 1/1 
-segment Sds:X509Certificate gGnfeProc,gGprotNFe,gGds:Signature,gGds:KeyInfo,gGds:X509Data     ! M 1/1 
-
-endsegment
-
-! Default statements section
 default
 
 enddefault
@@ -1585,10 +378,6 @@ enddefault
 ! End statements section
 
 end
-	if length(tCODCLI) = 0 then
-		tCODCLI := tDestCPF
-	endif
-
 	if length(tCODCLI) = 0 then
 		tCODCLI := "EXPORTACAO"
 	endif
@@ -1601,10 +390,15 @@ end
         exit(1)
     endif
 
-	if tEmitCNPJ = "88315379000170" and tDestCNPJ = "02462805000859" then
+    if (substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") and tDestCNPJ = "02462805002550") or (substr(pEDISEND.ORIGINAL.NAME, 1, 11) <> build(tToInfologPrefixFilename, "HAR_NSR_") and tDestCNPJ = "02462805000859") then
+        bGeraM40 := TRUE
+    else
+        bGeraM50 := TRUE
+    endif
+
+	if bGeraM40 = TRUE then
 		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
 		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
-		!tFileOut := build(sHOME,"/rte/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
 		tNameOut := build(tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
 		tREFREC := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) )
 		tCUMLIG := build(nContadorItem)
@@ -1613,26 +407,15 @@ end
 			R_00HEADER_CODEXC("00")
 			R_00HEADER_SEPEXC(".")
 			R_00HEADER_SCOEXC("00")
-			R_00HEADER_TRTEXC("")
 			R_00HEADER_EMTEXC("FM") 
-			R_00HEADER_RCTEXC("")
 			R_00HEADER_DATEXC(time("now" ,"%Y%m%d"))
 			R_00HEADER_HEUEXC(time("now" ,"%H%M%S"))
 			R_00HEADER_NUMEXC("0000000")
 			R_00HEADER_ACQEXC("0")
 			R_00HEADER_VEREXC("5.00") 
-			R_00HEADER_NOMSYS("")  
 			R_00HEADER_NOMDTQ("M40")
-			R_00HEADER_BIBDTQ("")
 			R_00HEADER_LIBEXC(build(nMessageID:R010))
-			R_00HEADER_BIBDST("")
-			R_00HEADER_PGMDST("")
-			R_00HEADER_PARDST("")
-			R_00HEADER_CODACT("")
-			R_00HEADER_IGLSIT("")
 			R_00HEADER_EDISIT(build(number(tCentro_De_Custo)))
-			R_00HEADER_IMAEXC("")  
-			R_00HEADER_DISEXC("")
 
 			flush(0,0,NL) >> tFileOutTemp   
 			nContadorLinhasEscritas++
@@ -1641,8 +424,6 @@ end
 		nContadorTmpTOTAL := 1
 
 		while nContadorTmpTOTAL <= nContadorItem do  
-			!pre registo M30
-
 			tQuery := build("SELECT CODMDR, CODMDS ", NL," "\
 							"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
 							"WHERE CODPRO = '",taCODPRO[nContadorTmpTOTAL],"'")
@@ -1652,25 +433,25 @@ end
 			log("------------------------------------------------------------", NL)
 					
 					
-			if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
 				print("FATAL ", tfSqlErrorStr())
 				bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
 				exit(1)
 			endif
 
-			if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
 				print("FATAL ", tfSqlErrorStr())
 				bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
 				exit(1)
 			endif
 
-			while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
 				taCODMDR[nContadorTmpTOTAL] := taDb2Array["CODMDR"]
 				taCODMDS[nContadorTmpTOTAL] := taDb2Array["CODMDS"]
 				remove(taDb2Array)
 			endwhile
 
-			if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
 				print("FATAL", tfSqlErrorStr())
 				bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
 				exit(1)
@@ -1703,7 +484,6 @@ end
 			nContadorTmpTOTAL++
 		endwhile
 			   
-		!M40
 		R_40HEADER_CODEXC("40")
 		R_40HEADER_SEPEXC(".")
 		R_40HEADER_SCOEXC("00")
@@ -1745,12 +525,25 @@ end
 		flush(0,0,NL) >> tFileOutTemp   
 		nContadorLinhasEscritas++
 
+        R_GEEX4005_CODEXC("40")
+        R_GEEX4005_SEPEXC(".")
+        R_GEEX4005_SCOEXC("05")
+        R_GEEX4005_REFREC(tREFREC)
+        R_GEEX4005_CODRUB("CDFM")
+        if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
+            R_GEEX4005_VALRUB(build("02462805002550"))
+        else
+            R_GEEX4005_VALRUB(build("02462805000859"))
+        endif
+        
+        flush(0,0,NL) >> tFileOutTemp   
+        nContadorLinhasEscritas++
+
 		nContadorLinhasEncomenda := 0
 		nContadorTmpTOTAL := 1
 
 		while nContadorTmpTOTAL <= nContadorItem do
 			if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
-				! fazer aqui um while e validar
 				R_40_20M40_CODEXC("40")
 				R_40_20M40_SEPEXC(".")
 				R_40_20M40_SCOEXC("20")
@@ -1801,12 +594,9 @@ end
 		R_TRAILLER_CODEXC("99")
 		R_TRAILLER_SEPEXC(".")
 		R_TRAILLER_SCOEXC("00")
-		R_TRAILLER_TRTEXC("")
 		R_TRAILLER_EMTEXC("FM")
-		R_TRAILLER_RCTEXC("")
 		R_TRAILLER_DATEXC(time("now" ,"%Y%m%d"))
 		R_TRAILLER_HEUEXC(time("now" ,"H%M%S"))
-		R_TRAILLER_NUMEXC("")
 		tContadorLinhasEscritas := build(nContadorLinhasEscritas)
 		R_TRAILLER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
 
@@ -1818,330 +608,145 @@ end
 		remove(tFileOutTemp)
 		close(tFileOut)
 					
-		bfMajtraceDEVHAR("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+		bfMajtraceDEVHAR("Recebida","0",tNumeroDocumento,substr(tDHemi,1,10),tFileInput,tFileOut,"Produtos","")
 	else
-        nTempNumeroLinha := 1
-        log("DEFINIÇÃO DE UVCCDE PRODUTO ",taCODPRO[nTempNumeroLinha],"------------------------------------",NL)
-        log("1 - nTempNumeroLinha = ",nTempNumeroLinha,NL)
-        log("1 - nContadorItem = ",nContadorItem,NL)
-        while nTempNumeroLinha  <= nContadorItem do
-            log("2 - nTempNumeroLinha = ",nTempNumeroLinha+1,NL)
-            nTempNumeroLinha2 := nTempNumeroLinha+1
-            log("3 - nTempNumeroLinha2 = ",nTempNumeroLinha2,NL)
-            log("3 - nContadorItem = ",nContadorItem,NL)
-            while nTempNumeroLinha2  <= nContadorItem do
-                log("4 - taCODPRO[",nTempNumeroLinha2,"] = ",taCODPRO[nTempNumeroLinha2],NL)
-                log("4 - taCODPRO[",nTempNumeroLinha,"] = ",taCODPRO[nTempNumeroLinha],NL)
-                if taCODPRO[nTempNumeroLinha2] = taCODPRO[nTempNumeroLinha] then
-                    baProdutoDuplicado[nTempNumeroLinha2] := TRUE
-                    log("5 - taUVCCDE[",nTempNumeroLinha,"] = ",taUVCCDE[nTempNumeroLinha],NL)
-                    log("5 - taUVCCDE[",nTempNumeroLinha2,"] = ",taUVCCDE[nTempNumeroLinha2],NL)
-                    taUVCCDE[nTempNumeroLinha] := build(number(taUVCCDE[nTempNumeroLinha]) + number(taUVCCDE[nTempNumeroLinha2]))
-                endif
-                nTempNumeroLinha2++
+        if bGeraM50 = TRUE then
+            nTempNumeroLinha := 1
+            log("DEFINIÇÃO DE UVCCDE PRODUTO ",taCODPRO[nTempNumeroLinha],"------------------------------------",NL)
+            log("1 - nTempNumeroLinha = ",nTempNumeroLinha,NL)
+            log("1 - nContadorItem = ",nContadorItem,NL)
+            while nTempNumeroLinha  <= nContadorItem do
+                log("2 - nTempNumeroLinha = ",nTempNumeroLinha+1,NL)
+                nTempNumeroLinha2 := nTempNumeroLinha+1
+                log("3 - nTempNumeroLinha2 = ",nTempNumeroLinha2,NL)
+                log("3 - nContadorItem = ",nContadorItem,NL)
+                while nTempNumeroLinha2  <= nContadorItem do
+                    log("4 - taCODPRO[",nTempNumeroLinha2,"] = ",taCODPRO[nTempNumeroLinha2],NL)
+                    log("4 - taCODPRO[",nTempNumeroLinha,"] = ",taCODPRO[nTempNumeroLinha],NL)
+                    if taCODPRO[nTempNumeroLinha2] = taCODPRO[nTempNumeroLinha] then
+                        baProdutoDuplicado[nTempNumeroLinha2] := TRUE
+                        log("5 - taUVCCDE[",nTempNumeroLinha,"] = ",taUVCCDE[nTempNumeroLinha],NL)
+                        log("5 - taUVCCDE[",nTempNumeroLinha2,"] = ",taUVCCDE[nTempNumeroLinha2],NL)
+                        taUVCCDE[nTempNumeroLinha] := build(number(taUVCCDE[nTempNumeroLinha]) + number(taUVCCDE[nTempNumeroLinha2]))
+                    endif
+                    nTempNumeroLinha2++
+                endwhile
+                nTempNumeroLinha++
             endwhile
-            nTempNumeroLinha++
-        endwhile
-        log("-----------------------------------------------------",NL)
-        log("-----------------------------------------------------",NL)
-        log("taUVCCDE Final = ",taUVCCDE[nContadorTmpTOTAL],NL)
-        log("-----------------------------------------------------",NL)
-		if tCODACT = "HAR" and tCODMOP <> "VEN" then
-            log("1 - tCODACT - ",tCODACT,NL)
-            log("1 - tCODMOP - ",tCODMOP,NL)						
-						
-            nMessageID := cMessageID
-            tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-            tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-            tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")			
-            tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) )
-            		
-            R_0000HEADER_CODEXC("00")
-            R_0000HEADER_SEPEXC(".")
-            R_0000HEADER_SCOEXC("00")
-            R_0000HEADER_TRTEXC("")
-            R_0000HEADER_EMTEXC("FM") 
-            R_0000HEADER_RCTEXC("")
-            R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
-            R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
-            R_0000HEADER_NUMEXC("0000000")
-            R_0000HEADER_ACQEXC("0")
-            R_0000HEADER_VEREXC("5.00") 
-            R_0000HEADER_NOMSYS("")  
-            R_0000HEADER_NOMDTQ("M50")
-            R_0000HEADER_BIBDTQ("")
-            R_0000HEADER_LIBEXC(build(nMessageID:R010))
-            R_0000HEADER_BIBDST("")
-            R_0000HEADER_PGMDST("")
-            R_0000HEADER_PARDST("")
-            R_0000HEADER_CODACT("")
-            R_0000HEADER_IGLSIT("")
-            R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
-            R_0000HEADER_IMAEXC("")  
+            log("-----------------------------------------------------",NL)
+            log("-----------------------------------------------------",NL)
+            log("taUVCCDE Final = ",taUVCCDE[nContadorTmpTOTAL],NL)
+            log("-----------------------------------------------------",NL)
 
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
-		
-            R_2000COSTUMERIDENTIFICATION_CODEXC("20")
-            R_2000COSTUMERIDENTIFICATION_SEPEXC(".")
-            R_2000COSTUMERIDENTIFICATION_SCOEXC("00")
-            R_2000COSTUMERIDENTIFICATION_TRTEXC("2")
-            R_2000COSTUMERIDENTIFICATION_CODACT(tCODACT)
-            R_2000COSTUMERIDENTIFICATION_CODCLI(tCODCLI) 
-            R_2000COSTUMERIDENTIFICATION_CATCLI(tCATCLI)
-            if tCATCLI = "CNPJ" then
-                R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCNPJ)            
-            else
-                R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCPF)            
-            endif
-            R_2000COSTUMERIDENTIFICATION_NOMCLI(tNOMCLI)
-            R_2000COSTUMERIDENTIFICATION_AD1CLI(tAD1CLI)
-            R_2000COSTUMERIDENTIFICATION_AD2CLI(tAD2CLI)
-            R_2000COSTUMERIDENTIFICATION_VILCLI(tXbairro)
-            R_2000COSTUMERIDENTIFICATION_TELCLI(tTELCLI)
-            R_2000COSTUMERIDENTIFICATION_PAYCLI(tPAYCLI)
-            R_2000COSTUMERIDENTIFICATION_FAXCLI(tIEdest)
+            if tCODACT = "HAR" and tCODMOP <> "VEN" then
+                log("1 - tCODACT - ",tCODACT,NL)
+                log("1 - tCODMOP - ",tCODMOP,NL)						
+                            
+                nMessageID := cMessageID
+                tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")			
+                tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) )
+                        
+                R_0000HEADER_CODEXC("00")
+                R_0000HEADER_SEPEXC(".")
+                R_0000HEADER_SCOEXC("00")
+                R_0000HEADER_EMTEXC("FM") 
+                R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
+                R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
+                R_0000HEADER_NUMEXC("0000000")
+                R_0000HEADER_ACQEXC("0")
+                R_0000HEADER_VEREXC("5.00") 
+                R_0000HEADER_NOMDTQ("M50")
+                R_0000HEADER_LIBEXC(build(nMessageID:R010))
+                R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
 
-            flush(0,0,NL) >> tFileOutTemp 
-            nContadorLinhasEscritas++
-
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("01")
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
-            R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
-
-            nContadorLinhasEscritas++
-            flush(0,0,NL)  >> tFileOutTemp
-
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("02")
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
-            R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
-
-            nContadorLinhasEscritas++
-            flush(0,0,NL)  >> tFileOutTemp
-
-            R_GEEX2004_CODEXC("20")
-            R_GEEX2004_SEPEXC(".")
-            R_GEEX2004_SCOEXC("04")
-            R_GEEX2004_TRTEXC("2")
-            R_GEEX2004_CODACT(tCODACT)
-            R_GEEX2004_CODCLI(tCODCLI)
-            R_GEEX2004_AD3CLI(tVILCLI)
-
-            nContadorLinhasEscritas++
-            flush(0,0,NL)  >> tFileOutTemp
-
-            R_5000ORDERHEADER_CODEXC("50")
-            R_5000ORDERHEADER_SEPEXC(".")
-            R_5000ORDERHEADER_SCOEXC("00")
-            R_5000ORDERHEADER_CODACT(tCODACT)
-            R_5000ORDERHEADER_CODCLI(tCODCLI)  
-            R_5000ORDERHEADER_REFLIV(tREFLIV)
-            R_5000ORDERHEADER_DTILIV(tDTILIV)
-            R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
-            R_5000ORDERHEADER_MSGLIV1(tCODTRA)
-            R_5000ORDERHEADER_MSGLIV2(tNOMTRA)
-            R_5000ORDERHEADER_CODTRA(tCODTRA)
-
-		   	tQuery := build("SELECT TRIM(LIBCPL) CODRGT ", NL," "\
-                            "FROM FGE50FM",tToInfologPrefixFilename,".GETRA ", NL," "\
-                            "WHERE CODTRA='",tCODTRA,"'")
-						
-			log("------------------------------------------------------------", NL)
-			log("1 - tQuery - ",tQuery, NL)
-			log("------------------------------------------------------------", NL)
-												
-            if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
-                print("FATAL ", tfSqlErrorStr())
-                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                exit(1)
-            endif
-
-            if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
-                print("FATAL ", tfSqlErrorStr())
-                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                exit(1)
-            endif
-
-            bApenasRecolheUm := FALSE
-
-            while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                tCODRGTQuery := (peel(taDb2Array["CODRGT"]," "))
-                remove(taDb2Array)
-            endwhile
-
-            if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
-                print("FATAL", tfSqlErrorStr())
-                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                exit(1)
-            endif
-
-            R_5000ORDERHEADER_CODRGT(tCODRGTQuery)
-            R_5000ORDERHEADER_CODMOP(tCODMOP)
-            R_5000ORDERHEADER_CODTLI(tCODTLI)
-
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
-
-            R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
-            R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
-            R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
-            R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACT)
-            R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
-            R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
-            R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tChNFe)
-            ! R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tIEdest)
-
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
-
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("VL01")
-            R_GEEX5005_VALRUB(tTotalvNF)
-
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
-
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("PS01")
-            R_GEEX5005_VALRUB(tPesoB)
-
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
-
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("VC01")
-            R_GEEX5005_VALRUB(tXtexto)
-
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
-
-            ! R_GEEX5005_CODEXC("50")
-            ! R_GEEX5005_SEPEXC(".")
-            ! R_GEEX5005_SCOEXC("05")
-            ! R_GEEX5005_CODACT(tCODACT)
-            ! R_GEEX5005_CODCLI(tCODCLI)
-            ! R_GEEX5005_REFLIV(tREFLIV)
-            ! R_GEEX5005_CODRUB("XCH1")
-            ! R_GEEX5005_VALRUB(tChNFe)
-
-            ! flush(0,0,NL) >> tFileOutTemp   
-            ! nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
             
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("XPT1")
-            R_GEEX5005_VALRUB(tNProt)
+                R_2000COSTUMERIDENTIFICATION_CODEXC("20")
+                R_2000COSTUMERIDENTIFICATION_SEPEXC(".")
+                R_2000COSTUMERIDENTIFICATION_SCOEXC("00")
+                R_2000COSTUMERIDENTIFICATION_TRTEXC("2")
+                R_2000COSTUMERIDENTIFICATION_CODACT(tCODACT)
+                R_2000COSTUMERIDENTIFICATION_CODCLI(tCODCLI) 
+                R_2000COSTUMERIDENTIFICATION_CATCLI(tCATCLI)
+                if tCATCLI = "CNPJ" then
+                    R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCNPJ)            
+                else
+                    R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCPF)            
+                endif
+                R_2000COSTUMERIDENTIFICATION_NOMCLI(tNOMCLI)
+                R_2000COSTUMERIDENTIFICATION_AD1CLI(tAD1CLI)
+                R_2000COSTUMERIDENTIFICATION_AD2CLI(tAD2CLI)
+                R_2000COSTUMERIDENTIFICATION_VILCLI(tXbairro)
+                R_2000COSTUMERIDENTIFICATION_TELCLI(tTELCLI)
+                R_2000COSTUMERIDENTIFICATION_PAYCLI(tPAYCLI)
+                R_2000COSTUMERIDENTIFICATION_FAXCLI(tIEdest)
 
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp 
+                nContadorLinhasEscritas++
 
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("DT01")
-            R_GEEX5005_VALRUB(tDATEXP)
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("01")
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
+                R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
 
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
+                nContadorLinhasEscritas++
+                flush(0,0,NL)  >> tFileOutTemp
 
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("NF01")
-            R_GEEX5005_VALRUB(build(number(tNumeroDocumento)))
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("02")
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
+                R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
 
-            flush(0,0,NL) >> tFileOutTemp
-            nContadorLinhasEscritas++
+                nContadorLinhasEscritas++
+                flush(0,0,NL)  >> tFileOutTemp
 
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("SE01")
-            R_GEEX5005_VALRUB(build(number(tNumeroSerie)))
+                R_GEEX2004_CODEXC("20")
+                R_GEEX2004_SEPEXC(".")
+                R_GEEX2004_SCOEXC("04")
+                R_GEEX2004_TRTEXC("2")
+                R_GEEX2004_CODACT(tCODACT)
+                R_GEEX2004_CODCLI(tCODCLI)
+                R_GEEX2004_AD3CLI(tVILCLI)
 
-            flush(0,0,NL) >> tFileOutTemp
-            nContadorLinhasEscritas++
+                nContadorLinhasEscritas++
+                flush(0,0,NL)  >> tFileOutTemp
 
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("QLIN")
-            R_GEEX5005_VALRUB(build(nContadorItem))
+                R_5000ORDERHEADER_CODEXC("50")
+                R_5000ORDERHEADER_SEPEXC(".")
+                R_5000ORDERHEADER_SCOEXC("00")
+                R_5000ORDERHEADER_CODACT(tCODACT)
+                R_5000ORDERHEADER_CODCLI(tCODCLI)  
+                R_5000ORDERHEADER_REFLIV(tREFLIV)
+                R_5000ORDERHEADER_DTILIV(tDTILIV)
+                R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
+                R_5000ORDERHEADER_MSGLIV1(tCODTRA)
+                R_5000ORDERHEADER_MSGLIV2(tNOMTRA)
+                R_5000ORDERHEADER_CODTRA(tCODTRA)
 
-            flush(0,0,NL) >> tFileOutTemp
-            nContadorLinhasEscritas++
-
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("VO01")
-            R_GEEX5005_VALRUB(tQtdVolumes)
-
-            flush(0,0,NL) >> tFileOutTemp
-            nContadorLinhasEscritas++            
-
-            nContadorTmpTOTAL := 1
-            nContadorAcumuladoINTE := 0
-
-            while nContadorTmpTOTAL <= nContadorItem do  
-
-                tQuery := build("SELECT (FLOOR (",taUVCCDE[nContadorTmpTOTAL],"/PCBPRO)) INTEIROS ", NL," "\
-                                "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
-                                "WHERE CODPRO='",taCODPRO[nContadorTmpTOTAL],"'")
-                
+                tQuery := build("SELECT TRIM(LIBCPL) CODRGT ", NL," "\
+                                "FROM FGE50FM",tToInfologPrefixFilename,".GETRA ", NL," "\
+                                "WHERE CODTRA='",tCODTRA,"'")
+                            
                 log("------------------------------------------------------------", NL)
-                log("2 - tQuery - ",tQuery, NL)
+                log("1 - tQuery - ",tQuery, NL)
                 log("------------------------------------------------------------", NL)
-					
-                if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+                                                    
+                if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
                     print("FATAL ", tfSqlErrorStr())
                     bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                     exit(1)
                 endif
 
-                if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+                if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
                     print("FATAL ", tfSqlErrorStr())
                     bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                     exit(1)
@@ -2149,1006 +754,992 @@ end
 
                 bApenasRecolheUm := FALSE
 
-                while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                    if bApenasRecolheUm = FALSE then
-                        bApenasRecolheUm := TRUE
-                        tInteirosQuery := (peel(taDb2Array["INTEIROS"]," "))
-                        nContadorAcumuladoINTE := nContadorAcumuladoINTE + number(tInteirosQuery)
-                    endif
+                while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                    tCODRGTQuery := (peel(taDb2Array["CODRGT"]," "))
                     remove(taDb2Array)
                 endwhile
 
-                if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+                if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
                     print("FATAL", tfSqlErrorStr())
                     bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                     exit(1)
                 endif
 
-                nContadorTmpTOTAL++
-            endwhile
-				
-            nContadorAcumuladoINTE := number(taDIPLIV5121[nContadorTmpTOTAL]) - nContadorAcumuladoINTE
-            log("1 - taDIPLIV5121[",nContadorTmpTOTAL,"] - ",NL)
-            log("1 - nContadorAcumuladoINTE",nContadorAcumuladoINTE,NL)
+                R_5000ORDERHEADER_CODRGT(tCODRGTQuery)
+                R_5000ORDERHEADER_CODMOP(tCODMOP)
+                R_5000ORDERHEADER_CODTLI(tCODTLI)
 
-            R_GEEX5005_CODEXC("50")
-            R_GEEX5005_SEPEXC(".")
-            R_GEEX5005_SCOEXC("05")
-            R_GEEX5005_CODACT(tCODACT)
-            R_GEEX5005_CODCLI(tCODCLI)
-            R_GEEX5005_REFLIV(tREFLIV)
-            R_GEEX5005_CODRUB("*GM1")
-            R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
+                R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
+                R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
+                R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
+                R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACT)
+                R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
+                R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
+                R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tChNFe)
 
-            R_5011_CODEXC("50")
-            R_5011_SEPEXC(".")
-            R_5011_SCOEXC("11")
-            R_5011_CODACT(tCODACT)
-            R_5011_CODCLI(tCODCLI)
-            R_5011_REFLIV(tREFLIV)
-            R_5011_AD1CLI(tAD1CLI)
-            R_5011_AD2CLI(tAD2CLI)
-            R_5011_AD3CLI(tVILCLI)
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-            flush(0,0,NL) >> tFileOutTemp   
-            nContadorLinhasEscritas++
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("VL01")
+                R_GEEX5005_VALRUB(tTotalvNF)
 
-            nContadorLinhasEncomenda := 0
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-            nContador := 8
-            nContadorTmpTOTAL := 1
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("PS01")
+                R_GEEX5005_VALRUB(tPesoB)
 
-            while nContadorTmpTOTAL <= nContadorItem do
-                if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
-                    R_5020ORDERLINE_CODEXC("50")
-                    R_5020ORDERLINE_SEPEXC(".")
-                    R_5020ORDERLINE_SCOEXC("20")
-                    R_5020ORDERLINE_CODACT(tCODACT)
-                    R_5020ORDERLINE_CODCLI(tCODCLI)
-                    R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
-                    R_5020ORDERLINE_UNICDE("UNI")
-                    R_5020ORDERLINE_UVCCDE(taUVCCDE[nContadorTmpTOTAL])
-                    R_5020ORDERLINE_REFLIV(tREFLIV)
-                    R_5020ORDERLINE_NLILIV(build(nContadorTmpTOTAL:R05.0))
-                    ! R_5020ORDERLINE_PRILIV(replace(build(number(taUnCom[nContadorTmpTOTAL]):L04.4),".",""))
-                    R_5020ORDERLINE_AIGPRI("1")
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("VC01")
+                R_GEEX5005_VALRUB(tXtexto)
 
-                    R_5021ORDERLINE_ADDINFO_CODEXC("50")
-                    R_5021ORDERLINE_ADDINFO_SEPEXC(".")
-                    R_5021ORDERLINE_ADDINFO_SCOEXC("21")
-                    R_5021ORDERLINE_ADDINFO_CODACT(tCODACT)
-                    R_5021ORDERLINE_ADDINFO_CODCLI(tCODCLI)
-                    R_5021ORDERLINE_ADDINFO_REFLIV(tREFLIV)
-                    R_5021ORDERLINE_ADDINFO_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
-                    R_5021ORDERLINE_ADDINFO_DIPLIV(tQtdVolumes)
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
+                
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("XPT1")
+                R_GEEX5005_VALRUB(tNProt)
 
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-                    R_5025ORDERLINE_CODEXC("50")
-                    R_5025ORDERLINE_SEPEXC(".")
-                    R_5025ORDERLINE_SCOEXC("25")
-                    R_5025ORDERLINE_TRTEXC("2")
-                    R_5025ORDERLINE_CODACT(tCODACT)
-                    R_5025ORDERLINE_CODCLI(tCODCLI)
-                    R_5025ORDERLINE_REFLIV(tREFLIV)
-                    R_5025ORDERLINE_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
-                    R_5025ORDERLINE_CODRUB("PREC")
-                    ! R_5025ORDERLINE_VALRUB(taUnCom)
-                    R_5025ORDERLINE_VALRUB(build(number(taUnCom[nContadorTmpTOTAL]):L04.4))
-                    
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
-                endif
-				nContadorLinhasEncomenda++
-				nContadorTmpTOTAL++
-            endwhile
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("DT01")
+                R_GEEX5005_VALRUB(tDATEXP)
 
-            R_5080_CODEXC("50")
-            R_5080_SEPEXC(".")
-            R_5080_SCOEXC("80")
-            R_5080_CODACT(tCODACT)
-            R_5080_CODCLI(tCODCLI)
-            R_5080_REFLIV(tREFLIV)
-            R_5080_SEQTXL("001")
-            R_5080_LIBTXL1(build(tChNFe,build(number(tNProt):R015),build(number(tTPNF):R01)))
-            R_5080_LIBTXL2(build(substr(tDHemi,1,19),build(number(tTotalvNF):R15),build(number(tQtdVolumes):R15),tTpEmis))
-            
-            flush(0,0,NL) >> tFileOutTemp
-            nContadorLinhasEscritas++
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-            R_5099ORDERFOOTER_CODEXC("50")
-            R_5099ORDERFOOTER_SEPEXC(".")
-            R_5099ORDERFOOTER_SCOEXC("99")
-            R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))
-            R_5099ORDERFOOTER_CODACT(tCODACT)
-            R_5099ORDERFOOTER_CODCLI(tCODCLI)
-            R_5099ORDERFOOTER_REFLIV(tREFLIV)
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("NF01")
+                R_GEEX5005_VALRUB(build(number(tNumeroDocumento)))
 
-            flush(0,0,NL) >> tFileOutTemp 
-            nContadorLinhasEscritas++
-		
-		    R_9900FILEFOOTER_CODEXC("99")
-		    R_9900FILEFOOTER_SEPEXC(".")
-		    R_9900FILEFOOTER_SCOEXC("00")
-		    R_9900FILEFOOTER_TRTEXC("")
-		    R_9900FILEFOOTER_EMTEXC("FM")
-		    R_9900FILEFOOTER_RCTEXC("")
-		    R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
-		    R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
-		    R_9900FILEFOOTER_NUMEXC("")
-		    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
-		    R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++
 
-		    flush(0,0,NL)  >> tFileOutTemp
-		    close(tFileOutTemp)
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("SE01")
+                R_GEEX5005_VALRUB(build(number(tNumeroSerie)))
 
-            copy(tFileOutTemp,tFileOut)
-            close(tFileOutTemp)
-            remove(tFileOutTemp)
-            close(tFileOut)
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++
 
-            bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
-        endif
-		
-        ! duplicacao de pedido
-        if tCODACT = "HAR" and tCODMOP = "VEN" then
-            log("------------------------------------------------------------", NL)
-            log("2 - tCODACT - ",tCODACT,NL)		
-            log("2 - tCODMOP - ",tCODMOP,NL)
-            log("------------------------------------------------------------", NL)
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("QLIN")
+                R_GEEX5005_VALRUB(build(nContadorItem))
 
-			/* verifica se temos unidades ou se temos caixa */
-			bTemCaixa := FALSE
-			bTemUnidades := FALSE
-			nContadorTmpTOTAL := 1
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++
 
-			while nContadorTmpTOTAL <= nContadorItem do  
-                if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE  then
-			
-                    tQuery := build("SELECT ",taUVCCDE[nContadorTmpTOTAL],"/PCBPRO QTDEMCAIXAS ", NL," "\
-                                    ", (FLOOR (",taUVCCDE[nContadorTmpTOTAL],"/PCBPRO)) INTEIROS ", NL," "\
-                                    ", PCBPRO ", NL," "\
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("VO01")
+                R_GEEX5005_VALRUB(tQtdVolumes)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++            
+
+                nContadorTmpTOTAL := 1
+                nContadorAcumuladoINTE := 0
+
+                while nContadorTmpTOTAL <= nContadorItem do  
+
+                    tQuery := build("SELECT (FLOOR (",taUVCCDE[nContadorTmpTOTAL],"/PCBPRO)) INTEIROS ", NL," "\
                                     "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
                                     "WHERE CODPRO='",taCODPRO[nContadorTmpTOTAL],"'")
-
-                    log("QUERY 3-----------------------------------------------------", NL)
-                    log(tQuery, NL)
+                    
                     log("------------------------------------------------------------", NL)
-
-                    if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+                    log("2 - tQuery - ",tQuery, NL)
+                    log("------------------------------------------------------------", NL)
+                        
+                    if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
                         print("FATAL ", tfSqlErrorStr())
                         bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                         exit(1)
                     endif
 
-                    if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+                    if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
                         print("FATAL ", tfSqlErrorStr())
                         bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                         exit(1)
                     endif
 
                     bApenasRecolheUm := FALSE
-                    bNAOTEVERESULTADO := FALSE
 
-                    while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                        if number(peel(taDb2Array["PCBPRO"]," ")) = 0 then
-                            bNAOTEVERESULTADO := FALSE
-                        else
-                            bNAOTEVERESULTADO := TRUE
+                    while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                        if bApenasRecolheUm = FALSE then
+                            bApenasRecolheUm := TRUE
+                            tInteirosQuery := (peel(taDb2Array["INTEIROS"]," "))
+                            nContadorAcumuladoINTE := nContadorAcumuladoINTE + number(tInteirosQuery)
                         endif
-                        tQTDEMCAIXAS := build(number(peel(taDb2Array["QTDEMCAIXAS"]," ")))
-                        log("------------------------------------------------------------", NL)
-                        log("tQTDEMCAIXAS - ",number(tQTDEMCAIXAS),NL)
-                        log("index(tQTDEMCAIXAS,.) - ",index(tQTDEMCAIXAS,"."),NL)
-
-                        if index(tQTDEMCAIXAS,".") > 0 then
-                            bTemUnidades := TRUE
-                            log("bTemUnidades",NL)
-                            log("------------------------------------------------------------", NL)
-                        else
-                            bTemCaixa := TRUE
-                            log("bTemCaixa",NL)
-                            log("------------------------------------------------------------", NL)
-                        endif
-
-                        if number(tQTDEMCAIXAS) > 1 then
-                            bTemCaixa := TRUE
-                            log("bTemCaixa",NL)
-                            log("------------------------------------------------------------", NL)
-                        endif
-                                    
-                        tQTDCaixas := build(number(peel(taDb2Array["INTEIROS"]," ")))
-                        taQTDCaixasEmunidade[nContadorTmpTOTAL] := build(number(tQTDCaixas) * number(peel(taDb2Array["PCBPRO"]," ")))
-                        taQTDUnidadesRest[nContadorTmpTOTAL] := build(number(taUVCCDE[nContadorTmpTOTAL]) - (number(peel(taDb2Array["INTEIROS"]," ")) * number(peel(taDb2Array["PCBPRO"]," "))))
-                        log("------------------------------------------------------------", NL)
-                        log("taQTDCaixasEmunidade[",nContadorTmpTOTAL,"] = ",taQTDCaixasEmunidade[nContadorTmpTOTAL],NL)
-                        log("taQTDUnidadesRest[",nContadorTmpTOTAL,"] = ",taQTDUnidadesRest[nContadorTmpTOTAL],NL)
-                        log("------------------------------------------------------------", NL)
-
                         remove(taDb2Array)
                     endwhile
 
-                    if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+                    if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
                         print("FATAL", tfSqlErrorStr())
                         bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                         exit(1)
                     endif
 
-                    if bNAOTEVERESULTADO = FALSE then
-                        bfMajtraceERROPNC("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Pedido com produto: ",taCODPRO[nContadorTmpTOTAL]," não cadastrado no WMS"))
-                        exit(1)
-                    endif
+                    nContadorTmpTOTAL++
+                endwhile
+                    
+                nContadorAcumuladoINTE := number(taDIPLIV5121[nContadorTmpTOTAL]) - nContadorAcumuladoINTE
+                log("1 - taDIPLIV5121[",nContadorTmpTOTAL,"] - ",NL)
+                log("1 - nContadorAcumuladoINTE",nContadorAcumuladoINTE,NL)
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("*GM1")
+                R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
+
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("CDFM")
+                if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
+                    R_GEEX5005_VALRUB(build("02462805002550"))
+                else
+                    R_GEEX5005_VALRUB(build("02462805000859"))
                 endif
-                nContadorTmpTOTAL++
-            endwhile
-			
-			if bTemCaixa = TRUE then	
-			    nContadorHeaderTmp := nContadorHeader						
-                nMessageID := cMessageID
-                tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-                tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-                tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")			
-                tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) , "CX" )
-                nContadorLinhasEscritas := 0
 
-                while nContadorHeaderTmp <= nContadorHeader do
-                    if nContadorLinhasEscritas = 0 then
-                        R_0000HEADER_CODEXC("00")
-                        R_0000HEADER_SEPEXC(".")
-                        R_0000HEADER_SCOEXC("00")
-                        R_0000HEADER_TRTEXC("")
-                        R_0000HEADER_EMTEXC("FM") 
-                        R_0000HEADER_RCTEXC("")
-                        R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
-                        R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
-                        R_0000HEADER_NUMEXC("0000000")
-                        R_0000HEADER_ACQEXC("0")
-                        R_0000HEADER_VEREXC("5.00") 
-                        R_0000HEADER_NOMSYS("")  
-                        R_0000HEADER_NOMDTQ("M50")
-                        R_0000HEADER_BIBDTQ("")
-                        R_0000HEADER_LIBEXC(build(nMessageID:R010))
-                        R_0000HEADER_BIBDST("")
-                        R_0000HEADER_PGMDST("")
-                        R_0000HEADER_PARDST("")
-                        R_0000HEADER_CODACT("")
-                        R_0000HEADER_IGLSIT("")
-                        R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
-                        R_0000HEADER_IMAEXC("")  
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
 
-                        flush(0,0,NL) >> tFileOutTemp   
+                R_5011_CODEXC("50")
+                R_5011_SEPEXC(".")
+                R_5011_SCOEXC("11")
+                R_5011_CODACT(tCODACT)
+                R_5011_CODCLI(tCODCLI)
+                R_5011_REFLIV(tREFLIV)
+                R_5011_AD1CLI(tAD1CLI)
+                R_5011_AD2CLI(tAD2CLI)
+                R_5011_AD3CLI(tVILCLI)
+
+                flush(0,0,NL) >> tFileOutTemp   
+                nContadorLinhasEscritas++
+
+                nContadorLinhasEncomenda := 0
+
+                nContador := 8
+                nContadorTmpTOTAL := 1
+
+                while nContadorTmpTOTAL <= nContadorItem do
+                    if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
+                        R_5020ORDERLINE_CODEXC("50")
+                        R_5020ORDERLINE_SEPEXC(".")
+                        R_5020ORDERLINE_SCOEXC("20")
+                        R_5020ORDERLINE_CODACT(tCODACT)
+                        R_5020ORDERLINE_CODCLI(tCODCLI)
+                        R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
+                        R_5020ORDERLINE_UNICDE("UNI")
+                        R_5020ORDERLINE_UVCCDE(taUVCCDE[nContadorTmpTOTAL])
+                        R_5020ORDERLINE_REFLIV(tREFLIV)
+                        R_5020ORDERLINE_NLILIV(build(nContadorTmpTOTAL:R05.0))
+                        R_5020ORDERLINE_AIGPRI("1")
+
+                        flush(0,0,NL) >> tFileOutTemp 
+                        nContadorLinhasEscritas++
+
+                        R_5021ORDERLINE_ADDINFO_CODEXC("50")
+                        R_5021ORDERLINE_ADDINFO_SEPEXC(".")
+                        R_5021ORDERLINE_ADDINFO_SCOEXC("21")
+                        R_5021ORDERLINE_ADDINFO_CODACT(tCODACT)
+                        R_5021ORDERLINE_ADDINFO_CODCLI(tCODCLI)
+                        R_5021ORDERLINE_ADDINFO_REFLIV(tREFLIV)
+                        R_5021ORDERLINE_ADDINFO_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
+                        R_5021ORDERLINE_ADDINFO_DIPLIV(tQtdVolumes)
+
+                        flush(0,0,NL) >> tFileOutTemp 
+                        nContadorLinhasEscritas++
+
+                        R_5025ORDERLINE_CODEXC("50")
+                        R_5025ORDERLINE_SEPEXC(".")
+                        R_5025ORDERLINE_SCOEXC("25")
+                        R_5025ORDERLINE_TRTEXC("2")
+                        R_5025ORDERLINE_CODACT(tCODACT)
+                        R_5025ORDERLINE_CODCLI(tCODCLI)
+                        R_5025ORDERLINE_REFLIV(tREFLIV)
+                        R_5025ORDERLINE_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
+                        R_5025ORDERLINE_CODRUB("PREC")
+                        R_5025ORDERLINE_VALRUB(build(number(taUnCom[nContadorTmpTOTAL]):L04.4))
+                        
+                        flush(0,0,NL) >> tFileOutTemp 
                         nContadorLinhasEscritas++
                     endif
+                    nContadorLinhasEncomenda++
+                    nContadorTmpTOTAL++
+                endwhile
 
-                    R_2000COSTUMERIDENTIFICATION_CODEXC("20")
-                    R_2000COSTUMERIDENTIFICATION_SEPEXC(".")
-                    R_2000COSTUMERIDENTIFICATION_SCOEXC("00")
-                    R_2000COSTUMERIDENTIFICATION_TRTEXC("2")
-                    R_2000COSTUMERIDENTIFICATION_CODACT(tCODACT)
-                    R_2000COSTUMERIDENTIFICATION_CODCLI(tCODCLI) 
-                    R_2000COSTUMERIDENTIFICATION_CATCLI(tCATCLI)
-                    if tCATCLI = "CNPJ" then
-                        R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCNPJ)            
-                    else
-                        R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCPF)            
-                    endif
-                    R_2000COSTUMERIDENTIFICATION_NOMCLI(tNOMCLI)
-                    R_2000COSTUMERIDENTIFICATION_AD1CLI(tAD1CLI)
-                    R_2000COSTUMERIDENTIFICATION_AD2CLI(tAD2CLI)
-                    R_2000COSTUMERIDENTIFICATION_VILCLI(tXbairro)
-                    R_2000COSTUMERIDENTIFICATION_TELCLI(tTELCLI)
-                    R_2000COSTUMERIDENTIFICATION_PAYCLI(tPAYCLI)
-                    R_2000COSTUMERIDENTIFICATION_FAXCLI(tIEdest)
-                                                
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
-
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("01")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
-
-                    nContadorLinhasEscritas++
-                    flush(0,0,NL)  >> tFileOutTemp
-
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("02")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
-
-                    nContadorLinhasEscritas++
-                    flush(0,0,NL)  >> tFileOutTemp
-
-                    R_GEEX2004_CODEXC("20")
-                    R_GEEX2004_SEPEXC(".")
-                    R_GEEX2004_SCOEXC("04")
-                    R_GEEX2004_TRTEXC("2")
-                    R_GEEX2004_CODACT(tCODACT)
-                    R_GEEX2004_CODCLI(tCODCLI)
-                    R_GEEX2004_AD3CLI(tVILCLI)
-
-                    nContadorLinhasEscritas++
-                    flush(0,0,NL)  >> tFileOutTemp
-                        
-                    R_5000ORDERHEADER_CODEXC("50")
-                    R_5000ORDERHEADER_SEPEXC(".")
-                    R_5000ORDERHEADER_SCOEXC("00")
-                    R_5000ORDERHEADER_CODACT(tCODACT)
-                    R_5000ORDERHEADER_CODCLI(tCODCLI)  
-                    R_5000ORDERHEADER_REFLIV(tREFLIV)
-                    R_5000ORDERHEADER_DTILIV(tDTILIV)
-                    R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
-                    R_5000ORDERHEADER_MSGLIV1(tCODTRA)
-                    R_5000ORDERHEADER_MSGLIV2(tNOMTRA)
-                    R_5000ORDERHEADER_CODTRA(tCODTRA)
-                    R_5000ORDERHEADER_CODTLI(tCODTLI)
-
-                    tLIBCPLSelect := ""
-
-                    tQuery := build("SELECT TRIM(LIBCPL) LIBCPL ", NL," "\
-                                    "FROM FGE50FM",tToInfologPrefixFilename,".GETRA ", NL," "\
-                                    "WHERE CODTRA='",tCODTRA,"'")                
+                R_5080_CODEXC("50")
+                R_5080_SEPEXC(".")
+                R_5080_SCOEXC("80")
+                R_5080_CODACT(tCODACT)
+                R_5080_CODCLI(tCODCLI)
+                R_5080_REFLIV(tREFLIV)
+                R_5080_SEQTXL("001")
+                R_5080_LIBTXL1(build(tChNFe,build(number(tNProt):R015),build(number(tTPNF):R01)))
+                R_5080_LIBTXL2(build(substr(tDHemi,1,19),build(number(tTotalvNF):R15),build(number(tQtdVolumes):R15),tTpEmis))
                 
-                    log("QUERY 4-----------------------------------------------------", NL)
-                    log(tQuery, NL)
-                    log("------------------------------------------------------------", NL)
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++
 
+                R_5099ORDERFOOTER_CODEXC("50")
+                R_5099ORDERFOOTER_SEPEXC(".")
+                R_5099ORDERFOOTER_SCOEXC("99")
+                R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))
+                R_5099ORDERFOOTER_CODACT(tCODACT)
+                R_5099ORDERFOOTER_CODCLI(tCODCLI)
+                R_5099ORDERFOOTER_REFLIV(tREFLIV)
 
-                    if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
-                        print("FATAL ", tfSqlErrorStr())
-                        bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                        exit(1)
-                    endif
+                flush(0,0,NL) >> tFileOutTemp 
+                nContadorLinhasEscritas++
+            
+                R_9900FILEFOOTER_CODEXC("99")
+                R_9900FILEFOOTER_SEPEXC(".")
+                R_9900FILEFOOTER_SCOEXC("00")
+                R_9900FILEFOOTER_TRTEXC("")
+                R_9900FILEFOOTER_EMTEXC("FM")
+                R_9900FILEFOOTER_RCTEXC("")
+                R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+                R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+                R_9900FILEFOOTER_NUMEXC("")
+                tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+                R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
 
-                    if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
-                        print("FATAL ", tfSqlErrorStr())
-                        bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                        exit(1)
-                    endif
+                flush(0,0,NL)  >> tFileOutTemp
+                close(tFileOutTemp)
 
-                    while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                        tLIBCPLSelect := (peel(taDb2Array["LIBCPL"]," "))
-                        remove(taDb2Array)
-                    endwhile
+                copy(tFileOutTemp,tFileOut)
+                close(tFileOutTemp)
+                remove(tFileOutTemp)
+                close(tFileOut)
 
-                    if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
-                        print("FATAL", tfSqlErrorStr())
-                        bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                        exit(1)
-                    endif
+                bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+            endif
+            
+            if tCODACT = "HAR" and tCODMOP = "VEN" then
+                log("------------------------------------------------------------", NL)
+                log("2 - tCODACT - ",tCODACT,NL)		
+                log("2 - tCODMOP - ",tCODMOP,NL)
+                log("------------------------------------------------------------", NL)
 
-                    R_5000ORDERHEADER_CODRGT(tLIBCPLSelect)
-                    R_5000ORDERHEADER_CODMOP(tCODMOP)
+                /* verifica se temos unidades ou se temos caixa */
+                bTemCaixa := FALSE
+                bTemUnidades := FALSE
+                nContadorTmpTOTAL := 1
 
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
-                    R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
-                    R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
-                    R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACT)
-                    R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
-                    R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
-                    R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tChNFe)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("VL01")
-                    R_GEEX5005_VALRUB(tTotalvNF)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("PS01")
-                    R_GEEX5005_VALRUB(tPesoB)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("VC01")
-                    R_GEEX5005_VALRUB(tXtexto)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    ! R_GEEX5005_CODEXC("50")
-                    ! R_GEEX5005_SEPEXC(".")
-                    ! R_GEEX5005_SCOEXC("05")
-                    ! R_GEEX5005_CODACT(tCODACT)
-                    ! R_GEEX5005_CODCLI(tCODCLI)
-                    ! R_GEEX5005_REFLIV(tREFLIV)
-                    ! R_GEEX5005_CODRUB("XCH1")
-                    ! R_GEEX5005_VALRUB(tChNFe)
-
-                    ! flush(0,0,NL) >> tFileOutTemp   
-                    ! nContadorLinhasEscritas++
-                    
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("XPT1")
-                    R_GEEX5005_VALRUB(tNProt)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("DT01")
-                    R_GEEX5005_VALRUB(tDATEXP)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("NF01")
-                    R_GEEX5005_VALRUB(build(number(tNumeroDocumento)))
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("SE01")
-                    R_GEEX5005_VALRUB(build(number(tNumeroSerie)))
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("QLIN")
-                    R_GEEX5005_VALRUB(build(nContadorItem))
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("VO01")
-                    R_GEEX5005_VALRUB(tQtdVolumes)
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++            
-                    								
-                    nContadorTmpTOTAL := 1
-                    nContadorAcumuladoINTE := 0
-
-                    while nContadorTmpTOTAL <= nContadorItems do  
-
-                        tQuery := build("SELECT ((",tQtdVolumes,")- SUM(FLOOR (",nQcomSomado,"/PCBPRO))) INTEIROS ", NL," "\
+                while nContadorTmpTOTAL <= nContadorItem do  
+                    if baProdutoDuplicado[nContadorTmpTOTAL] = FALSE  then
+                
+                        tQuery := build("SELECT ",taUVCCDE[nContadorTmpTOTAL],"/PCBPRO QTDEMCAIXAS ", NL," "\
+                                        ", (FLOOR (",taUVCCDE[nContadorTmpTOTAL],"/PCBPRO)) INTEIROS ", NL," "\
+                                        ", PCBPRO ", NL," "\
                                         "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
                                         "WHERE CODPRO='",taCODPRO[nContadorTmpTOTAL],"'")
 
-                        log("QUERY 5------------------------------------------------------------", NL)
+                        log("QUERY 3-----------------------------------------------------", NL)
                         log(tQuery, NL)
                         log("------------------------------------------------------------", NL)
-                                        
-                        if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+
+                        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
                             print("FATAL ", tfSqlErrorStr())
                             bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                             exit(1)
                         endif
 
-                        if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+                        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
                             print("FATAL ", tfSqlErrorStr())
                             bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                             exit(1)
                         endif
 
                         bApenasRecolheUm := FALSE
+                        bNAOTEVERESULTADO := FALSE
 
-                        while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                            if bApenasRecolheUm = FALSE then
-                                bApenasRecolheUm := TRUE
-                                tInteirosQuery := (peel(taDb2Array["INTEIROS"]," "))
-                                nContadorAcumuladoINTE := nContadorAcumuladoINTE + number(tInteirosQuery)
+                        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                            if number(peel(taDb2Array["PCBPRO"]," ")) = 0 then
+                                bNAOTEVERESULTADO := FALSE
+                            else
+                                bNAOTEVERESULTADO := TRUE
                             endif
+                            tQTDEMCAIXAS := build(number(peel(taDb2Array["QTDEMCAIXAS"]," ")))
+                            log("------------------------------------------------------------", NL)
+                            log("tQTDEMCAIXAS - ",number(tQTDEMCAIXAS),NL)
+                            log("index(tQTDEMCAIXAS,.) - ",index(tQTDEMCAIXAS,"."),NL)
+
+                            if index(tQTDEMCAIXAS,".") > 0 then
+                                bTemUnidades := TRUE
+                                log("bTemUnidades",NL)
+                                log("------------------------------------------------------------", NL)
+                            else
+                                bTemCaixa := TRUE
+                                log("bTemCaixa",NL)
+                                log("------------------------------------------------------------", NL)
+                            endif
+
+                            if number(tQTDEMCAIXAS) > 1 then
+                                bTemCaixa := TRUE
+                                log("bTemCaixa",NL)
+                                log("------------------------------------------------------------", NL)
+                            endif
+                                        
+                            tQTDCaixas := build(number(peel(taDb2Array["INTEIROS"]," ")))
+                            taQTDCaixasEmunidade[nContadorTmpTOTAL] := build(number(tQTDCaixas) * number(peel(taDb2Array["PCBPRO"]," ")))
+                            taQTDUnidadesRest[nContadorTmpTOTAL] := build(number(taUVCCDE[nContadorTmpTOTAL]) - (number(peel(taDb2Array["INTEIROS"]," ")) * number(peel(taDb2Array["PCBPRO"]," "))))
+                            log("------------------------------------------------------------", NL)
+                            log("taQTDCaixasEmunidade[",nContadorTmpTOTAL,"] = ",taQTDCaixasEmunidade[nContadorTmpTOTAL],NL)
+                            log("taQTDUnidadesRest[",nContadorTmpTOTAL,"] = ",taQTDUnidadesRest[nContadorTmpTOTAL],NL)
+                            log("------------------------------------------------------------", NL)
+
                             remove(taDb2Array)
                         endwhile
 
-                        if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+                        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
                             print("FATAL", tfSqlErrorStr())
                             bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                             exit(1)
                         endif
 
-                        nContadorLinhasEncomenda++
-                        nContadorTmpTOTAL++
-                    endwhile
-					
-                    log("FORMAR VOLUMES----------------------------------------------", NL)
-                    log("CAIXA - taQtdVolumes[",nContadorTmpTOTAL,"] = ",tQtdVolumes,NL)
-                    log("CAIXA - nContadorAcumuladoINTE[Antes] = ",nContadorAcumuladoINTE,NL)
-                    nContadorAcumuladoINTE := number(tQtdVolumes) - nContadorAcumuladoINTE
-                    log("CAIXA - nContadorAcumuladoINTE[Depois] = ",nContadorAcumuladoINTE,NL)
-                    log("------------------------------------------------------------", NL)
+                        if bNAOTEVERESULTADO = FALSE then
+                            bfMajtraceERROPNC("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Pedido com produto: ",taCODPRO[nContadorTmpTOTAL]," não cadastrado no WMS"))
+                            exit(1)
+                        endif
+                    endif
+                    nContadorTmpTOTAL++
+                endwhile
+                
+                if bTemCaixa = TRUE then	
+                    nContadorHeaderTmp := nContadorHeader						
+                    nMessageID := cMessageID
+                    tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                    tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                    tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")			
+                    tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) , "CX" )
+                    nContadorLinhasEscritas := 0
 
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("*GM1")
-                    R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
+                    while nContadorHeaderTmp <= nContadorHeader do
+                        if nContadorLinhasEscritas = 0 then
+                            R_0000HEADER_CODEXC("00")
+                            R_0000HEADER_SEPEXC(".")
+                            R_0000HEADER_SCOEXC("00")
+                            R_0000HEADER_TRTEXC("")
+                            R_0000HEADER_EMTEXC("FM") 
+                            R_0000HEADER_RCTEXC("")
+                            R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
+                            R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
+                            R_0000HEADER_NUMEXC("0000000")
+                            R_0000HEADER_ACQEXC("0")
+                            R_0000HEADER_VEREXC("5.00") 
+                            R_0000HEADER_NOMSYS("")  
+                            R_0000HEADER_NOMDTQ("M50")
+                            R_0000HEADER_BIBDTQ("")
+                            R_0000HEADER_LIBEXC(build(nMessageID:R010))
+                            R_0000HEADER_BIBDST("")
+                            R_0000HEADER_PGMDST("")
+                            R_0000HEADER_PARDST("")
+                            R_0000HEADER_CODACT("")
+                            R_0000HEADER_IGLSIT("")
+                            R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
+                            R_0000HEADER_IMAEXC("")  
 
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_5011_CODEXC("50")
-                    R_5011_SEPEXC(".")
-                    R_5011_SCOEXC("11")
-                    R_5011_CODACT(tCODACT)
-                    R_5011_CODCLI(tCODCLI)
-                    R_5011_REFLIV(tREFLIV)
-                    R_5011_AD1CLI(tAD1CLI)
-                    R_5011_AD2CLI(tAD2CLI)
-                    R_5011_AD3CLI(tVILCLI)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    nContadorLinhasEncomenda := 0
-                    nContador := 8
-                    nContadorTmpTOTAL := 1
-                    nContaAuxLinhas5020 := 0
-
-                    while nContadorTmpTOTAL <= nContadorItem do
-                        if number(taQTDCaixasEmunidade[nContadorTmpTOTAL]) > 0 and baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
-                            nContaAuxLinhas5020++
-                            R_5020ORDERLINE_CODEXC("50")
-                            R_5020ORDERLINE_SEPEXC(".")
-                            R_5020ORDERLINE_SCOEXC("20")
-                            R_5020ORDERLINE_CODACT(tCODACT)
-                            R_5020ORDERLINE_CODCLI(tCODCLI)
-                            R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
-                            R_5020ORDERLINE_UNICDE("UNI")
-                            R_5020ORDERLINE_UVCCDE(taQTDCaixasEmunidade[nContadorTmpTOTAL])
-                            R_5020ORDERLINE_REFLIV(tREFLIV)
-                            R_5020ORDERLINE_NLILIV(build(nContadorTmpTOTAL:R05.0))
-                            ! R_5020ORDERLINE_PRILIV(replace(build(number(taUnCom[nContadorTmpTOTAL]):L04.4),".",""))
-                            R_5020ORDERLINE_AIGPRI("1")
-
-                            flush(0,0,NL) >> tFileOutTemp 
-                            nContadorLinhasEscritas++
-
-                            R_5021ORDERLINE_ADDINFO_CODEXC("50")
-                            R_5021ORDERLINE_ADDINFO_SEPEXC(".")
-                            R_5021ORDERLINE_ADDINFO_SCOEXC("21")
-                            R_5021ORDERLINE_ADDINFO_CODACT(tCODACT)
-                            R_5021ORDERLINE_ADDINFO_CODCLI(tCODCLI)
-                            R_5021ORDERLINE_ADDINFO_REFLIV(tREFLIV)
-                            R_5021ORDERLINE_ADDINFO_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
-                            R_5021ORDERLINE_ADDINFO_DIPLIV(tQtdVolumes)
-
-                            flush(0,0,NL) >> tFileOutTemp 
-                            nContadorLinhasEscritas++
-
-                            R_5025ORDERLINE_CODEXC("50")
-                            R_5025ORDERLINE_SEPEXC(".")
-                            R_5025ORDERLINE_SCOEXC("25")
-                            R_5025ORDERLINE_TRTEXC("2")
-                            R_5025ORDERLINE_CODACT(tCODACT)
-                            R_5025ORDERLINE_CODCLI(tCODCLI)
-                            R_5025ORDERLINE_REFLIV(tREFLIV)
-                            R_5025ORDERLINE_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
-                            R_5025ORDERLINE_CODRUB("PREC")
-                            ! R_5025ORDERLINE_VALRUB(taUnCom)
-                            R_5025ORDERLINE_VALRUB(build(number(taUnCom[nContadorTmpTOTAL]):L04.4))
-                            
-                            flush(0,0,NL) >> tFileOutTemp 
+                            flush(0,0,NL) >> tFileOutTemp   
                             nContadorLinhasEscritas++
                         endif
-                        nContadorLinhasEncomenda++
-                        nContadorTmpTOTAL++
-                    endwhile
 
-                    R_5080_CODEXC("50")
-                    R_5080_SEPEXC(".")
-                    R_5080_SCOEXC("80")
-                    R_5080_CODACT(tCODACT)
-                    R_5080_CODCLI(tCODCLI)
-                    R_5080_REFLIV(tREFLIV)
-                    R_5080_SEQTXL("001")
-                    R_5080_LIBTXL1(build(tChNFe,build(number(tNProt):R015),build(number(tTPNF):R01)))
-                    R_5080_LIBTXL2(build(substr(tDHemi,1,19),build(number(tTotalvNF):R15),build(number(tQtdVolumes):R15),tTpEmis))
+                        R_2000COSTUMERIDENTIFICATION_CODEXC("20")
+                        R_2000COSTUMERIDENTIFICATION_SEPEXC(".")
+                        R_2000COSTUMERIDENTIFICATION_SCOEXC("00")
+                        R_2000COSTUMERIDENTIFICATION_TRTEXC("2")
+                        R_2000COSTUMERIDENTIFICATION_CODACT(tCODACT)
+                        R_2000COSTUMERIDENTIFICATION_CODCLI(tCODCLI) 
+                        R_2000COSTUMERIDENTIFICATION_CATCLI(tCATCLI)
+                        if tCATCLI = "CNPJ" then
+                            R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCNPJ)            
+                        else
+                            R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCPF)            
+                        endif
+                        R_2000COSTUMERIDENTIFICATION_NOMCLI(tNOMCLI)
+                        R_2000COSTUMERIDENTIFICATION_AD1CLI(tAD1CLI)
+                        R_2000COSTUMERIDENTIFICATION_AD2CLI(tAD2CLI)
+                        R_2000COSTUMERIDENTIFICATION_VILCLI(tXbairro)
+                        R_2000COSTUMERIDENTIFICATION_TELCLI(tTELCLI)
+                        R_2000COSTUMERIDENTIFICATION_PAYCLI(tPAYCLI)
+                        R_2000COSTUMERIDENTIFICATION_FAXCLI(tIEdest)
+                                                    
+                        flush(0,0,NL) >> tFileOutTemp 
+                        nContadorLinhasEscritas++
+
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("01")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
+
+                        nContadorLinhasEscritas++
+                        flush(0,0,NL)  >> tFileOutTemp
+
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("02")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
+
+                        nContadorLinhasEscritas++
+                        flush(0,0,NL)  >> tFileOutTemp
+
+                        R_GEEX2004_CODEXC("20")
+                        R_GEEX2004_SEPEXC(".")
+                        R_GEEX2004_SCOEXC("04")
+                        R_GEEX2004_TRTEXC("2")
+                        R_GEEX2004_CODACT(tCODACT)
+                        R_GEEX2004_CODCLI(tCODCLI)
+                        R_GEEX2004_AD3CLI(tVILCLI)
+
+                        nContadorLinhasEscritas++
+                        flush(0,0,NL)  >> tFileOutTemp
+                            
+                        R_5000ORDERHEADER_CODEXC("50")
+                        R_5000ORDERHEADER_SEPEXC(".")
+                        R_5000ORDERHEADER_SCOEXC("00")
+                        R_5000ORDERHEADER_CODACT(tCODACT)
+                        R_5000ORDERHEADER_CODCLI(tCODCLI)  
+                        R_5000ORDERHEADER_REFLIV(tREFLIV)
+                        R_5000ORDERHEADER_DTILIV(tDTILIV)
+                        R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
+                        R_5000ORDERHEADER_MSGLIV1(tCODTRA)
+                        R_5000ORDERHEADER_MSGLIV2(tNOMTRA)
+                        R_5000ORDERHEADER_CODTRA(tCODTRA)
+                        R_5000ORDERHEADER_CODTLI(tCODTLI)
+
+                        tLIBCPLSelect := ""
+
+                        tQuery := build("SELECT TRIM(LIBCPL) LIBCPL ", NL," "\
+                                        "FROM FGE50FM",tToInfologPrefixFilename,".GETRA ", NL," "\
+                                        "WHERE CODTRA='",tCODTRA,"'")                
                     
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
+                        log("QUERY 4-----------------------------------------------------", NL)
+                        log(tQuery, NL)
+                        log("------------------------------------------------------------", NL)
 
-                    R_5099ORDERFOOTER_CODEXC("50")
-                    R_5099ORDERFOOTER_SEPEXC(".")
-                    R_5099ORDERFOOTER_SCOEXC("99")
-                    R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))
-                    R_5099ORDERFOOTER_CODACT(tCODACT)
-                    R_5099ORDERFOOTER_CODCLI(tCODCLI)
-                    R_5099ORDERFOOTER_REFLIV(tREFLIV)
 
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
-					
-                    R_9900FILEFOOTER_CODEXC("99")
-                    R_9900FILEFOOTER_SEPEXC(".")
-                    R_9900FILEFOOTER_SCOEXC("00")
-                    R_9900FILEFOOTER_TRTEXC("")
-                    R_9900FILEFOOTER_EMTEXC("FM")
-                    R_9900FILEFOOTER_RCTEXC("")
-                    R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
-                    R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
-                    R_9900FILEFOOTER_NUMEXC("")
-                    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
-                    R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+                        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                            print("FATAL ", tfSqlErrorStr())
+                            bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                            exit(1)
+                        endif
 
-                    flush(0,0,NL)  >> tFileOutTemp
-                    close(tFileOutTemp)
+                        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                            print("FATAL ", tfSqlErrorStr())
+                            bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                            exit(1)
+                        endif
 
-                    copy(tFileOutTemp,tFileOut)
-                    close(tFileOutTemp)
-                    remove(tFileOutTemp)
-                    close(tFileOut)
+                        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                            tLIBCPLSelect := (peel(taDb2Array["LIBCPL"]," "))
+                            remove(taDb2Array)
+                        endwhile
 
-                    bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
-                    nContadorHeaderTmp++
-                endwhile
-            endif
-			
-			if bTemUnidades = TRUE then
-                nContadorHeaderTmp := nContadorHeader							
-                nMessageID := cMessageID
-                tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-                tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-                tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-                tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) , "UN" )
-                nContadorLinhasEscritas := 0
+                        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                            print("FATAL", tfSqlErrorStr())
+                            bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                            exit(1)
+                        endif
 
-                while nContadorHeaderTmp <= nContadorHeader do
-                    if nContadorLinhasEscritas = 0 then
-                        R_0000HEADER_CODEXC("00")
-                        R_0000HEADER_SEPEXC(".")
-                        R_0000HEADER_SCOEXC("00")
-                        R_0000HEADER_TRTEXC("")
-                        R_0000HEADER_EMTEXC("FM") 
-                        R_0000HEADER_RCTEXC("")
-                        R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
-                        R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
-                        R_0000HEADER_NUMEXC("0000000")
-                        R_0000HEADER_ACQEXC("0")
-                        R_0000HEADER_VEREXC("5.00") 
-                        R_0000HEADER_NOMSYS("")  
-                        R_0000HEADER_NOMDTQ("M50")
-                        R_0000HEADER_BIBDTQ("")
-                        R_0000HEADER_LIBEXC(build(nMessageID:R010))
-                        R_0000HEADER_BIBDST("")
-                        R_0000HEADER_PGMDST("")
-                        R_0000HEADER_PARDST("")
-                        R_0000HEADER_CODACT("")
-                        R_0000HEADER_IGLSIT("")
-                        R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
-                        R_0000HEADER_IMAEXC("")  
+                        R_5000ORDERHEADER_CODRGT(tLIBCPLSelect)
+                        R_5000ORDERHEADER_CODMOP(tCODMOP)
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
-                    endif
 
-                    R_2000COSTUMERIDENTIFICATION_CODEXC("20")
-                    R_2000COSTUMERIDENTIFICATION_SEPEXC(".")
-                    R_2000COSTUMERIDENTIFICATION_SCOEXC("00")
-                    R_2000COSTUMERIDENTIFICATION_TRTEXC("2")
-                    R_2000COSTUMERIDENTIFICATION_CODACT(tCODACT)
-                    R_2000COSTUMERIDENTIFICATION_CODCLI(tCODCLI) 
-                    R_2000COSTUMERIDENTIFICATION_CATCLI(tCATCLI)
-                    if tCATCLI = "CNPJ" then
-                        R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCNPJ)            
-                    else
-                        R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCPF)            
-                    endif
-                    R_2000COSTUMERIDENTIFICATION_NOMCLI(tNOMCLI)
-                    R_2000COSTUMERIDENTIFICATION_AD1CLI(tAD1CLI)
-                    R_2000COSTUMERIDENTIFICATION_AD2CLI(tAD2CLI)
-                    R_2000COSTUMERIDENTIFICATION_VILCLI(tXbairro)
-                    R_2000COSTUMERIDENTIFICATION_TELCLI(tTELCLI)
-                    R_2000COSTUMERIDENTIFICATION_PAYCLI(tPAYCLI)
-                    R_2000COSTUMERIDENTIFICATION_FAXCLI(tIEdest)
+                        R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
+                        R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
+                        R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
+                        R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACT)
+                        R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
+                        R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
+                        R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tChNFe)
 
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
 
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("01")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
-                    R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("VL01")
+                        R_GEEX5005_VALRUB(tTotalvNF)
 
-                    nContadorLinhasEscritas++
-                    flush(0,0,NL)  >> tFileOutTemp
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
 
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("02")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
-                    R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("PS01")
+                        R_GEEX5005_VALRUB(tPesoB)
 
-                    nContadorLinhasEscritas++
-                    flush(0,0,NL)  >> tFileOutTemp
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
 
-                    R_GEEX2004_CODEXC("20")
-                    R_GEEX2004_SEPEXC(".")
-                    R_GEEX2004_SCOEXC("04")
-                    R_GEEX2004_TRTEXC("2")
-                    R_GEEX2004_CODACT(tCODACT)
-                    R_GEEX2004_CODCLI(tCODCLI)
-                    R_GEEX2004_AD3CLI(tVILCLI)
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("VC01")
+                        R_GEEX5005_VALRUB(tXtexto)
 
-                    nContadorLinhasEscritas++
-                    flush(0,0,NL)  >> tFileOutTemp
-
-                    R_5000ORDERHEADER_CODEXC("50")
-                    R_5000ORDERHEADER_SEPEXC(".")
-                    R_5000ORDERHEADER_SCOEXC("00")
-                    R_5000ORDERHEADER_CODACT(tCODACT)
-                    R_5000ORDERHEADER_CODCLI(tCODCLI)  
-                    R_5000ORDERHEADER_REFLIV(tREFLIV)
-                    R_5000ORDERHEADER_DTILIV(tDTILIV)
-                    R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
-                    R_5000ORDERHEADER_MSGLIV1(tCODTRA)
-                    R_5000ORDERHEADER_MSGLIV2(tNOMTRA)
-                    R_5000ORDERHEADER_CODTRA(tCODTRA)
-						
-                    tLIBCPLSelect := ""
-
-                    tQuery := build("SELECT TRIM(LIBCPL) LIBCPL ", NL," "\
-                                    "FROM FGE50FM",tToInfologPrefixFilename,".GETRA ", NL," "\
-                                    "WHERE CODTRA='",tCODTRA,"'")
-                                                
-                    log("QUERY 6-----------------------------------------------------", NL)
-                    log(tQuery, NL)
-                    log("------------------------------------------------------------", NL)
-
-                    if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
-                        print("FATAL ", tfSqlErrorStr())
-                        bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                        exit(1)
-                    endif
-
-                    if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
-                        print("FATAL ", tfSqlErrorStr())
-                        bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                        exit(1)
-                    endif
-
-                    bApenasRecolheUm := FALSE
-
-                    while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                        tLIBCPLSelect := (peel(taDb2Array["LIBCPL"]," "))
-                        remove(taDb2Array)
-                    endwhile
-
-                    if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
-                        print("FATAL", tfSqlErrorStr())
-                        bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-                        exit(1)
-                    endif
-					
-                    R_5000ORDERHEADER_CODRGT(tLIBCPLSelect)
-                    R_5000ORDERHEADER_CODMOP("VUN")
-                    R_5000ORDERHEADER_ORDLIV("0001")
-                    R_5000ORDERHEADER_CODTLI(tCODTLI)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
-                    R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
-                    R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
-                    R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACT)
-                    R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
-                    R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
-                    R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tChNFe)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("VL01")
-                    R_GEEX5005_VALRUB(tTotalvNF)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("PS01")
-                    R_GEEX5005_VALRUB(tPesoB)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("VC01")
-                    R_GEEX5005_VALRUB(tXtexto)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    ! R_GEEX5005_CODEXC("50")
-                    ! R_GEEX5005_SEPEXC(".")
-                    ! R_GEEX5005_SCOEXC("05")
-                    ! R_GEEX5005_CODACT(tCODACT)
-                    ! R_GEEX5005_CODCLI(tCODCLI)
-                    ! R_GEEX5005_REFLIV(tREFLIV)
-                    ! R_GEEX5005_CODRUB("XCH1")
-                    ! R_GEEX5005_VALRUB(tChNFe)
-
-                    ! flush(0,0,NL) >> tFileOutTemp   
-                    ! nContadorLinhasEscritas++
-                    
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("XPT1")
-                    R_GEEX5005_VALRUB(tNProt)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("DT01")
-                    R_GEEX5005_VALRUB(tDATEXP)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("NF01")
-                    R_GEEX5005_VALRUB(build(number(tNumeroDocumento)))
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("SE01")
-                    R_GEEX5005_VALRUB(build(number(tNumeroSerie)))
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("QLIN")
-                    R_GEEX5005_VALRUB(build(nContadorItem))
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("VO01")
-                    R_GEEX5005_VALRUB(tQtdVolumes)
-
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++            
-                                
-                    nContadorTmpTOTAL := 1
-                    nContadorAcumuladoINTE := 0
-
-                    while nContadorTmpTOTAL <= nContadorItem do  
-
-                        tQuery := build("SELECT ((",tQtdVolumes,")- SUM(FLOOR (",nQcomSomado,"/PCBPRO))) INTEIROS ", NL," "\
-                                        "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
-                                        "WHERE CODPRO='",taCODPRO[nContadorTmpTOTAL],"'")
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
                         
-                        log("QUERY 7-----------------------------------------------------", NL)
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("XPT1")
+                        R_GEEX5005_VALRUB(tNProt)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("DT01")
+                        R_GEEX5005_VALRUB(tDATEXP)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("NF01")
+                        R_GEEX5005_VALRUB(build(number(tNumeroDocumento)))
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("SE01")
+                        R_GEEX5005_VALRUB(build(number(tNumeroSerie)))
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("QLIN")
+                        R_GEEX5005_VALRUB(build(nContadorItem))
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("VO01")
+                        R_GEEX5005_VALRUB(tQtdVolumes)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++            
+                                                        
+                        nContadorTmpTOTAL := 1
+                        nContadorAcumuladoINTE := 0
+
+                        while nContadorTmpTOTAL <= nContadorItems do  
+
+                            tQuery := build("SELECT ((",tQtdVolumes,")- SUM(FLOOR (",nQcomSomado,"/PCBPRO))) INTEIROS ", NL," "\
+                                            "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
+                                            "WHERE CODPRO='",taCODPRO[nContadorTmpTOTAL],"'")
+
+                            log("QUERY 5------------------------------------------------------------", NL)
+                            log(tQuery, NL)
+                            log("------------------------------------------------------------", NL)
+                                            
+                            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            bApenasRecolheUm := FALSE
+
+                            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                if bApenasRecolheUm = FALSE then
+                                    bApenasRecolheUm := TRUE
+                                    tInteirosQuery := (peel(taDb2Array["INTEIROS"]," "))
+                                    nContadorAcumuladoINTE := nContadorAcumuladoINTE + number(tInteirosQuery)
+                                endif
+                                remove(taDb2Array)
+                            endwhile
+
+                            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL", tfSqlErrorStr())
+                                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            nContadorLinhasEncomenda++
+                            nContadorTmpTOTAL++
+                        endwhile
+                        
+                        log("FORMAR VOLUMES----------------------------------------------", NL)
+                        log("CAIXA - taQtdVolumes[",nContadorTmpTOTAL,"] = ",tQtdVolumes,NL)
+                        log("CAIXA - nContadorAcumuladoINTE[Antes] = ",nContadorAcumuladoINTE,NL)
+                        nContadorAcumuladoINTE := number(tQtdVolumes) - nContadorAcumuladoINTE
+                        log("CAIXA - nContadorAcumuladoINTE[Depois] = ",nContadorAcumuladoINTE,NL)
+                        log("------------------------------------------------------------", NL)
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("*GM1")
+                        R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_5011_CODEXC("50")
+                        R_5011_SEPEXC(".")
+                        R_5011_SCOEXC("11")
+                        R_5011_CODACT(tCODACT)
+                        R_5011_CODCLI(tCODCLI)
+                        R_5011_REFLIV(tREFLIV)
+                        R_5011_AD1CLI(tAD1CLI)
+                        R_5011_AD2CLI(tAD2CLI)
+                        R_5011_AD3CLI(tVILCLI)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        nContadorLinhasEncomenda := 0
+                        nContador := 8
+                        nContadorTmpTOTAL := 1
+                        nContaAuxLinhas5020 := 0
+
+                        while nContadorTmpTOTAL <= nContadorItem do
+                            if number(taQTDCaixasEmunidade[nContadorTmpTOTAL]) > 0 and baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
+                                nContaAuxLinhas5020++
+                                R_5020ORDERLINE_CODEXC("50")
+                                R_5020ORDERLINE_SEPEXC(".")
+                                R_5020ORDERLINE_SCOEXC("20")
+                                R_5020ORDERLINE_CODACT(tCODACT)
+                                R_5020ORDERLINE_CODCLI(tCODCLI)
+                                R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
+                                R_5020ORDERLINE_UNICDE("UNI")
+                                R_5020ORDERLINE_UVCCDE(taQTDCaixasEmunidade[nContadorTmpTOTAL])
+                                R_5020ORDERLINE_REFLIV(tREFLIV)
+                                R_5020ORDERLINE_NLILIV(build(nContadorTmpTOTAL:R05.0))
+                                R_5020ORDERLINE_AIGPRI("1")
+
+                                flush(0,0,NL) >> tFileOutTemp 
+                                nContadorLinhasEscritas++
+
+                                R_5021ORDERLINE_ADDINFO_CODEXC("50")
+                                R_5021ORDERLINE_ADDINFO_SEPEXC(".")
+                                R_5021ORDERLINE_ADDINFO_SCOEXC("21")
+                                R_5021ORDERLINE_ADDINFO_CODACT(tCODACT)
+                                R_5021ORDERLINE_ADDINFO_CODCLI(tCODCLI)
+                                R_5021ORDERLINE_ADDINFO_REFLIV(tREFLIV)
+                                R_5021ORDERLINE_ADDINFO_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
+                                R_5021ORDERLINE_ADDINFO_DIPLIV(tQtdVolumes)
+
+                                flush(0,0,NL) >> tFileOutTemp 
+                                nContadorLinhasEscritas++
+
+                                R_5025ORDERLINE_CODEXC("50")
+                                R_5025ORDERLINE_SEPEXC(".")
+                                R_5025ORDERLINE_SCOEXC("25")
+                                R_5025ORDERLINE_TRTEXC("2")
+                                R_5025ORDERLINE_CODACT(tCODACT)
+                                R_5025ORDERLINE_CODCLI(tCODCLI)
+                                R_5025ORDERLINE_REFLIV(tREFLIV)
+                                R_5025ORDERLINE_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
+                                R_5025ORDERLINE_CODRUB("PREC")
+                                R_5025ORDERLINE_VALRUB(build(number(taUnCom[nContadorTmpTOTAL]):L04.4))
+                                
+                                flush(0,0,NL) >> tFileOutTemp 
+                                nContadorLinhasEscritas++
+                            endif
+                            nContadorLinhasEncomenda++
+                            nContadorTmpTOTAL++
+                        endwhile
+
+                        R_5080_CODEXC("50")
+                        R_5080_SEPEXC(".")
+                        R_5080_SCOEXC("80")
+                        R_5080_CODACT(tCODACT)
+                        R_5080_CODCLI(tCODCLI)
+                        R_5080_REFLIV(tREFLIV)
+                        R_5080_SEQTXL("001")
+                        R_5080_LIBTXL1(build(tChNFe,build(number(tNProt):R015),build(number(tTPNF):R01)))
+                        R_5080_LIBTXL2(build(substr(tDHemi,1,19),build(number(tTotalvNF):R15),build(number(tQtdVolumes):R15),tTpEmis))
+                        
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_5099ORDERFOOTER_CODEXC("50")
+                        R_5099ORDERFOOTER_SEPEXC(".")
+                        R_5099ORDERFOOTER_SCOEXC("99")
+                        R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))
+                        R_5099ORDERFOOTER_CODACT(tCODACT)
+                        R_5099ORDERFOOTER_CODCLI(tCODCLI)
+                        R_5099ORDERFOOTER_REFLIV(tREFLIV)
+
+                        flush(0,0,NL) >> tFileOutTemp 
+                        nContadorLinhasEscritas++
+                        
+                        R_9900FILEFOOTER_CODEXC("99")
+                        R_9900FILEFOOTER_SEPEXC(".")
+                        R_9900FILEFOOTER_SCOEXC("00")
+                        R_9900FILEFOOTER_TRTEXC("")
+                        R_9900FILEFOOTER_EMTEXC("FM")
+                        R_9900FILEFOOTER_RCTEXC("")
+                        R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+                        R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+                        R_9900FILEFOOTER_NUMEXC("")
+                        tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+                        R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+                        flush(0,0,NL)  >> tFileOutTemp
+                        close(tFileOutTemp)
+
+                        copy(tFileOutTemp,tFileOut)
+                        close(tFileOutTemp)
+                        remove(tFileOutTemp)
+                        close(tFileOut)
+
+                        bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+                        nContadorHeaderTmp++
+                    endwhile
+                endif
+                
+                if bTemUnidades = TRUE then
+                    nContadorHeaderTmp := nContadorHeader							
+                    nMessageID := cMessageID
+                    tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                    tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                    tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+                    tREFLIV := build(number(tNumeroDocumento) ,".",number(tNumeroSerie) , "UN" )
+                    nContadorLinhasEscritas := 0
+
+                    while nContadorHeaderTmp <= nContadorHeader do
+                        if nContadorLinhasEscritas = 0 then
+                            R_0000HEADER_CODEXC("00")
+                            R_0000HEADER_SEPEXC(".")
+                            R_0000HEADER_SCOEXC("00")
+                            R_0000HEADER_TRTEXC("")
+                            R_0000HEADER_EMTEXC("FM") 
+                            R_0000HEADER_RCTEXC("")
+                            R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
+                            R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
+                            R_0000HEADER_NUMEXC("0000000")
+                            R_0000HEADER_ACQEXC("0")
+                            R_0000HEADER_VEREXC("5.00") 
+                            R_0000HEADER_NOMSYS("")  
+                            R_0000HEADER_NOMDTQ("M50")
+                            R_0000HEADER_BIBDTQ("")
+                            R_0000HEADER_LIBEXC(build(nMessageID:R010))
+                            R_0000HEADER_BIBDST("")
+                            R_0000HEADER_PGMDST("")
+                            R_0000HEADER_PARDST("")
+                            R_0000HEADER_CODACT("")
+                            R_0000HEADER_IGLSIT("")
+                            R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
+                            R_0000HEADER_IMAEXC("")  
+
+                            flush(0,0,NL) >> tFileOutTemp   
+                            nContadorLinhasEscritas++
+                        endif
+
+                        R_2000COSTUMERIDENTIFICATION_CODEXC("20")
+                        R_2000COSTUMERIDENTIFICATION_SEPEXC(".")
+                        R_2000COSTUMERIDENTIFICATION_SCOEXC("00")
+                        R_2000COSTUMERIDENTIFICATION_TRTEXC("2")
+                        R_2000COSTUMERIDENTIFICATION_CODACT(tCODACT)
+                        R_2000COSTUMERIDENTIFICATION_CODCLI(tCODCLI) 
+                        R_2000COSTUMERIDENTIFICATION_CATCLI(tCATCLI)
+                        if tCATCLI = "CNPJ" then
+                            R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCNPJ)            
+                        else
+                            R_2000COSTUMERIDENTIFICATION_CLILIV(tDestCPF)            
+                        endif
+                        R_2000COSTUMERIDENTIFICATION_NOMCLI(tNOMCLI)
+                        R_2000COSTUMERIDENTIFICATION_AD1CLI(tAD1CLI)
+                        R_2000COSTUMERIDENTIFICATION_AD2CLI(tAD2CLI)
+                        R_2000COSTUMERIDENTIFICATION_VILCLI(tXbairro)
+                        R_2000COSTUMERIDENTIFICATION_TELCLI(tTELCLI)
+                        R_2000COSTUMERIDENTIFICATION_PAYCLI(tPAYCLI)
+                        R_2000COSTUMERIDENTIFICATION_FAXCLI(tIEdest)
+
+                        flush(0,0,NL) >> tFileOutTemp 
+                        nContadorLinhasEscritas++
+
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("01")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
+                        R_2001COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
+
+                        nContadorLinhasEscritas++
+                        flush(0,0,NL)  >> tFileOutTemp
+
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODEXC("20")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SEPEXC(".")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_SCOEXC("02")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_TRTEXC("2")
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODACT(tCODACT)
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CODCLI(tCODCLI)
+                        R_2002COSTUMERIDENTIFICATION_COMPLEMENT_CPICLI(tCPICLI)
+
+                        nContadorLinhasEscritas++
+                        flush(0,0,NL)  >> tFileOutTemp
+
+                        R_GEEX2004_CODEXC("20")
+                        R_GEEX2004_SEPEXC(".")
+                        R_GEEX2004_SCOEXC("04")
+                        R_GEEX2004_TRTEXC("2")
+                        R_GEEX2004_CODACT(tCODACT)
+                        R_GEEX2004_CODCLI(tCODCLI)
+                        R_GEEX2004_AD3CLI(tVILCLI)
+
+                        nContadorLinhasEscritas++
+                        flush(0,0,NL)  >> tFileOutTemp
+
+                        R_5000ORDERHEADER_CODEXC("50")
+                        R_5000ORDERHEADER_SEPEXC(".")
+                        R_5000ORDERHEADER_SCOEXC("00")
+                        R_5000ORDERHEADER_CODACT(tCODACT)
+                        R_5000ORDERHEADER_CODCLI(tCODCLI)  
+                        R_5000ORDERHEADER_REFLIV(tREFLIV)
+                        R_5000ORDERHEADER_DTILIV(tDTILIV)
+                        R_5000ORDERHEADER_HEILIV(substr(tHEILIV,1,4))
+                        R_5000ORDERHEADER_MSGLIV1(tCODTRA)
+                        R_5000ORDERHEADER_MSGLIV2(tNOMTRA)
+                        R_5000ORDERHEADER_CODTRA(tCODTRA)
+                            
+                        tLIBCPLSelect := ""
+
+                        tQuery := build("SELECT TRIM(LIBCPL) LIBCPL ", NL," "\
+                                        "FROM FGE50FM",tToInfologPrefixFilename,".GETRA ", NL," "\
+                                        "WHERE CODTRA='",tCODTRA,"'")
+                                                    
+                        log("QUERY 6-----------------------------------------------------", NL)
                         log(tQuery, NL)
                         log("------------------------------------------------------------", NL)
-                                    
-                        if bfSqlSet( tDbBase ,"SELECTdb2"  , tQuery) = FALSE then
+
+                        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
                             print("FATAL ", tfSqlErrorStr())
                             bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                             exit(1)
                         endif
 
-                        if bfSqlOpen( tDbBase , "SELECTdb2" ) = FALSE then
+                        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
                             print("FATAL ", tfSqlErrorStr())
                             bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                             exit(1)
@@ -3156,158 +1747,320 @@ end
 
                         bApenasRecolheUm := FALSE
 
-                        while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
-                            if bApenasRecolheUm = FALSE then
-                                bApenasRecolheUm := TRUE
-                                tInteirosQuery := (peel(taDb2Array["INTEIROS"]," "))
-                                nContadorAcumuladoINTE := nContadorAcumuladoINTE + number(tInteirosQuery)
-                            endif
+                        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                            tLIBCPLSelect := (peel(taDb2Array["LIBCPL"]," "))
                             remove(taDb2Array)
                         endwhile
 
-                        if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
+                        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
                             print("FATAL", tfSqlErrorStr())
                             bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
                             exit(1)
                         endif
-
-                        nContadorTmpTOTAL++
-                    endwhile
-					
-                    log("FORMAR VOLUMES----------------------------------------------", NL)
-                    log("UNIDADE - taQtdVolumes[",nContadorTmpTOTAL,"] = ",tQtdVolumes,NL)
-                    log("UNIDADE - nContadorAcumuladoINTE[Antes] = ",nContadorAcumuladoINTE,NL)
-                    nContadorAcumuladoINTE := number(tQtdVolumes) - nContadorAcumuladoINTE
-                    log("UNIDADE - nContadorAcumuladoINTE[Depois] = ",nContadorAcumuladoINTE,NL)
-                    log("------------------------------------------------------------", NL)
-
-                    R_GEEX5005_CODEXC("50")
-                    R_GEEX5005_SEPEXC(".")
-                    R_GEEX5005_SCOEXC("05")
-                    R_GEEX5005_CODACT(tCODACT)
-                    R_GEEX5005_CODCLI(tCODCLI)
-                    R_GEEX5005_REFLIV(tREFLIV)
-                    R_GEEX5005_CODRUB("*GM1")
-                    R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    R_5011_CODEXC("50")
-                    R_5011_SEPEXC(".")
-                    R_5011_SCOEXC("11")
-                    R_5011_CODACT(tCODACT)
-                    R_5011_CODCLI(tCODCLI)
-                    R_5011_REFLIV(tREFLIV)
-                    R_5011_AD1CLI(tAD1CLI)
-                    R_5011_AD2CLI(tAD2CLI)
-                    R_5011_AD3CLI(tVILCLI)
-
-                    flush(0,0,NL) >> tFileOutTemp   
-                    nContadorLinhasEscritas++
-
-                    nContadorLinhasEncomenda := 0					
-                    nContador := 8
-                    nContadorTmpTOTAL := 1
-                    nContaAuxLinhas5020 := 0
-
-                    while nContadorTmpTOTAL <= nContadorItem do
-                        if number(taQTDUnidadesRest[nContadorTmpTOTAL]) > 0 and baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
-                            nContaAuxLinhas5020++                       
-                            R_5020ORDERLINE_CODEXC("50")
-                            R_5020ORDERLINE_SEPEXC(".")
-                            R_5020ORDERLINE_SCOEXC("20")
-                            R_5020ORDERLINE_CODACT(tCODACT)
-                            R_5020ORDERLINE_CODCLI(tCODCLI)
-                            R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
-                            R_5020ORDERLINE_UNICDE("UNI")
-                            R_5020ORDERLINE_UVCCDE(taQTDUnidadesRest[nContadorTmpTOTAL])
-                            R_5020ORDERLINE_REFLIV(tREFLIV)
-                            R_5020ORDERLINE_NLILIV(build(nContadorTmpTOTAL:R05.0))
-                            ! R_5020ORDERLINE_PRILIV(replace(build(number(taUnCom[nContadorTmpTOTAL]):L04.4),".",""))
-                            R_5020ORDERLINE_AIGPRI("1")
-
-                            flush(0,0,NL) >> tFileOutTemp 
-                            nContadorLinhasEscritas++
-
-                            R_5021ORDERLINE_ADDINFO_CODEXC("50")
-                            R_5021ORDERLINE_ADDINFO_SEPEXC(".")
-                            R_5021ORDERLINE_ADDINFO_SCOEXC("21")
-                            R_5021ORDERLINE_ADDINFO_CODACT(tCODACT)
-                            R_5021ORDERLINE_ADDINFO_CODCLI(tCODCLI)
-                            R_5021ORDERLINE_ADDINFO_REFLIV(tREFLIV)
-                            R_5021ORDERLINE_ADDINFO_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
-                            R_5021ORDERLINE_ADDINFO_DIPLIV(tQtdVolumes)
-
-                            flush(0,0,NL) >> tFileOutTemp 
-                            nContadorLinhasEscritas++
-
-                            R_5025ORDERLINE_CODEXC("50")
-                            R_5025ORDERLINE_SEPEXC(".")
-                            R_5025ORDERLINE_SCOEXC("25")
-                            R_5025ORDERLINE_TRTEXC("2")
-                            R_5025ORDERLINE_CODACT(tCODACT)
-                            R_5025ORDERLINE_CODCLI(tCODCLI)
-                            R_5025ORDERLINE_REFLIV(tREFLIV)
-                            R_5025ORDERLINE_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
-                            R_5025ORDERLINE_CODRUB("PREC")
-                            ! R_5025ORDERLINE_VALRUB(taUnCom)
-                            R_5025ORDERLINE_VALRUB(build(number(taUnCom[nContadorTmpTOTAL]):L04.4))
-                            
-                            flush(0,0,NL) >> tFileOutTemp 
-                            nContadorLinhasEscritas++
-                        endif
-                        nContadorLinhasEncomenda++
-                        nContadorTmpTOTAL++
-                    endwhile
-					
-                    R_5080_CODEXC("50")
-                    R_5080_SEPEXC(".")
-                    R_5080_SCOEXC("80")
-                    R_5080_CODACT(tCODACT)
-                    R_5080_CODCLI(tCODCLI)
-                    R_5080_REFLIV(tREFLIV)
-                    R_5080_SEQTXL("001")
-                    R_5080_LIBTXL1(build(tChNFe,build(number(tNProt):R015),build(number(tTPNF):R01)))
-                    R_5080_LIBTXL2(build(substr(tDHemi,1,19),build(number(tTotalvNF):R15),build(number(tQtdVolumes):R15),tTpEmis))
-                    
-                    flush(0,0,NL) >> tFileOutTemp
-                    nContadorLinhasEscritas++
-                    
-                    R_5099ORDERFOOTER_CODEXC("50")
-                    R_5099ORDERFOOTER_SEPEXC(".")
-                    R_5099ORDERFOOTER_SCOEXC("99")
-                    R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))
-                    R_5099ORDERFOOTER_CODACT(tCODACT)
-                    R_5099ORDERFOOTER_CODCLI(tCODCLI)
-                    R_5099ORDERFOOTER_REFLIV(tREFLIV)
-
-                    flush(0,0,NL) >> tFileOutTemp 
-                    nContadorLinhasEscritas++
                         
-                    R_9900FILEFOOTER_CODEXC("99")
-                    R_9900FILEFOOTER_SEPEXC(".")
-                    R_9900FILEFOOTER_SCOEXC("00")
-                    R_9900FILEFOOTER_TRTEXC("")
-                    R_9900FILEFOOTER_EMTEXC("FM")
-                    R_9900FILEFOOTER_RCTEXC("")
-                    R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
-                    R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
-                    R_9900FILEFOOTER_NUMEXC("")
-                    tContadorLinhasEscritas := build(nContadorLinhasEscritas)
-                    R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+                        R_5000ORDERHEADER_CODRGT(tLIBCPLSelect)
+                        R_5000ORDERHEADER_CODMOP("VUN")
+                        R_5000ORDERHEADER_ORDLIV("0001")
+                        R_5000ORDERHEADER_CODTLI(tCODTLI)
 
-                    flush(0,0,NL)  >> tFileOutTemp
-                    close(tFileOutTemp)
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
 
-                    copy(tFileOutTemp,tFileOut)
-                    close(tFileOutTemp)
-                    remove(tFileOutTemp)
-                    close(tFileOut)
+                        R_5001ORDERHEADER_COMPLEMENT_CODEXC("50")
+                        R_5001ORDERHEADER_COMPLEMENT_SEPEXC(".")
+                        R_5001ORDERHEADER_COMPLEMENT_SCOEXC("01")
+                        R_5001ORDERHEADER_COMPLEMENT_CODACT(tCODACT)
+                        R_5001ORDERHEADER_COMPLEMENT_CODCLI(tCODCLI)  
+                        R_5001ORDERHEADER_COMPLEMENT_REFLIV(tREFLIV)
+                        R_5001ORDERHEADER_COMPLEMENT_DIPLIV(tChNFe)
 
-                    bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
-                    nContadorHeaderTmp++
-                endwhile
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("VL01")
+                        R_GEEX5005_VALRUB(tTotalvNF)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("PS01")
+                        R_GEEX5005_VALRUB(tPesoB)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("VC01")
+                        R_GEEX5005_VALRUB(tXtexto)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+                        
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("XPT1")
+                        R_GEEX5005_VALRUB(tNProt)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("DT01")
+                        R_GEEX5005_VALRUB(tDATEXP)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("NF01")
+                        R_GEEX5005_VALRUB(build(number(tNumeroDocumento)))
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("SE01")
+                        R_GEEX5005_VALRUB(build(number(tNumeroSerie)))
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("QLIN")
+                        R_GEEX5005_VALRUB(build(nContadorItem))
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("VO01")
+                        R_GEEX5005_VALRUB(tQtdVolumes)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++            
+                                    
+                        nContadorTmpTOTAL := 1
+                        nContadorAcumuladoINTE := 0
+
+                        while nContadorTmpTOTAL <= nContadorItem do  
+
+                            tQuery := build("SELECT ((",tQtdVolumes,")- SUM(FLOOR (",nQcomSomado,"/PCBPRO))) INTEIROS ", NL," "\
+                                            "FROM FGE50FM",tToInfologPrefixFilename,".GEPRO ", NL," "\
+                                            "WHERE CODPRO='",taCODPRO[nContadorTmpTOTAL],"'")
+                            
+                            log("QUERY 7-----------------------------------------------------", NL)
+                            log(tQuery, NL)
+                            log("------------------------------------------------------------", NL)
+                                        
+                            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL ", tfSqlErrorStr())
+                                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            bApenasRecolheUm := FALSE
+
+                            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                                if bApenasRecolheUm = FALSE then
+                                    bApenasRecolheUm := TRUE
+                                    tInteirosQuery := (peel(taDb2Array["INTEIROS"]," "))
+                                    nContadorAcumuladoINTE := nContadorAcumuladoINTE + number(tInteirosQuery)
+                                endif
+                                remove(taDb2Array)
+                            endwhile
+
+                            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                                print("FATAL", tfSqlErrorStr())
+                                bfMajtrace50("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+                                exit(1)
+                            endif
+
+                            nContadorTmpTOTAL++
+                        endwhile
+                        
+                        log("FORMAR VOLUMES----------------------------------------------", NL)
+                        log("UNIDADE - taQtdVolumes[",nContadorTmpTOTAL,"] = ",tQtdVolumes,NL)
+                        log("UNIDADE - nContadorAcumuladoINTE[Antes] = ",nContadorAcumuladoINTE,NL)
+                        nContadorAcumuladoINTE := number(tQtdVolumes) - nContadorAcumuladoINTE
+                        log("UNIDADE - nContadorAcumuladoINTE[Depois] = ",nContadorAcumuladoINTE,NL)
+                        log("------------------------------------------------------------", NL)
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("*GM1")
+                        R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_5011_CODEXC("50")
+                        R_5011_SEPEXC(".")
+                        R_5011_SCOEXC("11")
+                        R_5011_CODACT(tCODACT)
+                        R_5011_CODCLI(tCODCLI)
+                        R_5011_REFLIV(tREFLIV)
+                        R_5011_AD1CLI(tAD1CLI)
+                        R_5011_AD2CLI(tAD2CLI)
+                        R_5011_AD3CLI(tVILCLI)
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        nContadorLinhasEncomenda := 0					
+                        nContador := 8
+                        nContadorTmpTOTAL := 1
+                        nContaAuxLinhas5020 := 0
+
+                        while nContadorTmpTOTAL <= nContadorItem do
+                            if number(taQTDUnidadesRest[nContadorTmpTOTAL]) > 0 and baProdutoDuplicado[nContadorTmpTOTAL] = FALSE then
+                                nContaAuxLinhas5020++                       
+                                R_5020ORDERLINE_CODEXC("50")
+                                R_5020ORDERLINE_SEPEXC(".")
+                                R_5020ORDERLINE_SCOEXC("20")
+                                R_5020ORDERLINE_CODACT(tCODACT)
+                                R_5020ORDERLINE_CODCLI(tCODCLI)
+                                R_5020ORDERLINE_CODPRO(taCODPRO[nContadorTmpTOTAL])
+                                R_5020ORDERLINE_UNICDE("UNI")
+                                R_5020ORDERLINE_UVCCDE(taQTDUnidadesRest[nContadorTmpTOTAL])
+                                R_5020ORDERLINE_REFLIV(tREFLIV)
+                                R_5020ORDERLINE_NLILIV(build(nContadorTmpTOTAL:R05.0))
+                                R_5020ORDERLINE_AIGPRI("1")
+
+                                flush(0,0,NL) >> tFileOutTemp 
+                                nContadorLinhasEscritas++
+
+                                R_5021ORDERLINE_ADDINFO_CODEXC("50")
+                                R_5021ORDERLINE_ADDINFO_SEPEXC(".")
+                                R_5021ORDERLINE_ADDINFO_SCOEXC("21")
+                                R_5021ORDERLINE_ADDINFO_CODACT(tCODACT)
+                                R_5021ORDERLINE_ADDINFO_CODCLI(tCODCLI)
+                                R_5021ORDERLINE_ADDINFO_REFLIV(tREFLIV)
+                                R_5021ORDERLINE_ADDINFO_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
+                                R_5021ORDERLINE_ADDINFO_DIPLIV(tQtdVolumes)
+
+                                flush(0,0,NL) >> tFileOutTemp 
+                                nContadorLinhasEscritas++
+
+                                R_5025ORDERLINE_CODEXC("50")
+                                R_5025ORDERLINE_SEPEXC(".")
+                                R_5025ORDERLINE_SCOEXC("25")
+                                R_5025ORDERLINE_TRTEXC("2")
+                                R_5025ORDERLINE_CODACT(tCODACT)
+                                R_5025ORDERLINE_CODCLI(tCODCLI)
+                                R_5025ORDERLINE_REFLIV(tREFLIV)
+                                R_5025ORDERLINE_NLILIV(build(number(taNLILIV[nContadorTmpTOTAL]):R05.0))
+                                R_5025ORDERLINE_CODRUB("PREC")
+                                R_5025ORDERLINE_VALRUB(build(number(taUnCom[nContadorTmpTOTAL]):L04.4))
+                                
+                                flush(0,0,NL) >> tFileOutTemp 
+                                nContadorLinhasEscritas++
+                            endif
+                            nContadorLinhasEncomenda++
+                            nContadorTmpTOTAL++
+                        endwhile
+                        
+                        R_5080_CODEXC("50")
+                        R_5080_SEPEXC(".")
+                        R_5080_SCOEXC("80")
+                        R_5080_CODACT(tCODACT)
+                        R_5080_CODCLI(tCODCLI)
+                        R_5080_REFLIV(tREFLIV)
+                        R_5080_SEQTXL("001")
+                        R_5080_LIBTXL1(build(tChNFe,build(number(tNProt):R015),build(number(tTPNF):R01)))
+                        R_5080_LIBTXL2(build(substr(tDHemi,1,19),build(number(tTotalvNF):R15),build(number(tQtdVolumes):R15),tTpEmis))
+                        
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++
+                        
+                        R_5099ORDERFOOTER_CODEXC("50")
+                        R_5099ORDERFOOTER_SEPEXC(".")
+                        R_5099ORDERFOOTER_SCOEXC("99")
+                        R_5099ORDERFOOTER_CUMLIG(build(nContadorLinhasEncomenda))
+                        R_5099ORDERFOOTER_CODACT(tCODACT)
+                        R_5099ORDERFOOTER_CODCLI(tCODCLI)
+                        R_5099ORDERFOOTER_REFLIV(tREFLIV)
+
+                        flush(0,0,NL) >> tFileOutTemp 
+                        nContadorLinhasEscritas++
+                            
+                        R_9900FILEFOOTER_CODEXC("99")
+                        R_9900FILEFOOTER_SEPEXC(".")
+                        R_9900FILEFOOTER_SCOEXC("00")
+                        R_9900FILEFOOTER_TRTEXC("")
+                        R_9900FILEFOOTER_EMTEXC("FM")
+                        R_9900FILEFOOTER_DATEXC(time("now" ,"%Y%m%d"))
+                        R_9900FILEFOOTER_HEUEXC(time("now" ,"H%M%S"))
+                        tContadorLinhasEscritas := build(nContadorLinhasEscritas)
+                        R_9900FILEFOOTER_CPTEXC(build(number(tContadorLinhasEscritas):R08.0))
+
+                        flush(0,0,NL)  >> tFileOutTemp
+                        close(tFileOutTemp)
+
+                        copy(tFileOutTemp,tFileOut)
+                        close(tFileOutTemp)
+                        remove(tFileOutTemp)
+                        close(tFileOut)
+
+                        bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
+                        nContadorHeaderTmp++
+                    endwhile
+                endif
             endif
         endif
     endif
@@ -3326,14 +2079,13 @@ function  bfMajtraceDEVHAR(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipo
 	TRACE.MENSAGEM := "XML - RECEBIMENTO"
 	TRACE.SENTIDO := "I"
 	TRACE.NUMDOC := tREFREC
-	TRACE.DATDOC := substr(tVALRUBDtEmi,1,10)
+	TRACE.DATDOC := tDataDoc
 	TRACE.MESSAGEID := build(nMessageID)   
 	TRACE.REDE := build(tCODACT,"_INB",tChNFe)
 	TRACE.FICHEIROSAIDA := tNameOut
 	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
 
 	if tStatus = "Recebida" then
-		!  print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
 		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
 		print("Traduzida com Sucesso",NL) >> TRACE.Detail
 	else
@@ -3379,7 +2131,6 @@ function bfMajtrace50(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocum
     TRACE.REDE := pEDISEND.ORIGINAL.NAME
 
     if tStatus = "Recebida" then
-        !  print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
         print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
         print("Traduzida com Sucesso",NL) >> TRACE.Detail
     else

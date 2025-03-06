@@ -91,6 +91,7 @@ begin
 			exit(1)
 		endif
 
+	nMessageID := cMessageID
 	nCount9070 := 0
 endbegin
 
@@ -380,13 +381,6 @@ end
 
 			! Escrita de consultas
 				bfP5_Shelflife()
-
-				bfMajtrace3("Recebida" \
-							,"0" \
-							,TRACE_PROFILE \
-							,TRACE_MESSAGE_SHLF \
-							,TRACE_DATE_SHLF \
-							,TRACE_MESSAGE_SHLF)
 	endif
 
 	bfSqlClose(tDbBase)
@@ -509,12 +503,32 @@ endfunction
 			TRACE3.REDE := "REPROCESSADO"
 		endif
 		TRACE3.SYSLOG_INDEX := build(SYSLOG.INDEX)
-		TRACE3.FICHEIROSAIDA := tNameOut
+		TRACE3.FICHEIROSAIDA := tNameOutM06
 
 		SYSLOG.REFERENCE := build(nMessageID)
 
+		if tlError = "0" then
+			print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE3.Detail
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE3.Detail
+			print("Traduzida com Sucesso",NL) >> TRACE3.Detail
+		else
+			if tlError = "1" then
+				print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE3.Detail
+				print("Erro de Traducao",NL) >> TRACE3.Detail
+			endif
+		endif
+
 		close(TRACE3.Detail)
 		close(SYSLOG.a)
+
+		copy(SYSLOG.a,TRACE3.In)
+        close(SYSLOG.a)
+        close(TRACE3.In)
+
+		close(tFileOutM06)
+		copy(tFileOutM06,TRACE3.Out)
+		close(tFileOutM06)
+		close(TRACE3.Out)
 
 		flush(TRACE3)
 	endfunction
@@ -612,8 +626,11 @@ endfunction
 
 !==============================================================================
 
-function bfToInfolog()
-	tCmd := build("edisend ToInfolog ", tFileOut)
+function bfToInfolog(tlTrace)
+	switch tlTrace
+		case "3" :			
+			tCmd := build("edisend ToInfolog ", tFileOutM06)
+	endswitch
 	log("executando o comando - ", tCmd, NL)
 	system(tCmd)
 endfunction
@@ -2266,7 +2283,7 @@ endfunction
 							,TRACE_MESSAGE_SHLF)
 			
 			! Enviar interface para o cliente
-				bfToInfolog()
+				bfToInfolog("3")
 		endif
 
 
