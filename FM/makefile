@@ -277,6 +277,9 @@ BINARIES=\
 	$(BIN)/Tables_delete \
 	$(BIN)/M40_LOREAL_CSV \
 	$(BIN)/M40_SISLEY_CSV \
+	$(BIN)/M50_HARMAN_CSV_2 \
+	$(BIN)/INV_MARS_CSV \
+	$(BIN)/INV_MARS_CJ_CSV \
 
 all:	$(BINARIES)
 
