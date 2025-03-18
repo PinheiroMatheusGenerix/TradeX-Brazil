@@ -1968,6 +1968,22 @@ end
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
 
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("CDFM")
+                        if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
+                            R_GEEX5005_VALRUB(build("02462805002550"))
+                        else
+                            R_GEEX5005_VALRUB(build("02462805000859"))
+                        endif
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
                         R_5011_CODEXC("50")
                         R_5011_SEPEXC(".")
                         R_5011_SCOEXC("11")
