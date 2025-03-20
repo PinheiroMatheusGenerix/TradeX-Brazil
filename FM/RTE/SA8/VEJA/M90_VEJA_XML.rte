@@ -114,13 +114,14 @@ end
                         "	       ,0                                                                                 AS QTD_SUBTRAI", NL," "\
                         "	       ,0                                                                                 AS QTD_SOMA", NL," "\
                         "	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS PL", NL," "\
+                        "	JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO AS PR", NL," "\
+                        "   ON PL.CODACT = PR.CODACT AND PL.CODPRO = PR.CODPRO", NL," "\
                         "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS ZI", NL," "\
                         "	ON PL.MOTIMM = ZI.MOTIMM", NL," "\
                         "	WHERE 1 = 1", NL," "\
                         "	AND PL.CODACT = 'VEJ'", NL," "\
-                        "	AND PL.CODCLI <> ''", NL," "\
                         "	AND PL.CODPRO <> ''", NL," "\
-                        "	AND PL.FAMPRO <> 'CARTON'", NL," "\
+                        "	AND PR.FAMPRO <> 'CARTON'", NL," "\
                         "	GROUP BY  PL.CODPRO", NL," "\
                         "	         ,CASE PL.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PL.CODCLI,2)", NL," "\
                         "	UNION ALL", NL," "\
