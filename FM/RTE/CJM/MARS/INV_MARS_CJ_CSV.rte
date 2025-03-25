@@ -87,30 +87,51 @@ end
         tFileOut := build(sHOME,"/FMBR_AS2/",tNameOut)
         tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/",tNameOut)
 
-        tQuery := build("SELECT DISTINCT SAI.NUMIVT AS NUMIVT",NL," "\
-                        "		,(SELECT VALRUB",NL," "\
-                        "		         FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
-                        "		         WHERE CODRUB = 'DEPO') AS VALRUB",NL," "\
-                        "		,VARCHAR_FORMAT(DATE(SUBSTR(CHAR(SAI.MAJDAT), 1, 4) || '-' ||",NL," "\
-                        "                          SUBSTR(CHAR(SAI.MAJDAT), 5, 2) || '-' ||",NL," "\
-                        "                          SUBSTR(CHAR(SAI.MAJDAT), 7, 2)), 'DD/MM/YYYY') AS DATA",NL," "\
-                        "        ,SAI.CODPRO AS CODPRO",NL," "\
-                        "        ,SAI.CODLOT AS CODLOT",NL," "\
-                        "        ,CASE WHEN IVSE.MOTIMM01 = 'AVL' THEN ''",NL," "\
-                        "	     	  WHEN IVSE.MOTIMM01 = 'BLOK' OR IVSE.MOTIMM01 = 'QUAL' THEN '2'",NL," "\
-                        "	     	  WHEN IVSE.MOTIMM01 = 'REST' OR IVSE.MOTIMM01 = 'HOLD' THEN '3'",NL," "\
-                        "	     	  ELSE '' END AS STOSAP",NL," "\
-                        "	    ,CASE SAI.QTECPT",NL," "\
-                        "	    	  WHEN '0' THEN '0'",NL," "\
-                        "	    	  ELSE VARCHAR_FORMAT(DECIMAL(SAI.QTECPT, 15, 3), '9999999.000') END AS QTECPT",NL," "\
-                        "FROM FGE50FM",tToInfologPrefixFilename,".GEIVSAI SAI",NL," "\
+        tQuery := build("SELECT",NL," "\
+                        "    JSA.NUMIVT AS NUMIVT,",NL," "\
+                        "    (SELECT VALRUB",NL," "\
+                        "    FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
+                        "    WHERE CODRUB = 'DEPO') AS VALRUB,",NL," "\
+                        "    VARCHAR_FORMAT(DATE(SUBSTR(CHAR(JSA.MAJDAT), 1, 4) || '-' ||",NL," "\
+                        "                       SUBSTR(CHAR(JSA.MAJDAT), 5, 2) || '-' ||",NL," "\
+                        "                       SUBSTR(CHAR(JSA.MAJDAT), 7, 2)), 'DD/MM/YYYY') AS DATA,",NL," "\
+                        "    JSA.CODPRO AS CODPRO,",NL," "\
+                        "    JSA.CODLOT AS CODLOT,",NL," "\
+                        "    CASE ",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'AVL' THEN ''",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'BLOK' OR IVSE.MOTIMM01 = 'QUAL' THEN '2'",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'REST' OR IVSE.MOTIMM01 = 'HOLD' THEN '3'",NL," "\
+                        "        ELSE ''",NL," "\
+                        "    END AS STOSAP,",NL," "\
+                        "    CASE",NL," "\
+                        "        WHEN SUM(JSA.QTECPT) = 0 THEN '0'",NL," "\
+                        "        ELSE VARCHAR_FORMAT(DECIMAL(SUM(JSA.QTECPT), 15, 3), '9999999.000')",NL," "\
+                        "    END AS QTECPT",NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA JSA",NL," "\
                         "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEIVSE IVSE",NL," "\
-                        "ON SAI.NUMIVT = IVSE.NUMINV",NL," "\
-                        "WHERE SAI.REFMVT = '",taReferencia[tIndexReferencia],"'",NL)
+                        "    ON JSA.NUMIVT = IVSE.NUMINV",NL," "\
+                        "WHERE (JSA.NUMIVT, JSA.NUMDOC, JSA.SEQDOC, JSA.NBRCPT) IN (",NL," "\
+                        "    SELECT NUMIVT, NUMDOC, SEQDOC, MAX(NBRCPT)",NL," "\
+                        "    FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA",NL," "\
+                        "    GROUP BY NUMIVT, NUMDOC, SEQDOC",NL," "\
+                        ")",NL," "\
+                        "AND JSA.NUMIVT IN (SELECT NUMIVT",NL," "\
+                        "                FROM FGE50FM",tToInfologPrefixFilename,".GEIVSAI",NL," "\
+                        "                WHERE REFMVT = '",taReferencia[tIndexReferencia],"')", NL)
 
         if taPlano[tIndexReferencia] <> "*" then
-            tQuery := build(tQuery, "AND SAI.NUMIVT = '",taPlano[tIndexReferencia],"'", NL)
+            tQuery := build(tQuery, "AND JSA.NUMIVT = '",taPlano[tIndexReferencia],"'", NL)
         endif
+
+        tQuery := build(tQuery, "GROUP BY",NL," "\
+                        "    JSA.NUMIVT,",NL," "\
+                        "    JSA.CODPRO,",NL," "\
+                        "    JSA.CODLOT,",NL," "\
+                        "    JSA.MAJDAT,",NL," "\
+                        "    IVSE.MOTIMM01",NL," "\
+                        "ORDER BY",NL," "\
+                        "    JSA.CODPRO,",NL," "\
+                        "    JSA.CODLOT")
 
         log("------------------------------------------------------------", NL)
         log(tQuery,NL)
