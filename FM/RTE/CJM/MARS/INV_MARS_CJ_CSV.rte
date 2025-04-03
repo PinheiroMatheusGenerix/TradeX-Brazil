@@ -71,9 +71,9 @@ line(not "")
     nCountDocLine++
 
     if nCountDocLine > 1 then
-        taReferencia[S_REGISTRO_Referencia] := S_REGISTRO_Referencia
-        taPlano[build(S_REGISTRO_Referencia, "|", nCountDocLine)] := S_REGISTRO_Plano
-        taContagem[S_REGISTRO_Referencia] := S_REGISTRO_Contagem
+        taReferencia[nCountDocLine] := S_REGISTRO_Referencia
+        taPlano[nCountDocLine] := S_REGISTRO_Plano
+        taContagem[nCountDocLine] := S_REGISTRO_Contagem
     endif
 endline
 
@@ -83,53 +83,54 @@ endline
 
 end
     while tIndexReferencia in taReferencia do
-        tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_IV_", time("now","%Y%m%d%H%M%S"), "_", tIndexReferencia, ".txt")
-        tFileOut := build(sHOME,"/FMBR_AS2/",tNameOut)
-        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/",tNameOut)
-
         tQuery := build("SELECT",NL," "\
-                        "    JSA.NUMIVT AS NUMIVT,",NL," "\
-                        "    (SELECT VALRUB",NL," "\
-                        "    FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
-                        "    WHERE CODRUB = 'DEPO') AS VALRUB,",NL," "\
+                        "    ZRU.VALRUB AS SAP,",NL," "\
                         "    VARCHAR_FORMAT(DATE(SUBSTR(CHAR(JSA.MAJDAT), 1, 4) || '-' ||",NL," "\
                         "                       SUBSTR(CHAR(JSA.MAJDAT), 5, 2) || '-' ||",NL," "\
                         "                       SUBSTR(CHAR(JSA.MAJDAT), 7, 2)), 'DD/MM/YYYY') AS DATA,",NL," "\
-                        "    JSA.CODPRO AS CODPRO,",NL," "\
+                        "    LPAD(TRIM(JSA.CODPRO), 18, '0') AS CODPRO,",NL," "\
                         "    JSA.CODLOT AS CODLOT,",NL," "\
-                        "    CASE ",NL," "\
-                        "        WHEN IVSE.MOTIMM01 = 'AVL' THEN ''",NL," "\
+                        "    CASE",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'AVL' OR IVSE.MOTIMM01 = '' THEN ' '",NL," "\
                         "        WHEN IVSE.MOTIMM01 = 'BLOK' OR IVSE.MOTIMM01 = 'QUAL' THEN '2'",NL," "\
                         "        WHEN IVSE.MOTIMM01 = 'REST' OR IVSE.MOTIMM01 = 'HOLD' THEN '3'",NL," "\
                         "        ELSE ''",NL," "\
                         "    END AS STOSAP,",NL," "\
                         "    CASE",NL," "\
                         "        WHEN SUM(JSA.QTECPT) = 0 THEN '0'",NL," "\
-                        "        ELSE VARCHAR_FORMAT(DECIMAL(SUM(JSA.QTECPT), 15, 3), '9999999.000')",NL," "\
+                        "        ELSE REPLACE(VARCHAR_FORMAT(DECIMAL(SUM(JSA.QTECPT), 15, 3), '9999999.000'), '.', ',')",NL," "\
                         "    END AS QTECPT",NL," "\
                         "FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA JSA",NL," "\
                         "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEIVSE IVSE",NL," "\
                         "    ON JSA.NUMIVT = IVSE.NUMINV",NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL PAL",NL," "\
+                        "	ON JSA.NUMPAL = PAL.NUMPAL",NL," "\
+                        "	AND JSA.SNUPAL = PAL.SNUPAL",NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU ZRU",NL," "\
+                        "	ON ZRU.CODRUB = 'IVDP'",NL," "\
+                        "	AND ZRU.VALCLE = PAL.MOTIMM",NL," "\
                         "WHERE (JSA.NUMIVT, JSA.NUMDOC, JSA.SEQDOC, JSA.NBRCPT) IN (",NL," "\
                         "    SELECT NUMIVT, NUMDOC, SEQDOC, MAX(NBRCPT)",NL," "\
                         "    FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA",NL," "\
                         "    GROUP BY NUMIVT, NUMDOC, SEQDOC",NL," "\
                         ")",NL," "\
-                        "AND JSA.NUMIVT IN (SELECT NUMIVT",NL," "\
-                        "                FROM FGE50FM",tToInfologPrefixFilename,".GEIVSAI",NL," "\
-                        "                WHERE REFMVT = '",taReferencia[tIndexReferencia],"')", NL)
+                        "AND JSA.NUMIVT IN (SELECT NUMINV",NL," "\
+                        "				  FROM FGE50FM",tToInfologPrefixFilename,".GEIVSE",NL," "\
+                        "				  WHERE LIBIVT = '",taReferencia[tIndexReferencia],"')",NL," "\
+                        "AND JSA.QTECPT <> '0'", NL)
 
         if taPlano[tIndexReferencia] <> "*" then
             tQuery := build(tQuery, "AND JSA.NUMIVT = '",taPlano[tIndexReferencia],"'", NL)
         endif
 
         tQuery := build(tQuery, "GROUP BY",NL," "\
-                        "    JSA.NUMIVT,",NL," "\
                         "    JSA.CODPRO,",NL," "\
                         "    JSA.CODLOT,",NL," "\
+                        "    ZRU.VALRUB,",NL," "\
                         "    JSA.MAJDAT,",NL," "\
                         "    IVSE.MOTIMM01",NL," "\
                         "ORDER BY",NL," "\
+                        "    ZRU.VALRUB,",NL," "\
                         "    JSA.CODPRO,",NL," "\
                         "    JSA.CODLOT")
 
@@ -147,40 +148,103 @@ end
             exit(1)
         endif
 
+        tSAPValue := ""
+        nNumberQueryResult := 1
         bWriteHeader := FALSE
-        
         bQueryResult := FALSE
         while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
             bQueryResult := TRUE
-            if bWriteHeader = FALSE then
-                bWriteHeader := TRUE
-            
-                R_H_Identificacao("H")
-                R_H_Rua_SAP("BR22")
-                R_H_Deposito_SAP(peel(taDb2Array["VALRUB"]," "))
-                R_H_Plano_Inventario(taReferencia[tIndexReferencia])
-                R_H_Numero_Contagem(taContagem[tIndexReferencia])
-                R_H_Data_Contagem(peel(taDb2Array["DATA"]," "))
+            if nNumberQueryResult = 1 then
+                tSAPValue := peel(taDb2Array["SAP"]," ")
 
-                while tIndex in taH do
-                    print(taH[tIndex],";") >> tFileOutTemp
-                endwhile
-                print(NL) >> tFileOutTemp
-                remove(taH)
+                tNameOut := build("FM",tToInfologPrefixFilename,"MAC_IV_", time("now","%Y%m%d%H%M%S"), "_", tIndexReferencia, "_", nNumberQueryResult, ".txt")
+                tFileOut := build(sHOME,"/FMBR_AS2/",tNameOut)
+                tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/",tNameOut)
+                nNumberQueryResult++
             endif
 
-            R_I_Identificacao("I")
-            R_I_Codigo_SKU(peel(taDb2Array["CODPRO"]," "))
-            R_I_Codigo_Lote(peel(taDb2Array["CODLOT"]," "))
-            R_I_Tipo_Estoque(peel(taDb2Array["STOSAP"]," "))
-            R_I_Quantidade(peel(taDb2Array["QTECPT"]," "))
+            if tSAPValue = peel(taDb2Array["SAP"]," ") or nNumberQueryResult = 1 then
+                tSAPValue := peel(taDb2Array["SAP"]," ")
+                if bWriteHeader = FALSE then
+                    bWriteHeader := TRUE
+                
+                    R_H_Identificacao("H")
+                    R_H_Rua_SAP("BR50")
+                    R_H_Deposito_SAP(peel(taDb2Array["SAP"]," "))
+                    R_H_Plano_Inventario(taReferencia[tIndexReferencia])
+                    R_H_Numero_Contagem(taContagem[tIndexReferencia])
+                    R_H_Data_Contagem(peel(taDb2Array["DATA"]," "))
 
-            while tIndex in taI do
-                print(taI[tIndex],";") >> tFileOutTemp
-            endwhile
-            print(NL) >> tFileOutTemp
-            remove(taI)
+                    while tIndex in taH do
+                        print(taH[tIndex],";") >> tFileOutTemp
+                    endwhile
+                    print(NL) >> tFileOutTemp
+                    remove(taH)
+                endif
 
+                R_I_Identificacao("I")
+                R_I_Codigo_SKU(peel(taDb2Array["CODPRO"]," "))
+                R_I_Codigo_Lote(peel(taDb2Array["CODLOT"]," "))
+                R_I_Tipo_Estoque(taDb2Array["STOSAP"])
+                R_I_Quantidade(peel(taDb2Array["QTECPT"]," "))
+
+                while tIndex in taI do
+                    print(taI[tIndex],";") >> tFileOutTemp
+                endwhile
+                print(NL) >> tFileOutTemp
+                remove(taI)
+            else
+                bWriteHeader := FALSE
+
+                close(tFileOutTemp)
+                copy(tFileOutTemp,tFileOut)
+                close(tFileOutTemp)
+                remove(tFileOutTemp)
+                close(tFileOut)
+
+                if bQueryResult = TRUE then
+                    bfMajtrace("Recebida" \
+                                ,"1" \
+                                ,build(taReferencia[tIndexReferencia], "-", taPlano[tIndexReferencia]) \
+                                ,time("now","%Y-%m-%d") \
+                                ,"")
+                endif
+
+                tNameOut := build("FM",tToInfologPrefixFilename,"MAC_IV_", time("now","%Y%m%d%H%M%S"), "_", tIndexReferencia, "_", nNumberQueryResult, ".txt")
+                tFileOut := build(sHOME,"/FMBR_AS2/",tNameOut)
+                tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/",tNameOut)
+                nNumberQueryResult++
+
+                tSAPValue := peel(taDb2Array["SAP"]," ")
+                if bWriteHeader = FALSE then
+                    bWriteHeader := TRUE
+                
+                    R_H_Identificacao("H")
+                    R_H_Rua_SAP("BR50")
+                    R_H_Deposito_SAP(peel(taDb2Array["SAP"]," "))
+                    R_H_Plano_Inventario(taReferencia[tIndexReferencia])
+                    R_H_Numero_Contagem(taContagem[tIndexReferencia])
+                    R_H_Data_Contagem(peel(taDb2Array["DATA"]," "))
+
+                    while tIndex in taH do
+                        print(taH[tIndex],";") >> tFileOutTemp
+                    endwhile
+                    print(NL) >> tFileOutTemp
+                    remove(taH)
+                endif
+
+                R_I_Identificacao("I")
+                R_I_Codigo_SKU(peel(taDb2Array["CODPRO"]," "))
+                R_I_Codigo_Lote(peel(taDb2Array["CODLOT"]," "))
+                R_I_Tipo_Estoque(taDb2Array["STOSAP"])
+                R_I_Quantidade(peel(taDb2Array["QTECPT"]," "))
+
+                while tIndex in taI do
+                    print(taI[tIndex],";") >> tFileOutTemp
+                endwhile
+                print(NL) >> tFileOutTemp
+                remove(taI)
+            endif
         endwhile
         remove(taDb2Array)
 
