@@ -2121,53 +2121,94 @@ endfunction
 
 ! ABAS SHELF
 	function bfP5_Shelflife()
-		tQuery := build("SELECT  GL.CODPRO                                                                                             AS SKU",NL," "\
-						"	    ,SUBSTR(ZRE.CODRUB,2,3) 																			   AS IMOFVI",NL," "\
-						"       ,GL.DS1PRO                                                                                             AS SKU_DESCRICAO",NL," "\
-						"       ,GL.CODPAL                                                                                             AS LP",NL," "\
-						"       ,GL.NUMPAL                                                                                             AS LPN",NL," "\
-						"       ,CASE GL.MOTIMM WHEN '' THEN 'NM' ELSE GL.MOTIMM END                                                   AS DEPOSITO",NL," "\
-						"       ,RI.VALRUB                                                                                             AS ESTOQUE",NL," "\
-						"       ,CASE GL.CODLOT WHEN '' THEN 'NOLOT' ELSE GL.CODLOT END                                                AS LOTE",NL," "\
-						"       ,GP.DESFOU                                                                                             AS NOTE1",NL," "\
-						"       ,CASE GL.DATFVI WHEN 0 THEN '' ELSE TO_CHAR(TO_DATE(GL.DATFVI||'','YYYYMMDD') ,'DD/MM/YYYY') END       AS EXPR_DATE",NL," "\
-						"       ,GL.UVCSTO                                                                                             AS QTY",NL," "\
-						"       ,GL.UNIPRO                                                                                             AS UOM_ABREV",NL," "\
-						"       ,GL.ZONSTS ||'-'|| DIGITS(GL.ALLSTS) ||'-'|| DIGITS(GL.DPLSTS) ||'-'|| DIGITS(GL.NIVSTS)               AS LOCACAO",NL," "\
-						"       ,CASE GL.ETAPAL WHEN '50' THEN 'PUT' ELSE 'LOC' END                                                    AS TIPO",NL," "\
-						"       ,GL.REFREC                                                                                             AS BL",NL," "\
-						"       ,GL.VALPRO                                                                                             AS PKG_NO",NL," "\
-						"       ,GL.FAMPRO                                                                                             AS FAMI",NL," "\
-						"       ,TO_CHAR(TO_DATE(GL.DATREC||'','YYYYMMDD'),'DD/MM/YYYY')                                               AS DREC",NL," "\
-						"       ,CASE GL.DATFVI WHEN 0 THEN NULL ELSE DAYS(CURRENT DATE) - DAYS(TO_DATE(GL.DATFVI||'','YYYYMMDD')) END AS DIAS_VIDA_PROD",NL," "\
-						"       ,GP.ANAPRO                                                                                             AS DIVISAO",NL," "\
-						"       ,GP.CODTMD                                                                                             AS COD_ONU",NL," "\
-						"       ,GP.CODSEC                                                                                             AS CLASSE_RISCO",NL," "\
-						"       ,GL.REFREC                                                                                             AS NF",NL," "\
-						"       ,GL.DS2PRO                                                                                             AS DESCRICAO",NL," "\
+		tQuery := build("WITH MOTIMM_VAL AS (",NL," "\
+						"    SELECT ",NL," "\
+						"        GL.CODPRO,",NL," "\
+						"        GL.CODACT,",NL," "\
+						"        CASE",NL," "\
+						"            WHEN GL.MOTIMM = '' THEN",NL," "\
+						"                (SELECT VALRUB",NL," "\
+						"                 FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
+						"                 WHERE CODRUB = 'BRO' AND CODRUB = 'BRO')",NL," "\
+						"            ELSE GL.MOTIMM",NL," "\
+						"        END AS MOTIMM_VAL",NL," "\
+						"    FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS GL",NL," "\
+						")",NL," "\
+						"SELECT",NL," "\
+						"    GL.CODPRO AS SKU,",NL," "\
+						"    SUBSTR(ZRE.CODRUB, 2, 3) AS IMOFVI,",NL," "\
+						"    GL.DS1PRO AS SKU_DESCRICAO,",NL," "\
+						"    GL.CODPAL AS LP,",NL," "\
+						"    GL.NUMPAL AS LPN,",NL," "\
+						"    CASE",NL," "\
+						"        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
+						"        ELSE GL.MOTIMM ",NL," "\
+						"    END AS DEPOSITO,",NL," "\
+						"    RI.VALRUB AS ESTOQUE,",NL," "\
+						"    CASE",NL," "\
+						"        WHEN GL.CODLOT = '' THEN 'NOLOT'",NL," "\
+						"        ELSE GL.CODLOT",NL," "\
+						"    END AS LOTE,",NL," "\
+						"    GP.DESFOU AS NOTE1,",NL," "\
+						"    CASE",NL," "\
+						"        WHEN GL.DATFVI = 0 THEN ''",NL," "\
+						"        ELSE TO_CHAR(TO_DATE(GL.DATFVI || '', 'YYYYMMDD'), 'DD/MM/YYYY')",NL," "\
+						"    END AS EXPR_DATE,",NL," "\
+						"    GL.UVCSTO AS QTY,",NL," "\
+						"    GL.UNIPRO AS UOM_ABREV,",NL," "\
+						"    GL.ZONSTS || '-' || DIGITS(GL.ALLSTS) || '-' || DIGITS(GL.DPLSTS) || '-' || DIGITS(GL.NIVSTS) AS LOCACAO,",NL," "\
+						"    CASE",NL," "\
+						"        WHEN GL.ETAPAL = '50' THEN 'PUT'",NL," "\
+						"        ELSE 'LOC'",NL," "\
+						"    END AS TIPO,",NL," "\
+						"    GL.REFREC AS BL,",NL," "\
+						"    GL.VALPRO AS PKG_NO,",NL," "\
+						"    GL.FAMPRO AS FAMI,",NL," "\
+						"    TO_CHAR(TO_DATE(GL.DATREC || '', 'YYYYMMDD'), 'DD/MM/YYYY') AS DREC,",NL," "\
+						"    CASE",NL," "\
+						"        WHEN GL.DATFVI = 0 THEN NULL",NL," "\
+						"        ELSE DAYS(CURRENT DATE) - DAYS(TO_DATE(GL.DATFVI || '', 'YYYYMMDD'))",NL," "\
+						"    END AS DIAS_VIDA_PROD,",NL," "\
+						"    GP.ANAPRO AS DIVISAO,",NL," "\
+						"    GP.CODTMD AS COD_ONU,",NL," "\
+						"    GP.CODSEC AS CLASSE_RISCO,",NL," "\
+						"    GL.REFREC AS NF,",NL," "\
+						"    GL.DS2PRO AS DESCRICAO",NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS GL",NL," "\
+						"JOIN MOTIMM_VAL AS M",NL," "\
+						"    ON M.CODPRO = GL.CODPRO",NL," "\
+						"    AND M.CODACT = GL.CODACT",NL," "\
 						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO AS GP",NL," "\
-						"	ON GP.CODPRO = GL.CODPRO",NL," "\
-						"	AND GP.CODACT = GL.CODACT",NL," "\
-						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS RI ",NL," "\
-						"	ON RI.CODRUB = 'STCK'",NL," "\
-						"	AND RI.CODFIC = 'GEZIMO'",NL," "\
-						"	AND RI.VALCLE = GL.MOTIMM",NL," "\
+						"    ON GP.CODPRO = GL.CODPRO",NL," "\
+						"    AND GP.CODACT = GL.CODACT",NL," "\
+						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS RI",NL," "\
+						"    ON RI.CODRUB = 'STCK'",NL," "\
+						"    AND RI.CODFIC = 'GEZIMO'",NL," "\
+						"    AND RI.VALCLE = CASE",NL," "\
+						"                        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
+						"                        ELSE GL.MOTIMM",NL," "\
+						"                    END",NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS RU",NL," "\
-						"	ON RU.CODRUB = 'SHLF'",NL," "\
-						"	AND RU.VALCLE = GL.MOTIMM",NL," "\
-						"	AND RU.VALRUB = 'SIM'",NL," "\
+						"    ON RU.CODRUB = 'SHLF'",NL," "\
+						"    AND RU.VALCLE = CASE",NL," "\
+						"                        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
+						"                        ELSE GL.MOTIMM",NL," "\
+						"                    END",NL," "\
+						"    AND RU.VALRUB = 'SIM'",NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRE AS ZRE",NL," "\
-						"	ON SUBSTR(ZRE.CODRUB,1,1) = 'S'",NL," "\
-						"	AND ZRE.CODRUB = 'SHLF'",NL," "\
-						"	AND GREATEST(0, GL.DATFVI - '",tDATMVT,"') <= ZRE.DTAMAX",NL," "\
-						"	AND GREATEST(0, GL.DATFVI - '",tDATMVT,"') >= ZRE.DTAMIN",NL," "\
-						"	AND SUBSTR(ZRE.CODRUB,2,3) <> GL.MOTIMM",NL," "\
-						"	AND ZRE.TYPDTA = '1'",NL," "\
+						"    ON SUBSTR(ZRE.CODRUB, 1, 1) = 'S'",NL," "\
+						"    AND ZRE.CODRUB = 'SHLF'",NL," "\
+						"    AND GREATEST(0, GL.DATFVI - '",tDATMVT,"') <= ZRE.DTAMAX",NL," "\
+						"    AND GREATEST(0, GL.DATFVI - '",tDATMVT,"') >= ZRE.DTAMIN",NL," "\
+						"    AND SUBSTR(ZRE.CODRUB, 2, 3) <> CASE",NL," "\
+						"                                        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
+						"                                        ELSE GL.MOTIMM",NL," "\
+						"                                    END",NL," "\
+						"    AND ZRE.TYPDTA = '1'",NL," "\
 						"WHERE GL.CODACT = '",tCODACT,"'",NL," "\
-						"AND GL.MOTIMM <> ''",NL," "\
-						"AND GL.DATFVI > 0",NL," "\
-						"AND GL.ETAPAL <> '60'",NL," "\
+						"    AND GL.MOTIMM <> ''",NL," "\
+						"    AND GL.DATFVI > 0",NL," "\
+						"    AND GL.ETAPAL <> '60'",NL," "\
 						"ORDER BY 1")
 		
 		log("------------------------------------------------------------", NL)
