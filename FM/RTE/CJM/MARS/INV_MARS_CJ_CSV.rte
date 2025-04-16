@@ -1,0 +1,294 @@
+%@(#)  INV_MARS_CJ_CSV.rte     modif:08-12-2017
+!==============================================================================
+% File          : INV_MARS_CJ_CSV.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 08-12-2017  XX  Creation
+! 08-12-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!==============================================================================
+
+! Input/output macros file
+#define TX_PROG_INFO "INV_MARS_CJ_CSV"
+#include "include/generix_func.inc"
+#include "include/INV_MARS_CJ_CSV_IN.inc"
+#include "include/INV_MARS_CJ_CSV_OUT.inc"
+
+!==============================================================================
+
+! Initialization section
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+    nMessageID := cMessageID
+	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameCJM"]
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "FMWMS"
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= taPARAM["WMSDBPASS"]
+		tDbUrl		:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+
+	!Variaveis Gerais
+        nCountDocLine := 0
+
+endbegin
+
+!==============================================================================
+
+line(not "")
+    S_REGISTRO
+    
+    nCountDocLine++
+
+    if nCountDocLine > 1 then
+        taReferencia[S_REGISTRO_Referencia] := S_REGISTRO_Referencia
+        taPlano[build(S_REGISTRO_Referencia, "|", nCountDocLine)] := S_REGISTRO_Plano
+        taContagem[S_REGISTRO_Referencia] := S_REGISTRO_Contagem
+    endif
+endline
+
+!==============================================================================
+
+! End statements section
+
+end
+    while tIndexReferencia in taReferencia do
+        tNameOut := build("FM",tToInfologPrefixFilename,tCODACT,"_IV_", time("now","%Y%m%d%H%M%S"), "_", tIndexReferencia, ".txt")
+        tFileOut := build(sHOME,"/FMBR_AS2/",tNameOut)
+        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/",tNameOut)
+
+        tQuery := build("SELECT",NL," "\
+                        "    JSA.NUMIVT AS NUMIVT,",NL," "\
+                        "    (SELECT VALRUB",NL," "\
+                        "    FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
+                        "    WHERE CODRUB = 'DEPO') AS VALRUB,",NL," "\
+                        "    VARCHAR_FORMAT(DATE(SUBSTR(CHAR(JSA.MAJDAT), 1, 4) || '-' ||",NL," "\
+                        "                       SUBSTR(CHAR(JSA.MAJDAT), 5, 2) || '-' ||",NL," "\
+                        "                       SUBSTR(CHAR(JSA.MAJDAT), 7, 2)), 'DD/MM/YYYY') AS DATA,",NL," "\
+                        "    JSA.CODPRO AS CODPRO,",NL," "\
+                        "    JSA.CODLOT AS CODLOT,",NL," "\
+                        "    CASE ",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'AVL' THEN ''",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'BLOK' OR IVSE.MOTIMM01 = 'QUAL' THEN '2'",NL," "\
+                        "        WHEN IVSE.MOTIMM01 = 'REST' OR IVSE.MOTIMM01 = 'HOLD' THEN '3'",NL," "\
+                        "        ELSE ''",NL," "\
+                        "    END AS STOSAP,",NL," "\
+                        "    CASE",NL," "\
+                        "        WHEN SUM(JSA.QTECPT) = 0 THEN '0'",NL," "\
+                        "        ELSE VARCHAR_FORMAT(DECIMAL(SUM(JSA.QTECPT), 15, 3), '9999999.000')",NL," "\
+                        "    END AS QTECPT",NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA JSA",NL," "\
+                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEIVSE IVSE",NL," "\
+                        "    ON JSA.NUMIVT = IVSE.NUMINV",NL," "\
+                        "WHERE (JSA.NUMIVT, JSA.NUMDOC, JSA.SEQDOC, JSA.NBRCPT) IN (",NL," "\
+                        "    SELECT NUMIVT, NUMDOC, SEQDOC, MAX(NBRCPT)",NL," "\
+                        "    FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA",NL," "\
+                        "    GROUP BY NUMIVT, NUMDOC, SEQDOC",NL," "\
+                        ")",NL," "\
+                        "AND JSA.NUMIVT IN (SELECT NUMIVT",NL," "\
+                        "                FROM FGE50FM",tToInfologPrefixFilename,".GEIVSAI",NL," "\
+                        "                WHERE REFMVT = '",taReferencia[tIndexReferencia],"')", NL)
+
+        if taPlano[tIndexReferencia] <> "*" then
+            tQuery := build(tQuery, "AND JSA.NUMIVT = '",taPlano[tIndexReferencia],"'", NL)
+        endif
+
+        tQuery := build(tQuery, "GROUP BY",NL," "\
+                        "    JSA.NUMIVT,",NL," "\
+                        "    JSA.CODPRO,",NL," "\
+                        "    JSA.CODLOT,",NL," "\
+                        "    JSA.MAJDAT,",NL," "\
+                        "    IVSE.MOTIMM01",NL," "\
+                        "ORDER BY",NL," "\
+                        "    JSA.CODPRO,",NL," "\
+                        "    JSA.CODLOT")
+
+        log("------------------------------------------------------------", NL)
+        log(tQuery,NL)
+        log("------------------------------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+        bWriteHeader := FALSE
+        
+        bQueryResult := FALSE
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            bQueryResult := TRUE
+            if bWriteHeader = FALSE then
+                bWriteHeader := TRUE
+            
+                R_H_Identificacao("H")
+                R_H_Rua_SAP("BR22")
+                R_H_Deposito_SAP(peel(taDb2Array["VALRUB"]," "))
+                R_H_Plano_Inventario(taReferencia[tIndexReferencia])
+                R_H_Numero_Contagem(taContagem[tIndexReferencia])
+                R_H_Data_Contagem(peel(taDb2Array["DATA"]," "))
+
+                while tIndex in taH do
+                    print(taH[tIndex],";") >> tFileOutTemp
+                endwhile
+                print(NL) >> tFileOutTemp
+                remove(taH)
+            endif
+
+            R_I_Identificacao("I")
+            R_I_Codigo_SKU(peel(taDb2Array["CODPRO"]," "))
+            R_I_Codigo_Lote(peel(taDb2Array["CODLOT"]," "))
+            R_I_Tipo_Estoque(peel(taDb2Array["STOSAP"]," "))
+            R_I_Quantidade(peel(taDb2Array["QTECPT"]," "))
+
+            while tIndex in taI do
+                print(taI[tIndex],";") >> tFileOutTemp
+            endwhile
+            print(NL) >> tFileOutTemp
+            remove(taI)
+
+        endwhile
+        remove(taDb2Array)
+
+        if bQueryResult = FALSE then
+            log("A query não trouxe resultado!", NL)
+            bfMajtrace("Erro de Traducao" \
+                        ,"0" \
+                        ,build(taReferencia[tIndexReferencia], "-", taPlano[tIndexReferencia]) \
+                        ,time("now","%Y-%m-%d") \
+                        ,build("Não há resultado para a referência , ",taReferencia[tIndexReferencia]," e plano ", taPlano[tIndexReferencia]))
+        endif
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+		close(tFileOutTemp)
+		copy(tFileOutTemp,tFileOut)
+		close(tFileOutTemp)
+		remove(tFileOutTemp)
+		close(tFileOut)
+
+        if bQueryResult = TRUE then
+            bfMajtrace("Recebida" \
+                        ,"1" \
+                        ,build(taReferencia[tIndexReferencia], "-", taPlano[tIndexReferencia]) \
+                        ,time("now","%Y-%m-%d") \
+                        ,"")
+        endif
+    endwhile
+
+	bfSqlClose(tDbBase)
+
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	exit(0)
+endend
+
+!==============================================================================
+
+function bfMajtrace(tlStatus, tlError, tlNumDoc, tlDataDoc, tlErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tlStatus
+	TRACE.ERRO := tlError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "MARS CAJAMAR"
+	TRACE.SENTIDO := "O"
+	TRACE.MENSAGEM := "INVENTARIO - MAC"
+	TRACE.NUMDOC := tlNumDoc
+	TRACE.DATDOC := tlDataDoc
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+    if tlStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tlStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tlErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+    close(TRACE.Detail)
+	close(SYSLOG.a)
+
+    copy(SYSLOG.a,TRACE.In)
+    close(SYSLOG.a)
+    close(TRACE.In)
+
+    if tlStatus = "Recebida" then
+        copy(tFileOut,TRACE.Out)
+        close(tFileOut)
+        close(TRACE.Out)
+    endif
+    flush(TRACE)
+endfunction
+
+!==============================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,"")     
+endfunction
+
+!==============================================================================
+
+function bfToInfolog()
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+endfunction
+
+!==============================================================================

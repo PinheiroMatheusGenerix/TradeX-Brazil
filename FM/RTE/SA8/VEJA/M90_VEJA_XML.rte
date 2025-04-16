@@ -92,33 +92,101 @@ end
     tNameOut := build("FM",tToInfologPrefixFilename,"VEJ_Inventory_",time("now" ,"%Y%m%d%H%M%S"),".xml")
 
     ! QUERY bfWriteHeader, bfWriteBody
-        tQuery := build("SELECT  ROW_NUMBER() OVER( ORDER BY  1 )                AS LINHA", NL," "\
-                        "       ,AT.EDIACT                                       AS WHAREHOUSE", NL," "\
-                        "       ,PL.CODPRO                                       AS BARCODE_SKU", NL," "\
-                        "       ,PR.EDIPRO                                       AS BARCODE_EAN", NL," "\
-                        "       ,PR.DS1PRO || PR.DS2PRO                          AS ITEM_DESCRIPTION", NL," "\
-                        "       ,PR.DS3PRO                                       AS COLOR_DESCRIPTION", NL," "\
-                        "       ,PR.ANAPRO                                       AS SIZE_CODE", NL," "\
-                        "       ,CASE PL.MOTIMM", NL," "\
-                        "            WHEN ''", NL," "\
-                        "            THEN 'Q1'", NL," "\
-                        "            ELSE LEFT(ZI.CODSAP1,2)", NL," "\
-                        "            END || LEFT(PL.CODCLI,2)                    AS SLOT", NL," "\
-                        "       ,SUM(PL.UVCSTO)                                  AS QUANTITY", NL," "\
-                        "       ,PR.PRXPRO1                                      AS UNIT_PRICE", NL," "\
-                        "       ,PR.PRXPRO2                                      AS RETAIL_PRICE", NL," "\
-                        "FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS PL", NL," "\
+        tQuery := build("SELECT  ROW_NUMBER() OVER( ORDER BY  PR.CODPRO )                AS LINHA", NL," "\
+                        "       ,AT.EDIACT                                               AS WHAREHOUSE", NL," "\
+                        "       ,TRIM(PR.CODPRO)                                         AS BARCODE_SKU", NL," "\
+                        "       ,TRIM(PR.EDIPRO)                                         AS BARCODE_EAN", NL," "\
+                        "       ,TRIM(PR.DS1PRO) || TRIM(PR.DS2PRO)                      AS ITEM_DESCRIPTION", NL," "\
+                        "       ,TRIM(PR.DS3PRO)                                         AS COLOR_DESCRIPTION", NL," "\
+                        "       ,TRIM(PR.ANAPRO)                                         AS SIZE_CODE", NL," "\
+                        "       ,PR.PRXPRO1                                              AS UNIT_PRICE", NL," "\
+                        "       ,PR.PRXPRO2                                              AS RETAIL_PRICE", NL," "\
+                        "       ,PL.SLOT                                                 AS SLOT", NL," "\
+                        "       ,SUM(PL.UVCSTO)                                          AS ESTOQUE", NL," "\
+                        "       ,SUM(PL.QTD_SUBTRAI)                                     AS QTD_SUBTRAI", NL," "\
+                        "       ,SUM(PL.QTD_SOMA)                                        AS QTD_SOMA", NL," "\
+                        "       ,SUM(PL.UVCSTO) + SUM(PL.QTD_SOMA) - SUM(PL.QTD_SUBTRAI) AS QUANTITY", NL," "\
+                        "FROM", NL," "\
+                        "(", NL," "\
+                        "	SELECT  TRIM(PL.CODPRO)                                                                   AS CODPRO", NL," "\
+                        "	       ,CASE PL.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PL.CODCLI,2) AS SLOT", NL," "\
+                        "	       ,SUM(PL.UVCSTO)                                                                    AS UVCSTO", NL," "\
+                        "	       ,0                                                                                 AS QTD_SUBTRAI", NL," "\
+                        "	       ,0                                                                                 AS QTD_SOMA", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS PL", NL," "\
+                        "	JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO AS PR", NL," "\
+                        "   ON PL.CODACT = PR.CODACT AND PL.CODPRO = PR.CODPRO", NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS ZI", NL," "\
+                        "	ON PL.MOTIMM = ZI.MOTIMM", NL," "\
+                        "	WHERE 1 = 1", NL," "\
+                        "	AND PL.CODACT = 'VEJ'", NL," "\
+                        "	AND PL.CODPRO <> ''", NL," "\
+                        "	AND PR.FAMPRO <> 'CARTON'", NL," "\
+                        "	GROUP BY  PL.CODPRO", NL," "\
+                        "	         ,CASE PL.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PL.CODCLI,2)", NL," "\
+                        "	UNION ALL", NL," "\
+                        "	--- PALETE EXISTENTE NO ESTOQUE", NL," "\
+                        "	SELECT  TRIM(PD.CODPRO)                                                                      AS CODPRO", NL," "\
+                        "	       ,CASE PD.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PD.CODCLI,2)    AS SLOT", NL," "\
+                        "	       ,0                                                                                    AS UVCSTO", NL," "\
+                        "	       ,SUM(CASE WHEN PE.ETASUP < '30' AND NF.VALRUB IS NOT NULL THEN UVCLIV ELSE 0 END)     AS QTD_SUBTRAI", NL," "\
+                        "	       ,SUM(CASE WHEN PE.ETASUP IN ('30','60') AND NF.VALRUB IS NULL THEN UVCLIV ELSE 0 END) AS QTD_SOMA", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GESUPD AS PD", NL," "\
+                        "	JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE AS PE", NL," "\
+                        "	ON PD.NUMSUP = PE.NUMSUP AND PE.SNUSUP = PD.SNUSUP", NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS ZI", NL," "\
+                        "	ON PD.MOTIMM = ZI.MOTIMM", NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIRUB AS NF", NL," "\
+                        "	ON NF.NUMLIV = PE.NUMLIV AND NF.CODRUB = 'NF01'", NL," "\
+                        "	WHERE 1 = 1", NL," "\
+                        "	AND PE.ETASUP NOT IN ('50', '90')", NL," "\
+                        "	AND PE.TYPSUP <> '3'", NL," "\
+                        "	AND PE.TRTUOP <> '*SP'", NL," "\
+                        "	AND PD.CODACT = 'VEJ'", NL," "\
+                        "	AND PD.UVCLIV > 0", NL," "\
+                        "	AND EXISTS(", NL," "\
+                        "	SELECT  1", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS E", NL," "\
+                        "	WHERE E.NUMPAL = PD.NUMPAL)", NL," "\
+                        "	GROUP BY  PD.CODPRO", NL," "\
+                        "	         ,CASE PD.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PD.CODCLI,2)", NL," "\
+                        "	UNION ALL", NL," "\
+                        "	--- PALETE INEXISTENTE NO ESTOQUE", NL," "\
+                        "	SELECT  TRIM(PD.CODPRO)                                                                                         AS CODPRO", NL," "\
+                        "	       ,CASE PD.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PD.CODCLI,2)                       AS SLOT", NL," "\
+                        "	       ,0                                                                                                       AS UVCSTO", NL," "\
+                        "	       ,0                                                                                                       AS QTD_SUBTRAI", NL," "\
+                        "	       ,SUM( CASE WHEN PE.ETASUP IN ('30','60') OR (PE.ETASUP = '20' AND PD.CNFLIG = 2) THEN UVCLIV ELSE 0 END) AS QTD_SOMA", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GESUPD AS PD", NL," "\
+                        "	JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE AS PE", NL," "\
+                        "	ON PD.NUMSUP = PE.NUMSUP AND PE.SNUSUP = PD.SNUSUP", NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS ZI", NL," "\
+                        "	ON PD.MOTIMM = ZI.MOTIMM", NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIRUB AS NF", NL," "\
+                        "	ON NF.NUMLIV = PE.NUMLIV AND NF.CODRUB = 'NF01'", NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS I", NL," "\
+                        "	ON I.MOTIMM = PD.MOTIMM", NL," "\
+                        "	WHERE 1 = 1", NL," "\
+                        "	AND PD.CODACT = 'VEJ'", NL," "\
+                        "	AND PD.UVCLIV > 0", NL," "\
+                        "	AND PE.ETASUP IN ('20', '30', '60')", NL," "\
+                        "	AND PE.TYPSUP <> '3'", NL," "\
+                        "	AND PE.TRTUOP <> '*SP'", NL," "\
+                        "	AND NOT EXISTS(", NL," "\
+                        "	SELECT  1", NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS E", NL," "\
+                        "	WHERE E.NUMPAL = PD.NUMPAL) AND NF.VALRUB IS NULL", NL," "\
+                        "	GROUP BY  PD.CODPRO", NL," "\
+                        "	         ,CASE PD.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(ZI.CODSAP1,2) END || LEFT(PD.CODCLI,2)", NL," "\
+                        "	ORDER BY  1", NL," "\
+                        ") AS PL", NL," "\
                         "JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO AS PR", NL," "\
-                        "ON PR.CODACT = PL.CODACT", NL," "\
-                        "    AND PR.CODPRO = PL.CODPRO", NL," "\
+                        "ON PR.CODPRO = PL.CODPRO", NL," "\
                         "JOIN FGE50FM",tToInfologPrefixFilename,".GEACT AS AT", NL," "\
-                        "ON AT.CODACT = PL.CODACT", NL," "\
-                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS ZI", NL," "\
-                        "ON PL.MOTIMM = ZI.MOTIMM", NL," "\
-                        "WHERE PR.CODACT = 'VEJ'", NL," "\
-                        "AND PL.CODCLI <> ''", NL," "\
+                        "ON AT.CODACT = PR.CODACT", NL," "\
+                        "WHERE 1 = 1", NL," "\
                         "GROUP BY  AT.EDIACT", NL," "\
-                        "         ,PL.CODPRO", NL," "\
+                        "         ,PR.CODPRO", NL," "\
                         "         ,PR.EDIPRO", NL," "\
                         "         ,PR.DS1PRO", NL," "\
                         "         ,PR.DS2PRO", NL," "\
@@ -126,11 +194,7 @@ end
                         "         ,PR.ANAPRO", NL," "\
                         "         ,PR.PRXPRO1", NL," "\
                         "         ,PR.PRXPRO2", NL," "\
-                        "         ,CASE PL.MOTIMM", NL," "\
-                        "            WHEN ''", NL," "\
-                        "            THEN 'Q1'", NL," "\
-                        "            ELSE LEFT(ZI.CODSAP1,2)", NL," "\
-                        "            END || LEFT(PL.CODCLI,2)", NL," "\
+                        "         ,PL.SLOT", NL," "\
                         "ORDER BY  LINHA DESC")
 
         log("------------------------------------------------------------", NL)

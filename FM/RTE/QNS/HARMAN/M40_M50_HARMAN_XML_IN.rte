@@ -179,13 +179,14 @@ endsegment
 
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest
     tDestCNPJ := eECNPJ  
+    tCODCLI := tDestCNPJ
 	tCATCLI := "STD"
 endsegment
 
 segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGdest
 	tDestCPF := eECPF
 	tCATCLI := "CPF"
-    tCODCLI := tDestCNPJ
+    tCODCLI := eECPF
 endsegment
 
 segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGdest
@@ -378,7 +379,7 @@ enddefault
 ! End statements section
 
 end
-	if length(tCODCLI) = 0 then
+	if length(tCODCLI) = 0 or tCODCLI = "0" then
 		tCODCLI := "EXPORTACAO"
 	endif
 
@@ -392,7 +393,9 @@ end
 
     if (substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") and tDestCNPJ = "02462805002550") or (substr(pEDISEND.ORIGINAL.NAME, 1, 11) <> build(tToInfologPrefixFilename, "HAR_NSR_") and tDestCNPJ = "02462805000859") then
         bGeraM40 := TRUE
+        log("M40 = TRUE",NL)
     else
+        log("M50 = TRUE",NL)
         bGeraM50 := TRUE
     endif
 
@@ -1502,6 +1505,22 @@ end
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
 
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("CDFM")
+                        if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
+                            R_GEEX5005_VALRUB(build("02462805002550"))
+                        else
+                            R_GEEX5005_VALRUB(build("02462805000859"))
+                        endif
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
                         R_5011_CODEXC("50")
                         R_5011_SEPEXC(".")
                         R_5011_SCOEXC("11")
@@ -1945,6 +1964,22 @@ end
                         R_GEEX5005_REFLIV(tREFLIV)
                         R_GEEX5005_CODRUB("*GM1")
                         R_GEEX5005_VALRUB(build("FORMAR ",tQtdVolumes," VOLUME(S)"))
+
+                        flush(0,0,NL) >> tFileOutTemp   
+                        nContadorLinhasEscritas++
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("CDFM")
+                        if substr(pEDISEND.ORIGINAL.NAME, 1, 11) = build(tToInfologPrefixFilename, "HAR_NSR_") then
+                            R_GEEX5005_VALRUB(build("02462805002550"))
+                        else
+                            R_GEEX5005_VALRUB(build("02462805000859"))
+                        endif
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
