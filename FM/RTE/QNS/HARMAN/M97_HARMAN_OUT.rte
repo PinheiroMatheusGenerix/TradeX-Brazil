@@ -890,8 +890,35 @@ if S_GEEX9750_ETALIV =  "30" then !fazer rubricas
 
 	! GERAÇÂO DO CONFIRMACAO DE PEDIDO - TOTVS RM
 		if S_GEEX9750_ETALIV = "30"  then  ! PED FM
-			log("procurandocom codact ",tCODACTLido,NL)
-			fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CODACT=tCODACTLido)
+			tQuery := build("SELECT VALRUB", NL," "\
+							"FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB", NL," "\
+							"WHERE CODRUB = 'CDFM'", NL," "\
+							"AND NUMLIV = '",S_GEEX9750_NUMLIV,"'")
+
+			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+				log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+				bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+				log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+				bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+				tValrub := peel(taDb2Array["VALRUB"], " ")
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+				log("FATAL ", tfSqlErrorStr(),NL,tQuery)
+				bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+				exit(1)
+			endif
+
+			fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CNPJFILIAL=tValrub,CODACT=tCODACTLido)
 
 			if valid(fmbrasil_clientesped) then
 				! segue processo normalmente
@@ -899,17 +926,7 @@ if S_GEEX9750_ETALIV =  "30" then !fazer rubricas
 					bFazPED := TRUE
 				endif
 			else
-				fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CODACT=tCODACTLido)
-				if valid(fmbrasil_clientesped) then
-				! segue processo normalmente
-					if length(fmbrasil_clientesped.CODIGOFABRICANTE) > 0 and length(fmbrasil_clientesped.CODERP) > 0 and length(fmbrasil_clientesped.CODACT) > 0 then
-						bFazPED := TRUE
-					endif
-				else
-			!		bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("CODACT: ",tCODACTLido," nao existe na tabela fmbrasil_clientesped!"))
-					log("sem dados na tabela para codact ",tCODACTLido,NL)
-			!		exit(1)
-				endif
+				log("Sem dados na tabela para codact ",tCODACTLido, " e CNPJ_FILIAL ", tValrub, NL)
 			endif
 
 			TRACE := find(build(sHOME,"/trace"),NUMDOC=tREFLIVaConsiderar,MENSAGEM=build("CONFIRMACAO DE PEDIDO - TOTVS RM"),PERFIL="HARMAN",LIBEXC=tNUMVAG)

@@ -28,6 +28,7 @@ base "../trace/trace.cfg" TRACE,autoflush off
 #include "include/generix_func.inc"
 #include "include/NfVendaSYSLEY.inc"
 #include "include/GEEXM50.inc"
+
 !===========================================================
 
 ! Initialization section
@@ -46,6 +47,12 @@ begin
    tDbUsername	:= taPARAM["WMSDBUSER"]
    tDbPassword	:= taPARAM["WMSDBPASS"]
    tDbUrl		:= taPARAM["WMSDBURL"]
+
+   bfSqlInit()
+   if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+      bfSqlErro()
+      exit(1)
+   endif
 
    tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
    tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
@@ -139,8 +146,8 @@ end
       R_GEEX5000_CODACT(taCODACTObtido[nContadorHeaderTmp])
       R_GEEX5000_CODCLI(taCODCLI[nContadorHeaderTmp])  
       R_GEEX5000_REFLIV(taREFLIV[nContadorHeaderTmp])
-      R_GEEX5000_DTILIV(tfConvertDate(taDTILIV[nContadorHeaderTmp], "DDMMYYYY" , "YYYYMMDD") )
-      R_GEEX5000_MSGLIV(taMSGLIV[nContadorHeaderTmp])
+      R_GEEX5000_DTILIV(tfConvertDate(taDTILIV[nContadorHeaderTmp], "DDMMYYYY" , "YYYYMMDD"))
+      R_GEEX5000_MSGLIV1(taMSGLIV[nContadorHeaderTmp])
       R_GEEX5000_CODTRA(taCODTRA[nContadorHeaderTmp])
       R_GEEX5000_CODTLI(taCODTLI[nContadorHeaderTmp])
 
@@ -199,6 +206,35 @@ end
       flush(0,0,NL) >> tFileOutTemp
       nContadorLinhasEscritas++
    
+      tQuery := build("SELECT CATCLI", NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GECLI", NL," "\
+                        "WHERE CODCLI = '",taCODCLI[nContadorHeaderTmp],"'")   
+
+      log("------------------------------------------------------------", NL)
+      log(tQuery,NL)
+      log("------------------------------------------------------------", NL)
+
+      if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+         bfSqlErro()
+         exit(1)	
+      endif
+
+      if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+         bfSqlErro()
+         exit(1)	
+      endif
+
+      while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+         taCATCLI[nContadorHeaderTmp] := peel(taDb2Array["CATCLI"], " ")
+
+         remove(taDb2Array)
+      endwhile
+
+      if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+         bfSqlErro()
+         exit(1)	
+      endif
+
       R_GEEX5010_CODEXC("50")
       R_GEEX5010_SEPEXC(".")
       R_GEEX5010_SCOEXC("10")
@@ -208,7 +244,11 @@ end
       R_GEEX5010_AD2CLI(taAD2CLI[nContadorHeaderTmp])
       R_GEEX5010_VILCLI(taVILCLI[nContadorHeaderTmp])
       R_GEEX5010_CPICLI(taCPICLI[nContadorHeaderTmp])
-      R_GEEX5010_CATCLI("STD")
+      if length(taCATCLI[nContadorHeaderTmp]) > 0 then
+         R_GEEX5010_CATCLI(taCATCLI[nContadorHeaderTmp])
+      else
+         R_GEEX5010_CATCLI("STD")
+      endif
       R_GEEX5010_CODCLI(taCODCLI[nContadorHeaderTmp]) 
       R_GEEX5010_REFLIV(taREFLIV[nContadorHeaderTmp])
 
@@ -291,6 +331,7 @@ end
    remove(tFileOutTemp)
    close(tFileOut)
 
+   bfSqlClose(tDbBase)
    exit(0)
 endend
 
@@ -348,4 +389,11 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
    endif
 
    flush(TRACE)
+endfunction
+
+!===========================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"PEDIDO","")     
 endfunction

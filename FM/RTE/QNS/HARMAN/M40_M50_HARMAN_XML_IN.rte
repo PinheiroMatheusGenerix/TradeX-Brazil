@@ -235,11 +235,11 @@ segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
         tCODMOP := "ECO"
         tCODTLI := "EC"
     endif
-    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26") and eExPais = "BRASIL" then
+    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and eExPais = "BRASIL" then
         tCODMOP := "VEN"
         tCODTLI := "VD"
     endif
-    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26") and eExPais <> "BRASIL"  then
+    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and eExPais <> "BRASIL"  then
         tCODMOP := "EXP"
         tCODTLI := "EX"
     endif
