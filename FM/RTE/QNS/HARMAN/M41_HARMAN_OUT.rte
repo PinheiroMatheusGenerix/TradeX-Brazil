@@ -1070,15 +1070,36 @@ log("tQuery ",tQuery,NL)
 
 					endwhile
 					
-					
+					tQuery := build("SELECT VALRUB", NL," "\
+									"FROM FGE50FM",tToInfologPrefixFilename,".GERERUB", NL," "\
+									"WHERE CODRUB = 'CDFM'", NL," "\
+									"AND NUMREC = '",tNUMREC,"'")
 
-					if bfSqlFree( tDbBase , "SELECTdb2"  ) = FALSE then
-						print("FATAL", tfSqlErrorStr())
-						 bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-								exit(1)
+					log(tQuery, NL)
+
+					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
 					endif
 
-		
+					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL ", tfSqlErrorStr())
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
+
+					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+						tValrub := peel(taDb2Array["VALRUB"]," ")
+
+						remove(taDb2Array)
+					endwhile
+
+					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+						print("FATAL", tfSqlErrorStr())
+						bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+						exit(1)
+					endif
 					
 		
 					nTempResultadosQueryPEDIND := 1
@@ -1090,36 +1111,27 @@ log("tQuery ",tQuery,NL)
 		
 		
 						if nTempResultadosQueryPEDIND = 1 then			
-								log("procurando CODCLI= ",taCNPJ_PEDIND[nTempResultadosQueryPEDIND]," codact= ",tCODACTLido,NL)
-																
-							   if length(taCNPJ_PEDIND[nTempResultadosQueryPEDIND]) > 0 then
-							   fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CODCLI=taCNPJ_PEDIND[nTempResultadosQueryPEDIND],CODACT=tCODACTLido)
-							   if valid(fmbrasil_clientesped) then
+							log("procurando CODCLI= ",taCNPJ_PEDIND[nTempResultadosQueryPEDIND]," codact= ",tCODACTLido,NL)
+
+							if length(taCNPJ_PEDIND[nTempResultadosQueryPEDIND]) > 0 then
+								fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CNPJFILIAL=tValrub,CODACT=tCODACTLido)
+								if valid(fmbrasil_clientesped) then
 									! segue processo normalmente
 									if length(fmbrasil_clientesped.CODIGOFABRICANTE) > 0 and length(fmbrasil_clientesped.CODERP) > 0 and length(fmbrasil_clientesped.CODACT) > 0 then
 										bFazPED := TRUE
 										tCODIGOFABRICANTE := fmbrasil_clientesped.CODIGOFABRICANTE
 									endif
 								else
-									
-									fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CNPJ=taCNPJ_PEDIND[nTempResultadosQueryPEDIND],CODACT=tCODACTLido)
+									fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CNPJFILIAL=tValrub,CODACT=tCODACTLido)
 									if valid(fmbrasil_clientesped) then
-									! segue processo normalmente
+										! segue processo normalmente
 										if length(fmbrasil_clientesped.CODIGOFABRICANTE) > 0 and length(fmbrasil_clientesped.CODERP) > 0 and length(fmbrasil_clientesped.CODACT) > 0 then
 											bFazPED := TRUE
 											tCODIGOFABRICANTE := fmbrasil_clientesped.CODIGOFABRICANTE
 										endif
-									else
-								!		bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Cliente: ",taCNPJ_PEDIND[nTempResultadosQueryPEDIND],"  e CODACT: ",tCODACTLido," nao existe na tabela fmbrasil_clientesped!"))
-									
-								!		exit(1)
 									endif
-							   endif
-							   else
-								 ! 	  bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Cliente (CODCLI) nao preenchido no M51!"))
-									
-								!  exit(1)
-							   endif
+								endif
+							endif
 									
 							   R_HEADER_TIPO_REGISTRO(taTIPO_REGISTRO_PEDIND[nTempResultadosQueryPEDIND])
 							   R_HEADER_ID("")
