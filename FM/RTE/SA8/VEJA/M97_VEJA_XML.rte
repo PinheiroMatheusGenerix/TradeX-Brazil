@@ -26,8 +26,7 @@ base "../trace/trace.cfg" TRACE
 #include "include/generix_func.inc"
 #include "include/GEEXM97.inc"
 
-
-!===========================================================
+!==============================================================================
 
 ! Initialization section
 
@@ -490,10 +489,10 @@ line(1:"97.50")
         ! FIM UPDATE
 
         ! QUERY bSupLessETASUP30
-            tQuery := build("SELECT  NUMSUP", NL," "\
+            tQuery := build("SELECT NUMSUP", NL," "\
                             "FROM FGE50FM",tToInfologPrefixFilename,".GESUPE", NL," "\
                             "WHERE NUMLIV = '",tNUMLIV,"'", NL," "\
-                            "AND ETASUP <> '30'")
+                            "AND SNUSUP NOT IN ('998') AND ETASUP NOT IN ('30','60') ")
 
             log("------------------------------------------------------------", NL)
             log(tQuery,NL)
@@ -801,9 +800,14 @@ end
                     "")
 
         ! Enviar interface para o cliente
-        tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
-        log("executando o comando - ", tCmd, NL)
-        system(tCmd)
+            tCmd := build("edisend SEND_TO_FMBR ", tFileOut)
+            log("executando o comando - ", tCmd, NL)
+            system(tCmd)
+
+        ! GERANDO RUBRICA DE DATA E HORA DE PACK
+            bfCriaRubricaGELIRUB(time("now","%d/%m/%Y %H:%M:%S"))
+        ! FIM GERANDO RUBRICA DE DATA E HORA DE PACK
+
     else
         log("Não houve nenhum dado para trazer no OUT!", NL)
 
@@ -1043,3 +1047,172 @@ function bfSqlErro()
 endfunction
 
 !==============================================================================
+
+function bfCriaRubricaGELIRUB(tVALRUB_TIME)
+
+    tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_VEJ_",time("now" ,"%Y%m%d"),"_",build(nMessageID:R010),".DAT")
+    tFileOutCSV := build(sHOME,"/ToInfolog/",tNameOutCSV)
+    tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/",tNameOutCSV)
+
+    ! INICIO GELIRUB
+        print("NUMLIV;"\
+                "SNULIV;"\
+                "TYPRUB;"\
+                "CODRUB;"\
+                "VALRUB;"\
+                "VALNUM;"\
+                "DISPO;"\
+                "MAJCRE;"\
+                "MAJDAT;"\
+                "MAJHMS;"\
+                "MAJPGM;"\
+                "MAJUTI;"\
+                "MAJECR",NL) >> tFileOutTempCSV
+    ! FIM
+
+    ! QUERY tNUMLIVQur, tSNULIVQur, taVALRUBQur[peel(taDb2Array["CODRUB"]," ")]
+        tQuery := build("SELECT   DIGITS(LE.NUMLIV)||DIGITS(LE.SNULIV) AS CHAVE",NL," "\
+                        "       ,LE.NUMLIV",NL," "\
+                        "       ,LE.SNULIV",NL," "\
+                        "FROM FGE50FM",tToInfologPrefixFilename,".GELIVE  AS LE",NL," "\
+                        "WHERE REFLIV = '",tREFLIV,"' ")
+
+        log("----------------------------------------", NL)
+        log(tQuery,NL)
+        log("----------------------------------------", NL)
+
+        if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+        if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+        bQueryResult := FALSE
+        while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+            bQueryResult := TRUE
+            taNUMLIVQur[peel(taDb2Array["CHAVE"]," ")] := peel(taDb2Array["NUMLIV"]," ")
+            taSNULIVQur[peel(taDb2Array["CHAVE"]," ")] := peel(taDb2Array["SNULIV"]," ")
+            remove(taDb2Array)
+        endwhile
+
+        if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+            bfSqlErro()
+            exit(1)
+        endif
+
+        if bQueryResult = FALSE then
+            remove(tFileOutCSV)
+            remove(tFileOutTempCSV)
+
+            bfSqlClose(tDbBase)
+            bfSqlClose(tDbBase2)
+
+            exit(1)
+        endif
+    ! FIM QUERY tNUMLIVQur, tSNULIVQur, taVALRUBQur[peel(taDb2Array["CODRUB"]," ")]
+
+        while tIndex in taNUMLIVQur do
+            tNUMLIVCSV := taNUMLIVQur[tIndex]
+            tSNULIVCSV := taSNULIVQur[tIndex]
+
+            tTYPRUBCSV := "2"
+            tCODRUBCSV := "ZPKC"
+            tVALRUBCSV := tVALRUB_TIME
+            tVALNUMCSV := ""
+            tDISPOCSV  := ""
+            tMAJCRECSV := time("now", "%Y%m%d")
+            tMAJDATCSV := time("now", "%Y%m%d")
+            tMAJHMSCSV := time("now", "%H%M%S")
+            tMAJPGMCSV := "GEPR1RUB2"
+            tMAJUTICSV := build("UFM",tToInfologPrefixFilename)
+            tMAJECRCSV := "QPADEV001"
+
+            print(  tNUMLIVCSV,";", \
+                    tSNULIVCSV,";", \
+                    tTYPRUBCSV,";", \
+                    tCODRUBCSV,";", \
+                    tVALRUBCSV,";", \
+                    tVALNUMCSV,";", \
+                    tDISPOCSV,";",  \
+                    tMAJCRECSV,";", \
+                    tMAJDATCSV,";", \
+                    tMAJHMSCSV,";", \
+                    tMAJPGMCSV,";", \
+                    tMAJUTICSV,";", \
+                    tMAJECRCSV, NL) >> tFileOutTempCSV
+	    endwhile
+
+        close(tFileOutTempCSV)
+        copy(tFileOutTempCSV, tFileOutCSV)
+        close(tFileOutTempCSV)
+        remove(tFileOutTempCSV)
+        close(tFileOutCSV)
+
+        bfMajtraceRub(  "Recebida" \
+                        ,"0" \
+                        ,tREFLIV \
+                        ,time("now","%Y-%m-%d") \
+                        ,tFileInput \
+                        ,tFileOut \
+                        ,"M97-Confirmação Separação" \
+                        ,"")
+
+        ! Enviar interface para o cliente
+            tCmd := build("edisend ToInfolog ", tFileOutCSV)
+            log("executando o comando - ", tCmd, NL)
+            system(tCmd)
+
+endfunction
+
+!==============================================================================
+
+function bfMajtraceRub(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := "VEJA"
+	TRACE.MENSAGEM := "M97-Confirmação Separação"
+	TRACE.SENTIDO := "I"
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID)   
+	TRACE.LIBEXC := tNUMVAG   
+	if TRACE.REDE <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.FICHEIROSAIDA := tNameOutCSV
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+
+	if tStatus = "Recebida" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tStatus = "Erro de Traducao" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+	close(TRACE.Detail)
+
+	copy(SYSLOG.a,TRACE.In)
+	close(SYSLOG.a)
+	close(TRACE.In)
+
+	close(tFileOutCSV)
+	copy(tFileOutCSV,TRACE.OutCSV)
+	close(tFileOutCSV)
+	close(TRACE.OutCSV)
+
+	flush(TRACE)
+endfunction

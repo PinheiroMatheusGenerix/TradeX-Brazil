@@ -175,6 +175,7 @@ BINARIES=\
 	$(BIN)/M50_SEMPARAR_ASCII_IN \
 	$(BIN)/NFOUT_SEMPARAR_IN \
 	$(BIN)/Relatorio \
+	$(BIN)/Relatorio_Contadores \
 	$(BIN)/consulta \
 	$(BIN)/NFOUT_SISLEY_XML_IN \
 	$(BIN)/M50_DANA_CSV_IN_Temp \

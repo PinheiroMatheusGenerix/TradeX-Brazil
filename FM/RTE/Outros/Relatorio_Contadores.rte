@@ -1,0 +1,234 @@
+%@(#) $Id:  Relatorio_Contadores.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: Relatorio_Contadores.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : Relatorio_Contadores
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! Relatorio_Contadores
+!
+!===========================================================================================================
+
+! base "../syslog/syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
+
+!===========================================================================================================
+
+! Input/output macros file
+
+#define TX_PROG_INFO "Relatorio_Contadores"	
+#include "include/generix_func.inc"
+#include "include/REL_CONT.inc"
+
+!===========================================================================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	load (0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
+
+    ! Criação dos arquivos
+        tNameOut := build("Relatorio_Diario_TradeX_",time("now","%d-%m-%y"),".csv")
+        tFileOut := build(sHOME,"/EmailsAEnviar/",tNameOut)
+
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "Relatorio"
+		tSentido := "O"
+		tMensagem := "Rel - Contadores"
+		tDataDocumento := time("now","%Y-%m-%d")
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		!log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+	!Abertura do banco de dados - WMS
+		tDbBase			:= "FMWMS"
+		tDbUsername		:= taPARAM["WMSDBUSER"]
+		tDbPassword		:= taPARAM["WMSDBPASS"]
+		tDbUrl			:= taPARAM["WMSDBURL"]
+
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase, tDbUsername, tDbPassword, tDbUrl) then
+			exit(1)
+		endif
+
+    !Tratando os ambientes repetidos
+        while tLinha in taPARAM do
+            if substr(tLinha,1,9) = "ToInfolog" then
+                taAmbiente[taPARAM[tLinha]] := taPARAM[tLinha]
+            endif
+        endwhile
+    ! Fim Tratando os ambientes repetidos
+
+	!Variaveis Gerais
+		nCPT := 0
+        bLog := TRUE
+
+endbegin
+
+!===========================================================================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+
+! End statements section
+end
+    ! Criando cabecalho do arquivo de saida
+        R_HEADER_CPTBIB("BIB")
+        R_HEADER_CPTCOD("COD")
+        R_HEADER_DESCRI("DESCRICAO")
+        R_HEADER_CPTFMT("FMT")
+        R_HEADER_CPTLNG("LNG")
+        R_HEADER_CPTLOO("LOOP")
+        R_HEADER_CPTEPU("EPU")
+        R_HEADER_CPTMIN("MIN")
+        R_HEADER_CPTMAX("MAX")
+        R_HEADER_CPTRES("REST")
+        R_HEADER_CPTVAL("VAL")
+        R_HEADER_CPTPOR("PORC")
+
+        print(  taHEADER[0],";", \
+                taHEADER[1],";", \
+                taHEADER[2],";", \
+                taHEADER[3],";", \
+                taHEADER[4],";", \
+                taHEADER[5],";", \
+                taHEADER[6],";", \
+                taHEADER[7],";", \
+                taHEADER[8],";", \
+                taHEADER[9],";", \
+                taHEADER[10],";", \
+                taHEADER[11], NL) >> tFileOut
+    ! Fim Criando cabecalho do arquivo de saida
+
+    while tLinha in taAmbiente do
+        ! SQL dos contadores
+            tQuery := build("SELECT   A.CPTCOD                                                AS COD ", NL," "\
+                            "       ,TRIM(A.CPTLIB)                                          AS DESCRICAO ", NL," "\
+                            "       ,A.CPTFMT                                                AS FMT ", NL," "\
+                            "       ,A.CPTLNG                                                AS LNG ", NL," "\
+                            "       ,A.BCLCPT                                                AS LOOP ", NL," "\
+                            "       ,A.CPTEPU                                                AS EPU ", NL," "\
+                            "       ,A.CPTMIN                                                AS MIN ", NL," "\
+                            "       ,INT(LEFT(A.CPTMAX,INT(A.CPTLNG)))                       AS MAX ", NL," "\
+                            "       ,INT(LEFT(A.CPTMAX,INT(A.CPTLNG))) -  ", NL," "\
+                            "        INT(SUBSTR(B.CPTVAL,CHAR_LENGTH(TRIM(B.CPTCLE))+ 1,20)) AS REST ", NL," "\
+                            "       ,INT(SUBSTR(B.CPTVAL,CHAR_LENGTH(TRIM(B.CPTCLE))+ 1,20)) AS VAL ", NL," "\
+                            "       ,ROUND(FLOAT(INT(LEFT(A.CPTMAX,INT(A.CPTLNG))) - ", NL," "\
+                            "        INT(SUBSTR(B.CPTVAL,CHAR_LENGTH(TRIM(B.CPTCLE)) + 1,20)) + ", NL," "\
+                            "        A.CPTMIN) / INT(LEFT(A.CPTMAX,INT(A.CPTLNG))),5) * 100  AS PORC ", NL," "\
+                            "FROM FGE50FM",tLinha,".APCPD AS A ", NL," "\
+                            "JOIN FGE50FM",tLinha,".APCPT AS B ", NL," "\
+                            "  ON A.CPTCOD = B.CPTCOD ", NL," "\
+                            "WHERE A.CPTFMT <= '5' AND A.BCLCPT NOT IN (1) ", NL," "\
+                            " AND ROUND(FLOAT(INT(LEFT(A.CPTMAX, INT(A.CPTLNG))) -  ", NL," "\
+                            "  INT(SUBSTR(B.CPTVAL, CHAR_LENGTH(TRIM(B.CPTCLE))+ 1, 20)) +  ", NL," "\
+                            "  A.CPTMIN) / INT(LEFT(A.CPTMAX, INT(A.CPTLNG))), 5) < 0.1 ", NL," "\
+                            "ORDER BY PORC ") 
+            if bLog then
+                bLog := FALSE
+                log("------------------------------------------------------------", NL)
+                log("tQuery: ", NL, tQuery, NL)
+                log("------------------------------------------------------------", NL)
+            endif
+
+            if bfSqlSet( tDbBase, "SELECTdb2", tQuery) then
+                if bfSqlOpen( tDbBase, "SELECTdb2") then
+                    while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE and taDb2Array["COD"] <> "" do	
+                        R_DETAIL_CPTBIB(tLinha)
+                        R_DETAIL_CPTCOD(taDb2Array["COD"])
+                        R_DETAIL_DESCRI(taDb2Array["DESCRICAO"])
+                        R_DETAIL_CPTFMT(taDb2Array["FMT"])
+                        R_DETAIL_CPTLNG(taDb2Array["LNG"])
+                        R_DETAIL_CPTLOO(taDb2Array["LOOP"])
+                        R_DETAIL_CPTEPU(taDb2Array["EPU"])
+                        R_DETAIL_CPTMIN(taDb2Array["MIN"])
+                        R_DETAIL_CPTMAX(taDb2Array["MAX"])
+                        R_DETAIL_CPTRES(taDb2Array["REST"])
+                        R_DETAIL_CPTVAL(taDb2Array["VAL"])
+                        R_DETAIL_CPTPOR(taDb2Array["PORC"])
+
+                        print(  taDETAIL[0],";", \
+                                taDETAIL[1],";", \
+                                taDETAIL[2],";", \
+                                taDETAIL[3],";", \
+                                taDETAIL[4],";", \
+                                taDETAIL[5],";", \
+                                taDETAIL[6],";", \
+                                taDETAIL[7],";", \
+                                taDETAIL[8],";", \
+                                taDETAIL[9],";", \
+                                taDETAIL[10],";", \
+                                taDETAIL[11], NL) >> tFileOut
+                        
+                        remove(taDb2Array)
+                        nCPT++
+                    endwhile
+
+                    if bfSqlFree( tDbBase, "SELECTdb2") = FALSE then
+                        exit(1)	
+                    endif
+                else
+                    log("------------------------------------------------------------", NL)
+                    log("Erro ao abrir o banco de dados: ", tLinha, NL)
+                    log("------------------------------------------------------------", NL, NL)
+                endif
+            else
+                log("------------------------------------------------------------", NL)
+                log("Erro ao abrir o banco de dados: ", tLinha, NL)
+                log("------------------------------------------------------------", NL, NL)
+            endif
+        ! Fim SQL dos contadores
+    endwhile
+
+    ! Tratamento final dos arquivos
+        close(tFileOut)
+        tArquivoEmail := build(sHOME,"/EmailsAEnviar/GNX_",tNameOut)
+        copy(tFileOut,tArquivoEmail)
+        close(tFileOut)
+        close(tArquivoEmail)
+    ! Fim tratamento final dos arquivos
+
+    ! Enviar relatorio
+        if nCPT > 0 then
+            tEnviaEmail := build("edisend EMAIL.SUBJECT=Relatorio_Contadores_FM_Logistics_",nCPT:R02.0," EMAIL.NAME=",tNameOut," Email_Relatorio ", tArquivoEmail)        
+            nRet := system(tEnviaEmail)
+        else
+            tEnviaEmail := build("edisend EMAIL.SUBJECT=Relatorio_Contadores_FM_Logistics_00 EMAIL.NAME=",tNameOut," Email_Relatorio ")        
+            nRet := system(tEnviaEmail)
+        endif
+    ! Fim Enviar relatorio
+    
+    close(tArquivoEmail)				
+    remove(tFileOut)
+    remove(tArquivoEmail)
+
+	SYSLOG.REFERENCE := build(nMessageID)
+	SYSLOG.REFERENCE := build(nCPT:R02.0)
+
+	bfSqlClose(tDbBase)
+
+	log("------------------------------------------------------------", NL)
+    log(tEnviaEmail, NL)
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL, NL)
+
+
+endend
+
+!===========================================================================================================

@@ -16,7 +16,7 @@
 !base "syslog.cfg" SYSLOG
 base "../trace/trace.cfg" TRACE,autoflush off
 
-!===========================================================
+!===========================================================================================================
 
 ! Input/output macros file
 #define PROG_NAME "$RCSfile: $"
@@ -29,7 +29,7 @@ base "../trace/trace.cfg" TRACE,autoflush off
 #include "include/GEEXM35.inc"
 #include "include/GEEXM50.inc"
 #include "include/GEEXM62.inc"
-!===========================================================
+!===========================================================================================================
 
 ! Initialization section
 begin
@@ -95,7 +95,7 @@ begin
 		nNRota := 0
 endbegin
 
-!===========================================================
+!===========================================================================================================
 
 line(1:"0")
 
@@ -126,7 +126,11 @@ line(1:"0")
 	taTOULIV[nNRegistro] := build(number(S_Registo_Agrupador1):R04)
 	taCODRGT[nNRegistro] := S_Registo_Agrupador2
 	taDATEXP[nNRegistro] := tfConvertDate(S_Registo_DataAgendamento, "DD/MM/YYYY", "YYYYMMDD")
-	taHEUEXP[nNRegistro] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")
+	if length(S_Registo_HoraAgendamento) < 4 then
+		taHEUEXP[nNRegistro] := "0000"
+	else
+		taHEUEXP[nNRegistro] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")
+	endif
 	taCODTRA[nNRegistro] := S_Registo_CodigoTransportadora
 	taCRILIV[nNRegistro] := S_Registo_CriterioExtracao
 
@@ -250,7 +254,7 @@ line(1:"0")
 
 endline
 
-!===========================================================
+!===========================================================================================================
 
 line(1:"1")
 
@@ -281,7 +285,11 @@ line(1:"1")
 	taTOULIV[nNRegistro] := build(number(S_Registo_Agrupador1):R04)
 	taCODRGT[nNRegistro] := S_Registo_Agrupador2
 	taDATEXP[nNRegistro] := tfConvertDate(S_Registo_DataAgendamento, "DD/MM/YYYY", "YYYYMMDD")
-	taHEUEXP[nNRegistro] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")
+	if length(S_Registo_HoraAgendamento) < 4 then
+		taHEUEXP[nNRegistro] := "0000"
+	else
+		taHEUEXP[nNRegistro] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")
+	endif
 	taCODTRA[nNRegistro] := S_Registo_CodigoTransportadora
 	taCRILIV[nNRegistro] := S_Registo_CriterioExtracao
 
@@ -402,7 +410,7 @@ line(1:"1")
 
 endline
 
-!===========================================================
+!===========================================================================================================
 
 line(1:"2")
 
@@ -422,72 +430,86 @@ line(1:"2")
 	endif
 
 	S_Registo
-	nNRegistro++
-	
-	taCODACT[nNRegistro] := S_Registo_Planta
-	taTOULIV[nNRegistro] := build(number(S_Registo_Agrupador1):R04)
-	taDATEXP[nNRegistro] := tfConvertDate(S_Registo_DataAgendamento, "DD/MM/YYYY", "YYYYMMDD")
-	if length(S_Registo_HoraAgendamento) < 4 then
-		taHEUEXP[nNRegistro] := "0000"
-	else
-		taHEUEXP[nNRegistro] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")
-	endif
-	taREFMIT[nNRegistro] := build(taDATEXP[nNRegistro],taHEUEXP[nNRegistro],taTOULIV[nNRegistro])
-	taCODTRA[nNRegistro] := S_Registo_CodigoTransportadora
-	taCRILIV[nNRegistro] := S_Registo_CriterioExtracao
-	taNFPedido[nNRegistro] := S_Registo_Pedido
-	taTRTEXC[nNRegistro] := "2"
 
-	! Definicao de REFLIV
-		if length(S_Registo_Serie) = 0 or number(S_Registo_Serie) = 0 then
-			taREFLIV[nNRegistro] := S_Registo_Pedido
+	if length(S_Registo_Pedido) > 0 then
+		nNRegistro++
+		
+		taCODACT[nNRegistro] := S_Registo_Planta
+		taTOULIV[nNRegistro] := build(number(S_Registo_Agrupador1):R04)
+		taDATEXP[nNRegistro] := tfConvertDate(S_Registo_DataAgendamento, "DD/MM/YYYY", "YYYYMMDD")
+		if length(S_Registo_HoraAgendamento) < 4 then
+			taHEUEXP[nNRegistro] := "0000"
 		else
-			taREFLIV[nNRegistro] := build(S_Registo_Pedido,".",number(S_Registo_Serie))
+			taHEUEXP[nNRegistro] := tfConvertDate(S_Registo_HoraAgendamento, "HH:MM", "HHMM")
 		endif
+		taREFMIT[nNRegistro] := build(taDATEXP[nNRegistro],taHEUEXP[nNRegistro],taTOULIV[nNRegistro])
+		taCODTRA[nNRegistro] := S_Registo_CodigoTransportadora
+		taCRILIV[nNRegistro] := S_Registo_CriterioExtracao
+		taNFPedido[nNRegistro] := S_Registo_Pedido
+		taTRTEXC[nNRegistro] := "2"
 
-	! Definicao de CODMOP
-		if S_Registo_TipoPedido = "VD" then
-			taCODMOP[nNRegistro] := taCODACT[nNRegistro]
-		else
-			taCODMOP[nNRegistro] := build("V", S_Registo_TipoPedido)
-		endif
+		! Definicao de REFLIV
+			if length(S_Registo_Serie) = 0 or number(S_Registo_Serie) = 0 then
+				taREFLIV[nNRegistro] := S_Registo_Pedido
+			else
+				taREFLIV[nNRegistro] := build(S_Registo_Pedido,".",number(S_Registo_Serie))
+			endif
 
-	! Referencia para Pedido anterior
-		if nNRegistro = 1 then
-			nNPedido++
-			taNPedido[nNPedido] := taREFLIV[nNRegistro]
-			naRef[nNPedido] := nNRegistro
-		else
-			if taREFLIV[nNRegistro-1] <> taREFLIV[nNRegistro] then
+		! Definicao de CODMOP
+			if S_Registo_TipoPedido = "VD" then
+				taCODMOP[nNRegistro] := taCODACT[nNRegistro]
+			else
+				taCODMOP[nNRegistro] := build("V", S_Registo_TipoPedido)
+			endif
+
+		! Referencia para Pedido anterior
+			if nNRegistro = 1 then
 				nNPedido++
 				taNPedido[nNPedido] := taREFLIV[nNRegistro]
 				naRef[nNPedido] := nNRegistro
+			else
+				if taREFLIV[nNRegistro-1] <> taREFLIV[nNRegistro] then
+					nNPedido++
+					taNPedido[nNPedido] := taREFLIV[nNRegistro]
+					naRef[nNPedido] := nNRegistro
+				endif
 			endif
-		endif
 
-	! Referencia para ROTAS unicas
-		if nNRegistro = 1 then
-			nNRota++
-			taNRota[nNRota] := taREFMIT[nNRegistro]
-			naRota[nNRota] := nNRegistro
-		else
-			if taREFMIT[nNRegistro-1] <> taREFMIT[nNRegistro] then
+		! Referencia para ROTAS unicas
+			if nNRegistro = 1 then
 				nNRota++
 				taNRota[nNRota] := taREFMIT[nNRegistro]
 				naRota[nNRota] := nNRegistro
+			else
+				if taREFMIT[nNRegistro-1] <> taREFMIT[nNRegistro] then
+					nNRota++
+					taNRota[nNRota] := taREFMIT[nNRegistro]
+					naRota[nNRota] := nNRegistro
+				endif
 			endif
-		endif
+	endif
+endline
+
+!===========================================================================================================
+
+line(1000)
+
+	log("------------------------------------------------------------", NL)
+	log("Este arquivo contem mais de 1.000 linhas, favor revisar o arquivo. ", NL)	
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+	exit(1)
 
 endline
 
-!===========================================================
+!===========================================================================================================
 
 ! Default statements section
 default
 
 enddefault
 
-!===========================================================
+!===========================================================================================================
 
 ! End statements section
 end
@@ -507,7 +529,7 @@ end
 
 endend
 
-!===========================================================
+!===========================================================================================================
 
 function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileInput,tFileOut,tTipoDocumento,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
@@ -527,6 +549,7 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileInput,tFileOut,tTipoDoc
 	endif
 	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
 	TRACE.FICHEIROSAIDA := tNameOut
+	SYSLOG.REFERENCE := build(nMessageID)
 	TRACE.LIBEXC := tLIBEXC
 
 	if tError = "0" then
@@ -565,7 +588,7 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileInput,tFileOut,tTipoDoc
 	flush(TRACE)
 endfunction
 
-!===========================================================
+!===========================================================================================================
 
 function bfTratamento_0()
 
@@ -873,7 +896,7 @@ function bfTratamento_0()
 
 endfunction
 
-!===========================================================
+!===========================================================================================================
 
 function bfTratamento_1()
 
@@ -1128,24 +1151,28 @@ function bfTratamento_1()
 
 endfunction
 
-!===========================================================
+!===========================================================================================================
 
 function bfTratamento_2()
 
 	! Variaveis
 		nContadorLinhasEscritas := 0
 		nRota := 1
+		bSUP := FALSE
+	! Fim Variaveis
 
 	! Total de Ref
 		log("------------------------------------------------------------", NL)
 		log("Total de REF..: ", nNPedido, NL)
 		log("Total de Rotas: ", nNRota, NL)
 		log("------------------------------------------------------------", NL)
+	! Fim Total de Ref
 
 	! Criação dos arquivos
 		tNameOut := build(tToInfologPrefixFilename,"62",build(nMessageID:R010),".DAT")
 		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tNameOut)
 		tFileOut := build(sHOME,"/ToInfolog/",tNameOut)
+	! Fim Criação dos arquivos
 
 	! 00.00
 		R_GEEX0000_CODEXC("00")
@@ -1161,14 +1188,22 @@ function bfTratamento_2()
 		R_GEEX0000_LIBEXC(build(nMessageID:R010))
 		flush(0,0,NL) >> tFileOutTemp
 		nContadorLinhasEscritas++
+	! Fim 00.00
 
 	while tIndex in taNPedido do
 
 		! Variaveis
-			bSUP := FALSE
+			if bSUP then
+				remove(taNUMLIV)
+				remove(taNUMSUP)
+				remove(taKAILIV)
+				bSUP := FALSE
+			endif
+
 			nRef := naRef[tIndex]
 			nRot := naRota[nRota]
 			nSup := 0
+		! Fim Variaveis
 
 		! Retorna suportes pendentes de expedicao
 			tQuery := build("SELECT SE.NUMLIV", NL," "\
@@ -1176,10 +1211,11 @@ function bfTratamento_2()
 							"     ,SE.KAILIV", NL," "\
 							"FROM FGE50FM",tToInfologPrefixFilename,".GELIVE AS LE", NL," "\
 							"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE", NL," "\
-							"  ON LE.NUMLIV = SE.NUMLIV AND LE.SNULIV = SE.SNULIV", NL," "\
+							"  ON LE.NUMLIV = SE.NUMLIV AND LE.SNULIV = SE.SNULIV ", NL," "\
 							"WHERE LE.REFLIV = '",taREFLIV[nRef],"'", NL," "\
-							"AND SE.TYPSUP <> '3' AND SE.ETASUP IN ('10','20','30','60')", NL," "\
-							"AND SE.INDMAS <> '1'") 
+							" AND SE.TYPSUP <> '3' ", NL," "\
+							" AND SE.ETASUP IN ('10','20','30','60')", NL," "\
+							" AND SE.SNUSUP = 0 AND SE.INDMAS <> '1'") 
 
 			log("------------------------------------------------------------", NL)
 			log(tQuery,NL)
@@ -1196,15 +1232,15 @@ function bfTratamento_2()
 			endif
 
 			while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-				remove(taNUMLIV[nSup])
-				remove(taNUMSUP[nSup])
-				remove(taKAILIV[nSup])
 				bSUP := TRUE
 				nSup++
 				taNUMLIV[nSup] := peel(taDb2Array["NUMLIV"]," ")
 				taNUMSUP[nSup] := peel(taDb2Array["NUMSUP"]," ")
 				taKAILIV[nSup] := peel(taDb2Array["KAILIV"]," ")
-				log(build(nSup:R02, " NUMLIV: ", taNUMLIV[nSup], " NUMSUP: ", taNUMSUP[nSup], " KAILIV: ", taKAILIV[nSup]),NL)
+				log(build(	nSup:R02 \
+							," NUMLIV: ",taNUMLIV[nSup] \
+							," NUMSUP: ",taNUMSUP[nSup] \
+							," KAILIV: ",taKAILIV[nSup]),NL)
 				remove(taDb2Array)
 			endwhile
 			
@@ -1220,7 +1256,6 @@ function bfTratamento_2()
 							R_GEEX6200_CODEXC("62")
 							R_GEEX6200_SEPEXC(".")
 							R_GEEX6200_SCOEXC("00")
-							R_GEEX6200_TRTEXC("2")
 							R_GEEX6200_REFMIT(taREFMIT[nRef])
 							R_GEEX6200_DATLIV(taDATEXP[nRef])
 							R_GEEX6200_TOULIV(taTOULIV[nRef])
@@ -1238,7 +1273,6 @@ function bfTratamento_2()
 						R_GEEX6220_CODEXC("62")
 						R_GEEX6220_SEPEXC(".")
 						R_GEEX6220_SCOEXC("20")
-						R_GEEX6220_TRTEXC("2")
 						R_GEEX6220_REFMIT(taREFMIT[nRef])
 						R_GEEX6220_NUMLIV(taNUMLIV[tSup])
 						R_GEEX6220_NUMSUP(taNUMSUP[tSup])
@@ -1247,12 +1281,20 @@ function bfTratamento_2()
 						nContadorLinhasEscritas++
 					endwhile
 
-				!faz update a todas as ordens de carga
-					tQueryUpdade := build("UPDATE FGE50FM",tToInfologPrefixFilename,".GELIVE", NL," "\
-										"SET DATLIV = '",taDATEXP[nRef],"'", NL," "\
-										"   ,HEILIV = '",taHEUEXP[nRef],"'", NL," "\
-										"   ,TOULIV = '",taTOULIV[nRef],"'", NL," "\
-										"WHERE REFLIV = '",taREFLIV[nRef],"' WITH NONE")
+				!faz update a todas as ordens de carga EXPEDIDAS
+					tQueryUpdade := build(	"UPDATE FGE50FM",tToInfologPrefixFilename,".GELIVE", NL," "\
+											"SET DISPO = DIGITS(DATLIV)||'-'||DIGITS(HEILIV)||'-'||DIGITS(TOULIV)", NL," "\
+											"   ,HEULIV = '",taHEUEXP[nRef],"'", NL," "\
+											"   ,HEILIV = '",taHEUEXP[nRef],"'", NL," "\
+											"   ,TOULIV = '",taTOULIV[nRef],"'", NL," "\
+											"WHERE REFLIV = '",taREFLIV[nRef],"'", NL," "\
+											" AND DIGITS(NUMLIV)||DIGITS(SNULIV) IN (", NL," "\
+											"   SELECT DIGITS(NUMLIV)||DIGITS(SNULIV)", NL," "\
+											"   FROM FGE50FM",tToInfologPrefixFilename,".GETOUE AS TE", NL," "\
+											"   JOIN FGE50FM",tToInfologPrefixFilename,".GETOUD AS TD", NL," "\
+											"     ON TE.NUMTOU = TD.NUMTOU", NL," "\
+											"   WHERE TD.REFLIV = '",taREFLIV[nRef],"'", NL," "\
+											"    AND TE.ETATOU = '40' ) WITH NONE")
 					
 					log("------------------------------------------------------------", NL)
 					log(tQueryUpdade,NL)
@@ -1274,23 +1316,26 @@ function bfTratamento_2()
 						bfSqlErro()
 						exit(1)
 					endif
+				!fim faz update a todas as ordens de carga
 			else
 				log("Nenhum suporte pendente para expedicao no REFLIV: ", taREFLIV[nRef], NL, NL)
 				log("------------------------------------------------------------", NL)
 			endif
 
 			! Verificando o proximo registro para criar o FIM
-				if taREFMIT[naRota[nRota]] = taREFMIT[naRef[number(tIndex) + 1]] \
-					and number(tIndex) > 1 then
+				if (taREFMIT[naRota[nRota]] = taREFMIT[naRef[number(tIndex) + 1]]) \
+						or nNPedido = 1 then
 					! 62.99
 						R_GEEX6299_CODEXC("62")
 						R_GEEX6299_SEPEXC(".")
 						R_GEEX6299_SCOEXC("99")
-						R_GEEX6299_TRTEXC("2")
 						R_GEEX6299_REFMIT(taREFMIT[nRef])
 						flush(0,0,NL)  >> tFileOutTemp
 						nContadorLinhasEscritas++
 				endif
+			! Fim Verificando o proximo registro para criar o FIM
+
+		! Fim Retorna suportes pendentes de expedicao
 
 	endwhile
 
@@ -1303,7 +1348,6 @@ function bfTratamento_2()
 		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
 		R_GEEX9900_CPTEXC(build(nContadorLinhasEscritas:R08.0))
 		flush(0,0,NL)  >> tFileOutTemp
-		nContadorLinhasEscritas++
 
 	! Tratamento final dos arquivos
 		close(tFileOutTemp)
@@ -1335,7 +1379,7 @@ function bfTratamento_2()
 
 endfunction
 
-!===========================================================
+!===========================================================================================================
 
 function bfSqlErro()
     print("FATAL: ",tfSqlErrorStr())
@@ -1349,7 +1393,7 @@ function bfSqlErro()
                 ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
 endfunction
 
-!========================================================================
+!===========================================================================================================
 
 function bfValidaACT(tAMB, tACT)
 
@@ -1390,7 +1434,7 @@ function bfValidaACT(tAMB, tACT)
 
 endfunction
 
-!===========================================================
+!===========================================================================================================
 
 function bfToInfolog()
 
