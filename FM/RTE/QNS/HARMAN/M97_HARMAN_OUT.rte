@@ -432,6 +432,7 @@ else
 		tREFLIVaConsiderar := S_GEEX9750_REFLIV
 		log("3 - tREFLIVaConsiderar ",tREFLIVaConsiderar,NL)
 	endif
+	split(S_GEEX9750_REFLIV, taPedido, ".")
 endif
 
 
@@ -943,9 +944,15 @@ if S_GEEX9750_ETALIV =  "30" then !fazer rubricas
 
 			if bFazPED = TRUE then
 				nMessageID := cMessageID
-				tFileOutPED := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-				tFileOutTempPED := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-				tNameOutPED := build("FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				if tValrub = "02462805002550" then
+					tFileOutPED := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tFileOutTempPED := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tNameOutPED := build("FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				else
+					tFileOutPED := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tFileOutTempPED := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tNameOutPED := build("FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				endif
 
 				tQuery := build("SELECT SUM (PDNUVC*UVCLIV) AS PESOLIQUIDO, ROUND(SUM ((UVCLIV/PCBPRO)*PDBCOL),2) PESOBRUTO, COUNT (CODPAL) VOLUMES "\
 				"FROM  FGE50FM",tToInfologPrefixFilename,".GESUPD "\
@@ -3249,7 +3256,11 @@ function bfMajtracePED(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocu
 
    TRACE.PERFIL := "HARMAN"
    TRACE.SENTIDO := "O"
-   TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO - TOTVS RM"
+   if length(taPedido[2]) > 0 then
+   		TRACE.MENSAGEM := build("CONFIRMACAO DE PEDIDO - TOTVS RM - ", taPedido[2])
+   else
+   		TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO - TOTVS RM"
+   endif
    TRACE.LIBEXC := tNUMVAG
 		TRACE.NUMDOC := tVAL_REFLIVQuery2
 

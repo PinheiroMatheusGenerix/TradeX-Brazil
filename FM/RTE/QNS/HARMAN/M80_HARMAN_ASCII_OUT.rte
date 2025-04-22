@@ -152,47 +152,79 @@ nContadorHeaderTmp := 1
 		! PED/IND
 			  nTempLinhaWM := 1
 		      while nTempLinhaWM <= nLinhaWM do
-		
-		
-					    tFileOutPEDIND := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-						tFileOutTempPEDIND := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-						tNameOutPEDIND := build("FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-		
-				
-		
-		
-					tQuery := build("SELECT VALRUB", NL," "\
-									"FROM FGE50FM",tToInfologPrefixFilename,".GERERUB", NL," "\
-									"WHERE NUMREC = (SELECT NUMREC", NL," "\
-									"				FROM FGE50FM",tToInfologPrefixFilename,".GEPAL", NL," "\
-									"				WHERE CODPAL = '",taCODPAL_WM[nLinhaWM],"')", NL," "\
-									"AND CODRUB = 'CDFM'")			  
-									  
-					log(tQuery, NL)
-				   
-					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
-						print("FATAL ", tfSqlErrorStr())
-						bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-						exit(1)
-					endif
+						tQuery := build("SELECT VALRUB", NL," "\
+										"FROM FGE50FM",tToInfologPrefixFilename,".GERERUB", NL," "\
+										"WHERE NUMREC = (SELECT NUMREC", NL," "\
+										"				FROM FGE50FM",tToInfologPrefixFilename,".GEPAL", NL," "\
+										"				WHERE CODPAL = '",taCODPAL_WM[nLinhaWM],"')", NL," "\
+										"AND CODRUB = 'CDFM'")			  
+										
+						log(tQuery, NL)
+					
+						if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
 
-					if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
-						print("FATAL ", tfSqlErrorStr())
-						bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-						exit(1)
-					endif
+						if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL ", tfSqlErrorStr())
+							bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
 
-					while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-						tValrub := peel(taDb2Array["VALRUB"]," ")
-						remove(taDb2Array)
-					endwhile
+						while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+							tValrub := peel(taDb2Array["VALRUB"]," ")
+							remove(taDb2Array)
+						endwhile
 
-					if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
-						print("FATAL", tfSqlErrorStr())
-						bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
-						exit(1)
-					endif
-							   
+						if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+							print("FATAL", tfSqlErrorStr())
+							bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+							exit(1)
+						endif
+
+						if length(tValrub) = 0 then
+							tQuery := build("SELECT VALRUB", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+											"WHERE CODRUB = 'CDFM' AND CODACT = 'HAR'")			  
+											
+							log(tQuery, NL)
+						
+							if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+								print("FATAL ", tfSqlErrorStr())
+								bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+
+							if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+								print("FATAL ", tfSqlErrorStr())
+								bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+
+							while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+								tValrub := peel(taDb2Array["VALRUB"]," ")
+								remove(taDb2Array)
+							endwhile
+
+							if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+								print("FATAL", tfSqlErrorStr())
+								bfMajtracePEDIND("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+						endif
+		
+						if tValrub = "02462805002550" then
+							tFileOutPEDIND := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+							tFileOutTempPEDIND := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+							tNameOutPEDIND := build("FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+						else
+							tFileOutPEDIND := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+							tFileOutTempPEDIND := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+							tNameOutPEDIND := build("FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+						endif	   
+
 					fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CNPJFILIAL=tValrub,CODACT=taCODACT_WM[nTempLinhaWM])
 					if valid(fmbrasil_clientesped) then
 						! segue processo normalmente
