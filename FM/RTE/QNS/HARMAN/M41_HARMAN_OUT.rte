@@ -753,6 +753,37 @@ log("tQuery ",tQuery,NL)
 							bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
 							exit(1)
 						endif
+
+						if length(tValrub) = 0 then
+							tQuery := build("SELECT VALRUB", NL," "\
+											"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+											"WHERE CODRUB = 'CDFM' AND CODACT = 'HAR'")			  
+											
+							log(tQuery, NL)
+						
+							if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+								print("FATAL ", tfSqlErrorStr())
+								bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+
+							if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+								print("FATAL ", tfSqlErrorStr())
+								bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+
+							while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+								tValrub := peel(taDb2Array["VALRUB"]," ")
+								remove(taDb2Array)
+							endwhile
+
+							if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+								print("FATAL", tfSqlErrorStr())
+								bfMajtrace("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+								exit(1)
+							endif
+						endif
 		
 						if tValrub = "02462805002550" then
 							tFileOutPEDIND := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")

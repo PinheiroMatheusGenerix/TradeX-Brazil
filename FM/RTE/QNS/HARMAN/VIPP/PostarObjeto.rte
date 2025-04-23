@@ -1,0 +1,61 @@
+%@(#)  GetXML.rte     modif:21-11-2017
+!==============================================================================
+% File          : GetXML.rte   version 1.0
+!------------------------------------------------------------------------------
+% Description   : <short program description>
+!------------------------------------------------------------------------------
+% Author        : <developer name> - COMPANY
+!==============================================================================
+! 21-11-2017  XX  Creation
+! 21-11-2017  XX  <comments>
+!==============================================================================
+!
+! <detailed program description>
+!
+!==============================================================================
+! input file     : <name or rule for naming input file>
+! output file    : <name or rule for naming output file> 
+! temporary file : <name or rule for naming temporary file> 
+!==============================================================================
+
+! Message definition
+
+base "../trace/trace.cfg" TRACE
+#define TX_PROG_INFO "GetXML"
+#include "include/generix_func.inc"
+
+!===========================================================
+
+! Initialization section
+
+begin
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	nMainIndex := 0
+	! PROCESS_ERRONEOUS := TRUE
+	pXML.INCONVIN := "UTF-8"
+	pXML.INCOVIN := "UTF-8"
+	pXML.ENCODING := "UTF-8"
+	nMessageID := cMessageID
+
+	nPos := 1
+	nRec := 1
+endbegin
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+	tCmd := build("curl -v -H \"Content-Type: text/xml; charset=utf-8\" -d @",pEDISEND.ORIGINAL.FULLNAME," -X POST http://vpsrv.visualset.com.br/?wsdl >> ",sHOME,"/local/Resultado.xml")
+	! TRACE_LOG_INFO(tCmd)
+	nRet := system(tCmd)
+endend
+
+!===========================================================
