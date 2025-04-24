@@ -3288,12 +3288,12 @@ function bfMajtracePED(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocu
    TRACE.PERFIL := "HARMAN"
    TRACE.SENTIDO := "O"
    if length(taPedido[2]) > 0 then
-   		TRACE.MENSAGEM := build("CONFIRMACAO DE PEDIDO - TOTVS RM - ", taPedido[2])
+   		TRACE.MENSAGEM := build("CONFIRMACAO DE PEDIDO - TOTVS RM")
    else
    		TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO - TOTVS RM"
    endif
    TRACE.LIBEXC := tNUMVAG
-		TRACE.NUMDOC := tVAL_REFLIVQuery2
+		TRACE.NUMDOC := build(tVAL_REFLIVQuery2,".",tVAL_SERIEQuery2)
 
 
    !if number(tData) > 0 then
