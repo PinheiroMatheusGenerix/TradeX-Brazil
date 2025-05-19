@@ -110,25 +110,13 @@ segment StpEmis gGnfeProc,gGNFe,gGinfNFe,gGide
 endsegment
 
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGemit
-   tEmitCNPJ := eECNPJ
-
-    if tEmitCNPJ = "88315379000170" then
-        tCODACT := "HAR"
-        tPerfil := "HARMAN"
-    endif
-
+    tEmitCNPJ := eECNPJ
     tCODFOU := tEmitCNPJ
     tEDIFOU := tEmitCNPJ
 endsegment
 
 segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGemit
     tEmitCNPJ := eECNPJ
-
-    if tEmitCNPJ = "88315379000170" then
-        tCODACT := "HAR"
-        tPerfil := "HARMAN"
-    endif
-
     tCODFOU := tEmitCNPJ
     tEDIFOU := tEmitCNPJ
 endsegment
@@ -379,6 +367,9 @@ enddefault
 ! End statements section
 
 end
+    tCODACT := "HAR"
+    tPerfil := "HARMAN"
+
 	if length(tCODCLI) = 0 or tCODCLI = "0" then
 		tCODCLI := "EXPORTACAO"
 	endif
@@ -2116,7 +2107,7 @@ function  bfMajtraceDEVHAR(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipo
 	TRACE.NUMDOC := tREFREC
 	TRACE.DATDOC := tDataDoc
 	TRACE.MESSAGEID := build(nMessageID)   
-	TRACE.REDE := build(tCODACT,"_INB",tChNFe)
+	TRACE.REDE := pEDISEND.ORIGINAL.NAME
 	TRACE.FICHEIROSAIDA := tNameOut
 	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
 

@@ -432,6 +432,7 @@ else
 		tREFLIVaConsiderar := S_GEEX9750_REFLIV
 		log("3 - tREFLIVaConsiderar ",tREFLIVaConsiderar,NL)
 	endif
+	split(S_GEEX9750_REFLIV, taPedido, ".")
 endif
 
 
@@ -918,6 +919,37 @@ if S_GEEX9750_ETALIV =  "30" then !fazer rubricas
 				exit(1)
 			endif
 
+			if length(tValrub) = 0 then
+				tQuery := build("SELECT VALRUB", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB", NL," "\
+								"WHERE CODRUB = 'CDFM' AND CODACT = 'HAR'")			  
+								
+				log(tQuery, NL)
+			
+				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+					tValrub := peel(taDb2Array["VALRUB"]," ")
+					remove(taDb2Array)
+				endwhile
+
+				if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtracePED("Erro de Traducao","1",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos",build("Erro na execucao da query ",tQuery," do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			endif
+
 			fmbrasil_clientesped := find(build(sHOME,"/fmbrasil_clientesped"),CNPJFILIAL=tValrub,CODACT=tCODACTLido)
 
 			if valid(fmbrasil_clientesped) then
@@ -943,9 +975,15 @@ if S_GEEX9750_ETALIV =  "30" then !fazer rubricas
 
 			if bFazPED = TRUE then
 				nMessageID := cMessageID
-				tFileOutPED := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-				tFileOutTempPED := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
-				tNameOutPED := build("FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				if tValrub = "02462805002550" then
+					tFileOutPED := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tFileOutTempPED := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tNameOutPED := build("FM",tToInfologPrefixFilename,"HARPED.NSR_",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				else
+					tFileOutPED := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tFileOutTempPED := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+					tNameOutPED := build("FM",tToInfologPrefixFilename,"HARPED.",time("now" ,"%Y%m%d%H%M%S"),".CSV")
+				endif
 
 				tQuery := build("SELECT SUM (PDNUVC*UVCLIV) AS PESOLIQUIDO, ROUND(SUM ((UVCLIV/PCBPRO)*PDBCOL),2) PESOBRUTO, COUNT (CODPAL) VOLUMES "\
 				"FROM  FGE50FM",tToInfologPrefixFilename,".GESUPD "\
@@ -3249,9 +3287,13 @@ function bfMajtracePED(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocu
 
    TRACE.PERFIL := "HARMAN"
    TRACE.SENTIDO := "O"
-   TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO - TOTVS RM"
+   if length(taPedido[2]) > 0 then
+   		TRACE.MENSAGEM := build("CONFIRMACAO DE PEDIDO - TOTVS RM")
+   else
+   		TRACE.MENSAGEM := "CONFIRMACAO DE PEDIDO - TOTVS RM"
+   endif
    TRACE.LIBEXC := tNUMVAG
-		TRACE.NUMDOC := tVAL_REFLIVQuery2
+		TRACE.NUMDOC := build(tVAL_REFLIVQuery2,".",tVAL_SERIEQuery2)
 
 
    !if number(tData) > 0 then

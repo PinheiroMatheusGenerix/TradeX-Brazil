@@ -91,7 +91,7 @@ end
                         "   LPAD(TRIM(JSA.CODPRO), 18, '0') AS CODPRO,",NL," "\
                         "   JSA.CODLOT AS CODLOT,",NL," "\
                         "   CASE",NL," "\
-                        "       WHEN IVSE.MOTIMM01 = '' THEN ' '",NL," "\
+                        "       WHEN PAL.MOTIMM = '' THEN ' '",NL," "\
                         "       WHEN ZRU2.VALRUB = '1' THEN ' '",NL," "\
                         "       ELSE TRIM(ZRU2.VALRUB)",NL," "\
                         "   END AS TIPO_ESTOQUE,",NL," "\
@@ -131,7 +131,7 @@ end
                                 "    ZRU2.VALRUB,",NL," "\
                                 "    ZRU.VALRUB,",NL," "\
                                 "    JSA.MAJDAT,",NL," "\
-                                "    IVSE.MOTIMM01",NL," "\
+                                "    PAL.MOTIMM",NL," "\
                                 "ORDER BY",NL," "\
                                 "    ZRU.VALRUB,",NL," "\
                                 "    JSA.CODPRO,",NL," "\
