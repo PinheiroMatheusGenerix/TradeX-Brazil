@@ -613,7 +613,10 @@ line(1:"97.50")
                                 "       ,RP.VALRUB", NL," "\
                                 "FROM FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE", NL," "\
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD AS SD", NL," "\
-                                "  ON SE.NUMSUP = SD.NUMSUP AND SE.SNUSUP = SD.SNUSUP AND SD.UVCLIV > 0", NL," "\
+                                "  ON SE.NUMSUP = SD.NUMSUP", NL," "\
+                                " AND SE.SNUSUP = SD.SNUSUP", NL," "\
+                                " AND SD.UVCLIV > 0 ", NL," "\
+                                " AND SE.SNUSUP = 0 ", NL," "\
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GERILP AS RP", NL," "\
                                 "  ON SD.NUMLIV = RP.NUMLIV", NL," "\
                                 " AND SD.SNULIV = RP.SNULIV", NL," "\
@@ -702,6 +705,7 @@ line(1:"97.50")
                                 "  ON SE.NUMSUP = SD.NUMSUP", NL," "\
                                 " AND SE.SNUSUP = SD.SNUSUP", NL," "\
                                 " AND SD.UVCLIV > 0 ", NL," "\
+                                " AND SE.SNUSUP = 0 ", NL," "\
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GERILP AS RP", NL," "\
                                 "  ON SD.NUMLIV = RP.NUMLIV", NL," "\
                                 " AND SD.SNULIV = RP.SNULIV", NL," "\

@@ -21,7 +21,7 @@
 !base "syslog.cfg" SYSLOG 
 base "../trace/trace.cfg" TRACE,autoflush off
 
-!===========================================================
+!==============================================================================
 
 ! Input/output macros file
 #define TX_PROG_INFO "M59_MARS_CJ_BYPASS"
@@ -29,7 +29,7 @@ base "../trace/trace.cfg" TRACE,autoflush off
 #include "include/GEEXM59.inc"
 #include "include/GEEXM59_BYPASS.inc"
 
-!===========================================================
+!==============================================================================
 
 ! Initialization section
 
@@ -61,7 +61,7 @@ begin
 
 endbegin
 
-!===========================================================
+!==============================================================================
 
 line(1:"00.00")
     tCODACT := S_GEEX0000_CODACT
@@ -129,6 +129,8 @@ line(1:"00.00")
 	!BYPASS FINAL
 endline
 
+!==============================================================================
+
 line(1:"59.10")
 	!BYPASS INICIO
         R_GEEX5910_BP_CODEXC(S_GEEX5910_CODEXC)
@@ -165,6 +167,8 @@ line(1:"59.10")
 	!BYPASS FINAL
 endline
 
+!==============================================================================
+
 line(1:"59.11")
 	!BYPASS INICIO
         R_GEEX5911_BP_CODEXC(S_GEEX5911_CODEXC)
@@ -194,6 +198,8 @@ line(1:"59.11")
 		flush(0,0,NL) >> tFileOutTempBP
 	!BYPASS FINAL
 endline
+
+!==============================================================================
 
 line(1:"59.20")       
     bGeraByPASS := FALSE
@@ -324,6 +330,8 @@ line(1:"59.20")
 		flush(0,0,NL) >> tFileOutTempBP
 	!BYPASS FINAL
 endline
+
+!==============================================================================
 
 line(1:"59.21")
     ! MASSIFICACAO INICIO
@@ -468,6 +476,8 @@ line(1:"59.21")
 	!BYPASS FINAL
 endline
 
+!==============================================================================
+
 line(1:"59.22")
     ! MASSIFICACAO INICIO
         ! CAMPOS WMS
@@ -499,6 +509,8 @@ line(1:"59.22")
     ! MASSIFICACAO FINAL
 endline
 
+!==============================================================================
+
 line(1:"59.29")
     ! MASSIFICACAO INICIO
         ! CAMPOS WMS
@@ -522,6 +534,8 @@ line(1:"59.29")
         ! FIM CAMPOS WMS
     ! MASSIFICACAO FINAL
 endline
+
+!==============================================================================
 
 line(1:"59.40")
     ! MASSIFICACAO INICIO
@@ -602,6 +616,8 @@ line(1:"59.40")
 		flush(0,0,NL) >> tFileOutTempBP
 	!BYPASS FINAL
 endline
+
+!==============================================================================
 
 line(1:"59.41")
     ! MASSIFICACAO INICIO
@@ -684,6 +700,8 @@ line(1:"59.41")
 		flush(0,0,NL) >> tFileOutTempBP
 	!BYPASS FINAL
 endline
+
+!==============================================================================
 
 line(1:"59.42")
     ! MASSIFICACAO INICIO
@@ -775,6 +793,8 @@ line(1:"59.42")
 	!BYPASS FINAL
 endline
 
+!==============================================================================
+
 line(1:"59.45")
     ! MASSIFICACAO INICIO
         ! CAMPOS WWMS
@@ -820,6 +840,8 @@ line(1:"59.45")
 		flush(0,0,NL) >> tFileOutTempBP
     !BYPASS FINAL
 endline
+
+!==============================================================================
 
 line(1:"59.90")
     ! MASSIFICACAO INICIO
@@ -867,6 +889,7 @@ line(1:"59.90")
                         "JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
                         "ON IMO.CODRUB = RUB.CODRUB",NL," "\
                         "AND IMO.VALRUB = RUB.VALRUB",NL," "\
+                        "AND IMO.CODRUB = 'STAG' ",NL," "\
                         "AND IMO.VALCLE = '",tMOTIMM,"'")
 
 		log("------------------------------------------------------------", NL)
@@ -928,6 +951,8 @@ line(1:"59.90")
 	!BYPASS FINAL
 endline
 
+!==============================================================================
+
 line(1:"99.00")
     ! MASSIFICACAO INICIO
         ! CAMPOS WMS
@@ -970,6 +995,8 @@ line(1:"99.00")
 	!BYPASS FIM
 endline
 
+!==============================================================================
+
 line(1:"99.99")
 	!BYPASS INICIO
         R_GEEX9999_BP_CODEXC(S_GEEX9999_CODEXC)
@@ -991,12 +1018,14 @@ line(1:"99.99")
 	!BYPASS FINAL
 endline
 
+!==============================================================================
+
 ! Default statements section
 default
 
 enddefault
 
-!===========================================================
+!==============================================================================
 
 ! End statements section
 
@@ -1016,11 +1045,6 @@ end
                                 "       ,SD.CODPRO",NL," "\
                                 "       ,SD.DS1PRO",NL," "\
                                 "       ,SD.DS2PRO",NL," "\
-                                "       ,(",NL," "\
-                                "SELECT  TRIM(RUB.LIBVAL) LIBVAL",NL," "\
-                                "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU IMO",NL," "\
-                                "JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
-                                "ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB AND IMO.VALCLE = CASE WHEN SD.MOTIMM = '' THEN 'AVL' ELSE SD.MOTIMM END)",NL," "\
                                 "FROM FGE50FM",tToInfologPrefixFilename,".GESUPE SE",NL," "\
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD",NL," "\
                                 "ON SD.NUMSUP = SE.NUMSUP",NL," "\
@@ -1049,11 +1073,6 @@ end
                                 "         ,SD.CODPRO",NL," "\
                                 "         ,SD.DS1PRO",NL," "\
                                 "         ,SD.DS2PRO",NL," "\
-                                "         ,(",NL," "\
-                                "SELECT  TRIM(RUB.LIBVAL) LIBVAL",NL," "\
-                                "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU IMO",NL," "\
-                                "JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
-                                "ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB AND IMO.VALCLE = CASE WHEN SD.MOTIMM = '' THEN 'AVL' ELSE SD.MOTIMM END)",NL," "\
                                 "ORDER BY 1")
 
                 log("------------------------------------------------------------", NL)
@@ -1444,7 +1463,7 @@ end
     exit(0)
 endend
 
-!===========================================================
+!==============================================================================
 
 function bfMajtraceBP(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
@@ -1502,7 +1521,7 @@ function bfMajtraceBP(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMensag
 	flush(TRACE)
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfMajtraceMassif(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
@@ -1560,7 +1579,7 @@ function bfMajtraceMassif(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMe
 	flush(TRACE)
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfMajtraceMassifGELIRUB(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensagem,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
@@ -1618,7 +1637,7 @@ function bfMajtraceMassifGELIRUB(tStatus,tError,tNumDoc,tDataDoc,tFileOut,tMensa
 	flush(TRACE)
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfEscreve59completo(tREFLIV_Maj, tCODPAL_Maj, tCODPAL_Maj2, tUVCLIV_Maj, tPCBPRO_Maj, tCODLOT_Maj, tDATFVI_Maj, tCODPRO_Maj, tDS1PRO_Maj, tDS2PRO_Maj, tNUMSUP_Maj)
     ! LINHA 59.20
@@ -1958,7 +1977,7 @@ function bfEscreve59completo(tREFLIV_Maj, tCODPAL_Maj, tCODPAL_Maj2, tUVCLIV_Maj
     ! FIM LINHA 59.90
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfEscreve59detalhe(tREFLIV_Maj, tCODPAL_Maj, tUVCLIV_Maj, tPCBPRO_Maj, tCODLOT_Maj, tDATFVI_Maj, tCODPRO_Maj, tDS1PRO_Maj, tDS2PRO_Maj, tNUMSUP_Maj)
     ! LINHA 59.40  

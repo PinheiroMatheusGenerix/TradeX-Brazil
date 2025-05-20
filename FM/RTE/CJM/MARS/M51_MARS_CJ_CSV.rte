@@ -499,7 +499,7 @@ line(1:"51.00")
             tQuery := build("SELECT  VALCLE, TRIM(RUB.LIBVAL) LIBVAL",NL," "\
                             "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU IMO",NL," "\
                             "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
-                            "ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB")
+                            "ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB AND IMO.CODRUB = 'STAG'")
 
             log("------------------------------------------------------------", NL)
             log(tQuery,NL)
@@ -1082,7 +1082,7 @@ line(1:"51.90")
             tQuery := build("SELECT DISTINCT VALCLE, TRIM(RUB.LIBVAL) LIBVAL",NL," "\
                             "FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU IMO",NL," "\
                             "JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
-                            "ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB")
+                            "ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB AND IMO.CODRUB = 'STAG'")
 
             log("------------------------------------------------------------", NL)
             log(tQuery,NL)

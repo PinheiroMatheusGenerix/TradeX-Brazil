@@ -472,7 +472,7 @@ line(1:"07.00")
 				! QUERY tVALRUB_CSV
 					tQuery := build("SELECT VALRUB",NL," "\
 									"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
-									"WHERE VALCLE='",S_GEEX0700_MOTIMM,"'")
+									"WHERE VALCLE='",S_GEEX0700_MOTIMM,"' AND CODRUB = 'STAG'")
 
 					log("------------------------------------------------------------", NL)
 					log(tQuery,NL)
@@ -572,7 +572,7 @@ line(1:"07.90")
 			tQuery := build("SELECT DISTINCT VALCLE, TRIM(RUB.LIBVAL) LIBVAL",NL," "\
 							"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU IMO",NL," "\
 							"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRI RUB",NL," "\
-							"ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB")
+							"ON IMO.CODRUB = RUB.CODRUB AND IMO.VALRUB = RUB.VALRUB AND IMO.CODRUB = 'STAG'")
 
 			log("------------------------------------------------------------", NL)
 			log(tQuery,NL)
@@ -1428,7 +1428,7 @@ function bfEscreveCSVPaleteFilho(tCSV_CODPAL, tCSV_MOTIMM0700, tCSV_COLSTO, tCSV
 		! QUERY VALRUB
 			tQuery := build("SELECT VALRUB",NL," "\
 							"FROM FGE50FM",tToInfologPrefixFilename,".GEZZRU",NL," "\
-							"WHERE VALCLE='",tCSV_MOTIMM0700,"'")
+							"WHERE VALCLE='",tCSV_MOTIMM0700,"' AND CODRUB = 'STAG'")
 
 			log("------------------------------------------------------------", NL)
 			log(tQuery,NL)
