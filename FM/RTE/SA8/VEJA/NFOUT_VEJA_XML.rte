@@ -107,6 +107,10 @@ segment SIE gGnfeProc,gGNFe,gGinfNFe,gGemit
 	tIEemit := eEIE
 endsegment
 
+segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGdest
+	tDestCPF := eECPF  
+endsegment
+
 segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGdest
 	tDestCNPJ := eECNPJ  
 endsegment
@@ -137,6 +141,14 @@ endsegment
 
 segment SvNF gGnfeProc,gGNFe,gGinfNFe,gGtotal,gGICMSTot
 	tTotalvNF := eEvNF
+endsegment
+
+segment SCNPJ gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
+	tCNPJ := eECNPJ
+endsegment
+
+segment SxNome gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGtransporta
+	tXNome := eExNome
 endsegment
 
 segment SqVol gGnfeProc,gGNFe,gGinfNFe,gGtransp,gGvol
@@ -299,6 +311,41 @@ end
             endif
         ! FIM QUERY tNUMLIVQur, tSNULIVQur, taVALRUBQur[peel(taDb2Array["CODRUB"]," ")]
 
+        ! QUERY tTELTRA
+            tQuery := build("SELECT TR.TELTRA, VE.CODTLI",NL," "\
+                            "FROM FGE50FM",tToInfologPrefixFilename,".GETRA TR",NL," "\
+                            "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIVE VE",NL," "\
+                            "ON TR.CODTRA = VE.CODTRA",NL," "\
+                            "WHERE VE.REFLIV = '",tREFLIV,"'",NL," "\
+                            "LIMIT 1")
+
+            log("----------------------------------------", NL)
+            log(tQuery,NL)
+            log("----------------------------------------", NL)
+
+            if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                bfSqlErro()
+                exit(1)
+            endif
+
+            bQueryResult := FALSE
+            while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                tTELTRA := peel(taDb2Array["TELTRA"]," ")
+                tCODTLI := peel(taDb2Array["CODTLI"]," ")
+                remove(taDb2Array)
+            endwhile
+
+            if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                bfSqlErro()
+                exit(1)
+            endif
+        ! FIM QUERY tTELTRA
+
         while tIndex in taNUMLIVQur do
             tNUMLIVQur := taNUMLIVQur[tIndex]
             tSNULIVQur := taSNULIVQur[tIndex]
@@ -331,15 +378,37 @@ end
                                     tChNFe)
             
             bfCriaRubricaGELIRUB("XIE1", \
-                                    tIEemit)
+                                    tIEem0it)
             
             bfCriaRubricaGELIRUB("XTP1", \
                                     tTipoDocumento)
 
-            if taVALRUB["RAST"] <> "0" then
+            if not compare(tTELTRA, "CORREIO*") and tCODTLI = "EC" then
+                if length(taVALRUB["RAST"]) > 0 then
+                    bfCriaRubricaGELIRUB("RAST", \
+                                            peel(taVALRUB["RAST"], " "))
+                else
+                    bfCriaRubricaGELIRUB("RAST", \
+                                            substr(tChNFe, length(tChNFe) - 12, EOL))
+                endif
+            else
                 bfCriaRubricaGELIRUB("RAST", \
-                                        peel(taVALRUB["RAST"], " "))
+                                        "")
             endif
+
+            if length(tDestCPF) > 0 then
+                bfCriaRubricaGELIRUB("CNPJ", \
+                                        tDestCPF)
+            else
+                bfCriaRubricaGELIRUB("CNPJ", \
+                                        tDestCNPJ)
+            endif
+
+            bfCriaRubricaGELIRUB("CNTR", \
+                                    tCNPJ)
+
+            bfCriaRubricaGELIRUB("NMTR", \
+                                    tXNome)
 	    endwhile
 
         close(tFileOutTempCSV)
