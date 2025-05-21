@@ -83,59 +83,36 @@ endline
 
 end
     while tIndexReferencia in taReferencia do
-        tQuery := build("SELECT",NL," "\
-                        "   ZRU.VALRUB AS SAP,",NL," "\
-                        "   VARCHAR_FORMAT(DATE(SUBSTR(CHAR(JSA.MAJDAT), 1, 4) || '-' ||",NL," "\
-                        "                   SUBSTR(CHAR(JSA.MAJDAT), 5, 2) || '-' ||",NL," "\
-                        "                   SUBSTR(CHAR(JSA.MAJDAT), 7, 2)), 'DD/MM/YYYY') AS DATA,",NL," "\
-                        "   LPAD(TRIM(JSA.CODPRO), 18, '0') AS CODPRO,",NL," "\
-                        "   JSA.CODLOT AS CODLOT,",NL," "\
-                        "   CASE",NL," "\
-                        "       WHEN PAL.MOTIMM = '' THEN ' '",NL," "\
-                        "       WHEN ZRU2.VALRUB = '1' THEN ' '",NL," "\
-                        "       ELSE TRIM(ZRU2.VALRUB)",NL," "\
-                        "   END AS TIPO_ESTOQUE,",NL," "\
-                        "   CASE",NL," "\
-                        "       WHEN SUM(JSA.QTECPT) = 0 THEN '0'",NL," "\
-                        "       ELSE REPLACE(VARCHAR_FORMAT(DECIMAL(SUM(JSA.QTECPT), 15, 3), '9999999.000'), '.', ',')",NL," "\
-                        "    END AS QTECPT",NL," "\
-                        "FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA JSA",NL," "\
-                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEIVSE IVSE",NL," "\
-                        "   ON JSA.NUMIVT = IVSE.NUMINV",NL," "\
-                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL PAL",NL," "\
-                        " 	ON JSA.NUMPAL = PAL.NUMPAL",NL," "\
-                        " 	AND JSA.SNUPAL = PAL.SNUPAL",NL," "\
-                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU ZRU",NL," "\
-                        " 	ON ZRU.CODRUB = 'IVDP'",NL," "\
-                        " 	AND ZRU.VALCLE = PAL.MOTIMM",NL," "\
-                        "LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU ZRU2",NL," "\
-                        "   ON ZRU2.CODRUB = 'STIV'",NL," "\
-                        "   AND ZRU2.VALCLE = PAL.MOTIMM",NL," "\
-                        "WHERE (JSA.NUMIVT, JSA.NUMDOC, JSA.SEQDOC, JSA.NBRCPT) IN (",NL," "\
-                        "   SELECT NUMIVT, NUMDOC, SEQDOC, MAX(NBRCPT)",NL," "\
-                        "   FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA",NL," "\
-                        "   GROUP BY NUMIVT, NUMDOC, SEQDOC",NL," "\
-                        ")",NL," "\
-                        "AND JSA.NUMIVT IN (SELECT NUMINV",NL," "\
-                        " 				  FROM FGE50FM",tToInfologPrefixFilename,".GEIVSE",NL," "\
-                        " 				  WHERE LIBIVT = '",taReferencia[tIndexReferencia],"')",NL," "\
-                        "AND JSA.QTECPT <> '0'", NL)
+        tQuery := build("SELECT  * ",NL," "\
+                        "FROM ",NL," "\
+                        "( ",NL," "\
+                        "	SELECT  ZRU.VALRUB                                                                                                             AS SAP ",NL," "\
+                        "	       ,TO_CHAR(TO_DATE(JSA.MAJDAT||'','YYYYMMDD'),'DD/MM/YYYY')                                                               AS DATA ",NL," "\
+                        "	       ,LPAD(TRIM(JSA.CODPRO),18,'0')                                                                                          AS CODPRO ",NL," "\
+                        "	       ,JSA.CODLOT                                                                                                             AS CODLOT ",NL," "\
+                        "	       ,CASE WHEN PAL.MOTIMM = '' OR ZRU2.VALRUB = '1' THEN ' '  ELSE TRIM(ZRU2.VALRUB) END                                    AS TIPO_ESTOQUE ",NL," "\
+                        "	       ,REPLACE(VARCHAR_FORMAT(DECIMAL(JSA.QTECPT,15,3),'9999999.000'),'.',',')                                                AS QTECPT ",NL," "\
+                        "	       ,ROW_NUMBER() OVER (PARTITION BY JSA.ZONSTS,JSA.ALLSTS,JSA.DPLSTS,JSA.NIVSTS ORDER BY  JSA.NUMIVT DESC,JSA.NBRCPT DESC) AS L ",NL," "\
+                        "	FROM FGE50FM",tToInfologPrefixFilename,".GEIVJSA AS JSA ",NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEIVSE AS IVSE ",NL," "\
+                        "	ON JSA.NUMIVT = IVSE.NUMINV ",NL," "\
+                        "	JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL AS PAL ",NL," "\
+                        "	ON JSA.NUMPAL = PAL.NUMPAL AND JSA.SNUPAL = PAL.SNUPAL ",NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS ZRU ",NL," "\
+                        "	ON ZRU.CODRUB = 'IVDP' AND ZRU.VALCLE = PAL.MOTIMM ",NL," "\
+                        "	LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS ZRU2 ",NL," "\
+                        "	ON ZRU2.CODRUB = 'STIV' AND ZRU2.VALCLE = PAL.MOTIMM ",NL," "\
+                        "	WHERE 1 = 1 ",NL," "\
+                        "	AND IVSE.LIBIVT = '",taReferencia[tIndexReferencia],"' ",NL)
 
         if taPlano[tIndexReferencia] <> "*" then
-            tQuery := build(tQuery, "AND JSA.NUMIVT = '",taPlano[tIndexReferencia],"'", NL)
+            tQuery := build(tQuery, "	AND JSA.NUMIVT = '",taPlano[tIndexReferencia],"' ", NL)
         endif
 
-        tQuery := build(tQuery, "GROUP BY",NL," "\
-                                "    JSA.CODPRO,",NL," "\
-                                "    JSA.CODLOT,",NL," "\
-                                "    ZRU2.VALRUB,",NL," "\
-                                "    ZRU.VALRUB,",NL," "\
-                                "    JSA.MAJDAT,",NL," "\
-                                "    PAL.MOTIMM",NL," "\
-                                "ORDER BY",NL," "\
-                                "    ZRU.VALRUB,",NL," "\
-                                "    JSA.CODPRO,",NL," "\
-                                "    JSA.CODLOT")
+        tQuery := build(tQuery, "	AND JSA.QTECPT <> '0'  ",NL," "\
+                                ") AS TBL ",NL," "\
+                                "WHERE L = 1 ",NL," "\
+                                "ORDER BY SAP, CODPRO, CODLOT ",NL)
 
         log("------------------------------------------------------------", NL)
         log(tQuery,NL)
