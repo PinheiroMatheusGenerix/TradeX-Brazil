@@ -17,50 +17,61 @@
 ! output file    : <name or rule for naming output file> 
 ! temporary file : <name or rule for naming temporary file> 
 !==============================================================================
-
 ! Message definition
 
 base "syslog.cfg" SYSLOG
 
-!===========================================================
-
+!==============================================================================
 ! Initialization section
-
 begin
 	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
 
-    tTimeFile := build(sHOME,"/log/Time-",pEDISEND.ORIGINAL.NAME,".txt")
-    tLocalFile := pEDISEND.ORIGINAL.FULLNAME
-    tOriginalName := pEDISEND.ORIGINAL.NAME
+	!Inicio do processo
+        tTimeFile := build(sHOME,"/log/Time-",pEDISEND.ORIGINAL.NAME,".txt")
+        tLocalFile := pEDISEND.ORIGINAL.FULLNAME
+        tOriginalName := pEDISEND.ORIGINAL.NAME
 
-    print("SYSLOG = ", pINDEX, NL) >> tTimeFile
-    print("INICIO = ", time("now","%Y-%m-%d %H:%M:%S"), NL) >> tTimeFile
-    log(substr(pEDISEND.ORIGINAL.NAME, 6 ,2), NL)
+		log("------------------------------------------------------------", NL)
+        print("SYSLOG = ", pINDEX, NL) >> tTimeFile
+        print("INICIO = ", time("now","%Y-%m-%d %H:%M:%S"), NL) >> tTimeFile
+        log(substr(pEDISEND.ORIGINAL.NAME, 6 ,2), NL)
 
-    switch substr(pEDISEND.ORIGINAL.NAME, 6 ,2)
-        case "59":
-            tCmd := build("edisend M59_FTP ", tLocalFile)
-            log("executando o comando - ", tCmd, NL)
-            system(tCmd)
-        case "97":
-            tCmd := build("edisend M93_FTP ", tLocalFile)
-            log("executando o comando - ", tCmd, NL)
-            system(tCmd)
-    endswitch
-    print("FIM = ", time("now","%Y-%m-%d %H:%M:%S"), NL) >> tTimeFile
+        ! EDISEND
+            switch substr(pEDISEND.ORIGINAL.NAME, 6 ,2)
+                case "59":
+                    tCmd := build("edisend M59_FTP ", tLocalFile)
+                    log("executando o comando - ", tCmd, NL)
+                    system(tCmd)
+                case "62":
+                    tCmd := build("edisend M62_FTP ", tLocalFile)
+                    log("executando o comando - ", tCmd, NL)
+                    system(tCmd)
+                case "63":
+                    tCmd := build("edisend M63_FTP ", tLocalFile)
+                    log("executando o comando - ", tCmd, NL)
+                    system(tCmd)
+                case "97":
+                    tCmd := build("edisend M97_FTP ", tLocalFile)
+                    log("executando o comando - ", tCmd, NL)
+                    system(tCmd)
+                default :
+                    log("Nenhuma RTE designado.", NL)
+            endswitch
+        ! FIM EDISEND
+
+        print("FIM = ", time("now","%Y-%m-%d %H:%M:%S"), NL) >> tTimeFile
+		log("------------------------------------------------------------", NL)
+    ! FIM PROCESSO
 endbegin
 
-!===========================================================
-
+!==============================================================================
 ! Default statements section
 default
 
 enddefault
 
-!===========================================================
-
+!==============================================================================
 ! End statements section
-
 end
 
 endend
