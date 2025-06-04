@@ -94,7 +94,7 @@ endline
 end
     while tIndexReferencia in taReferencia do
         tQuery := build("SELECT  SAP ",NL," "\
-                        "       ,DATA ",NL," "\
+                        "       ,MAX(DATA) AS DATA ",NL," "\
                         "       ,CODPRO ",NL," "\
                         "       ,CODLOT ",NL," "\
                         "       ,TIPO_ESTOQUE ",NL," "\
@@ -129,7 +129,7 @@ end
         tQuery := build(tQuery, "	AND JSA.QTECPT <> '0'  ",NL," "\
                                 ") AS TBL ",NL," "\
                                 "WHERE L = 1 ",NL," "\
-                                "GROUP BY SAP, DATA, CODPRO, CODLOT, TIPO_ESTOQUE ",NL," "\
+                                "GROUP BY SAP, CODPRO, CODLOT, TIPO_ESTOQUE ",NL," "\
                                 "ORDER BY SAP, CODPRO, CODLOT ",NL)
 
         log("------------------------------------------------------------", NL)
