@@ -2122,7 +2122,7 @@ endfunction
 ! ABAS SHELF
 	function bfP5_Shelflife()
 		tQuery := build("WITH MOTIMM_VAL AS (",NL," "\
-						"    SELECT ",NL," "\
+						"    SELECT DISTINCT",NL," "\
 						"        GL.CODPRO,",NL," "\
 						"        GL.CODACT,",NL," "\
 						"        CASE",NL," "\
@@ -2206,7 +2206,7 @@ endfunction
 						"                                    END",NL," "\
 						"    AND ZRE.TYPDTA = '1'",NL," "\
 						"WHERE GL.CODACT = '",tCODACT,"'",NL," "\
-						"    AND GL.MOTIMM <> ''",NL," "\
+						"    AND GL.MOTIMM = ''",NL," "\
 						"    AND GL.DATFVI > 0",NL," "\
 						"    AND GL.ETAPAL <> '60'",NL," "\
 						"ORDER BY 1")
