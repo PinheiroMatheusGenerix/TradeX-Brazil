@@ -383,7 +383,7 @@ end
             bfCriaRubricaGELIRUB("XTP1", \
                                     tTipoDocumento)
 
-            if not compare(tTELTRA, "CORREIO*") and tCODTLI = "EC" then
+            if compare(tTELTRA, "CORREIO*") = FALSE or tCODTLI <> "EC" then
                 if length(taVALRUB["RAST"]) > 0 then
                     bfCriaRubricaGELIRUB("RAST", \
                                             peel(taVALRUB["RAST"], " "))
