@@ -126,7 +126,7 @@ line(1:"97.40")
 	! FIM IDENTIFICA O BIB
 
 	! CRIACAO DOS ARQUIVOS
-		tNameOut := build(tAmbiente,"M97",build(nMessageID:R10),".DAT")
+		tNameOut := build(tToInfologPrefixFilename,"M97",build(nMessageID:R010),".DAT")
 		tFileOut := build(sHOME,"/ToAPIPASS/",tNameOut)
 		tFileOutTemp := build(sHOME,"/ToAPIPASS/Temp/",tNameOut)
 	! FIM CRIACAO DOS ARQUIVOS
@@ -668,7 +668,7 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
 	TRACE.MENSAGEM := tMensagem
 	TRACE.NUMDOC := tNumDoc
 	TRACE.DATDOC := tDataDoc
-	TRACE.MESSAGEID := build(nMessageID:R10)
+	TRACE.MESSAGEID := build(nMessageID:R010)
 	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
 		TRACE.REDE := pEDISEND.ORIGINAL.NAME
 	else

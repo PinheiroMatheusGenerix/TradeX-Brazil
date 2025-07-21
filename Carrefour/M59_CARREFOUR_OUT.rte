@@ -70,7 +70,7 @@ begin
 
     !Variaveis Gerais
 		bEcommerce := FALSE
-		bM9740 := FALSE
+        bPri := TRUE
 
 endbegin
 
@@ -453,12 +453,7 @@ line(1:"59.20")
                 endif
             endwhile
             
-            bfSqlClose(tDbBase)
         endif
-
-	log("------------------------------------------------------------", NL)
-	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
-	log("------------------------------------------------------------", NL)
 
 endline
 
@@ -484,42 +479,49 @@ line(1:"59.50")
 		log("ETASUP: ",S_GEEX5950_BP_ETASUP,NL)
 	! FIM IDENTIFICA O BIB
 
-	! CRIACAO DOS ARQUIVOS
-		tNameOut := build(tToInfologPrefixFilename,"M59",build(nMessageID:R010),".DAT")
-		tFileOut := build(sHOME,"/ToAPIPASS/",tNameOut)
-		tFileOutTemp := build(sHOME,"/ToAPIPASS/Temp/",tNameOut)
-	! FIM CRIACAO DOS ARQUIVOS
+    ! PRIMEIRA LINHA?
+        if bPri then
+            bPri := FALSE
 
-	! LINHA 00.00
-		R_GEEX0000_CODEXC(tCODEXC0000)
-		R_GEEX0000_SEPEXC(tSEPEXC0000)
-		R_GEEX0000_SCOEXC(tSCOEXC0000)
-		R_GEEX0000_TRTEXC(tTRTEXC0000)
-		R_GEEX0000_EMTEXC(tEMTEXC0000)
-		R_GEEX0000_RCTEXC(tRCTEXC0000)
-		R_GEEX0000_DATEXC(tDATEXC0000)
-		R_GEEX0000_HEUEXC(tHEUEXC0000)
-		R_GEEX0000_NUMEXC(tNUMEXC0000)
-		R_GEEX0000_ACQEXC(tACQEXC0000)
-		R_GEEX0000_VEREXC(tVEREXC0000)
-		R_GEEX0000_NOMSYS(tNOMSYS0000)
-		R_GEEX0000_NOMDTQ(tNOMDTQ0000)
-		R_GEEX0000_BIBDTQ(tBIBDTQ0000)
-		R_GEEX0000_LIBEXC(tLIBEXC0000)
-		R_GEEX0000_BIBDST(tBIBDST0000)
-		R_GEEX0000_PGMDST(tPGMDST0000)
-		R_GEEX0000_PARDST(tPARDST0000)
-		R_GEEX0000_CODACT(tCODACT0000)
-		R_GEEX0000_IGLSIT(tIGLSIT0000)
-		R_GEEX0000_EDISIT(tEDISIT0000)
-		R_GEEX0000_IMAEXC(tIMAEXC0000)
-		R_GEEX0000_IDEMSG(tIDEMSG0000)
-		R_GEEX0000_NATEXC(tNATEXC0000)
-		R_GEEX0000_EMTORI(tEMTORI0000)
-		R_GEEX0000_DISEXC(tDISEXC0000)
-		
-		flush(0,0,NL) >> tFileOutTemp
-	! FIM LINHA 00.00
+            ! CRIACAO DOS ARQUIVOS
+                tNameOut := build(tToInfologPrefixFilename,"M59",build(nMessageID:R010),".DAT")
+                tFileOut := build(sHOME,"/ToAPIPASS/",tNameOut)
+                tFileOutTemp := build(sHOME,"/ToAPIPASS/Temp/",tNameOut)
+            ! FIM CRIACAO DOS ARQUIVOS
+
+            ! LINHA 00.00
+                R_GEEX0000_CODEXC(tCODEXC0000)
+                R_GEEX0000_SEPEXC(tSEPEXC0000)
+                R_GEEX0000_SCOEXC(tSCOEXC0000)
+                R_GEEX0000_TRTEXC(tTRTEXC0000)
+                R_GEEX0000_EMTEXC(tEMTEXC0000)
+                R_GEEX0000_RCTEXC(tRCTEXC0000)
+                R_GEEX0000_DATEXC(tDATEXC0000)
+                R_GEEX0000_HEUEXC(tHEUEXC0000)
+                R_GEEX0000_NUMEXC(tNUMEXC0000)
+                R_GEEX0000_ACQEXC(tACQEXC0000)
+                R_GEEX0000_VEREXC(tVEREXC0000)
+                R_GEEX0000_NOMSYS(tNOMSYS0000)
+                R_GEEX0000_NOMDTQ(tNOMDTQ0000)
+                R_GEEX0000_BIBDTQ(tBIBDTQ0000)
+                R_GEEX0000_LIBEXC(tLIBEXC0000)
+                R_GEEX0000_BIBDST(tBIBDST0000)
+                R_GEEX0000_PGMDST(tPGMDST0000)
+                R_GEEX0000_PARDST(tPARDST0000)
+                R_GEEX0000_CODACT(tCODACT0000)
+                R_GEEX0000_IGLSIT(tIGLSIT0000)
+                R_GEEX0000_EDISIT(tEDISIT0000)
+                R_GEEX0000_IMAEXC(tIMAEXC0000)
+                R_GEEX0000_IDEMSG(tIDEMSG0000)
+                R_GEEX0000_NATEXC(tNATEXC0000)
+                R_GEEX0000_EMTORI(tEMTORI0000)
+                R_GEEX0000_DISEXC(tDISEXC0000)
+                
+                flush(0,0,NL) >> tFileOutTemp
+            ! FIM LINHA 00.00
+            
+        endif
+    ! FIM PRIMEIRA LINHA?
 
     ! LINHA 59.50
         R_GEEX5950_BP_CODEXC(S_GEEX5950_BP_CODEXC)
@@ -578,6 +580,7 @@ line(1:"59.50")
                             )dINDEX
             if valid(TRACE) then !and TRACE.LIBEXC = tNUMVAG and S_GEEX9750_ETALIV = "30" then
                 log("TRACE: ", TRACE.INDEX, NL)
+                log("LIBEXC: ", TRACE.LIBEXC, NL)
                 if TRACE.LIBEXC <> "99999999" then
                     tNUMMIT := TRACE.LIBEXC
 		            log("NUMMIT: ",tNUMMIT,NL)
@@ -614,57 +617,78 @@ line(1:"59.50")
     ! FIM VERIFICA SE JA TEM TRACER E SE JA PERTENCE A UMA MISSAO
 
     ! SQL COMPLEMENTO
-        tQuery := build("SELECT", NL," "\
-                        "	 MT.NUMMIT", NL," "\
-                        "	,MT.ETAMIT", NL," "\
-                        "	,SUM(CASE ETASUP WHEN '10' THEN 1 ELSE 0 END) AS SUPE10", NL," "\
-                        "	,SUM(CASE ETASUP WHEN '20' THEN 1 ELSE 0 END) AS SUPE20", NL," "\
-                        "	,SUM(CASE ETASUP WHEN '30' THEN 1 ELSE 0 END) AS SUPE30", NL," "\
-                        "	,SUM(CASE ETASUP WHEN '40' THEN 1 ELSE 0 END) AS SUPE40", NL," "\
-                        "	,COUNT(NUMSUP)                                AS CUMSUP", NL," "\
-                        "FROM ",tAmbiente,".GEMITS  AS MT", NL," "\
-                        "JOIN ",tAmbiente,".GESUPE  AS SE ", NL," "\
-                        " ON MT.NUMTOU = SE.NUMTOU", NL," "\
-                        "WHERE MT.NUMTOU = ",tNUMMIT, NL," "\
-                        "GROUP BY ", NL," "\
-                        "	 MT.NUMMIT", NL," "\
-                        "	,MT.ETAMIT", "")   
+        if tNUMMIT <> "99999999" then
+            tQuery := build("SELECT", NL," "\
+                            "	 MT.NUMMIT", NL," "\
+                            "	,MT.ETAMIT", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '10' THEN 1 ELSE 0 END) AS SUPE10", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '20' THEN 1 ELSE 0 END) AS SUPE20", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '30' THEN 1 ELSE 0 END) AS SUPE30", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '40' THEN 1 ELSE 0 END) AS SUPE40", NL," "\
+                            "	,COUNT(NUMSUP)                                AS CUMSUP", NL," "\
+                            "FROM ",tAmbiente,".GEMITS  AS MT", NL," "\
+                            "JOIN ",tAmbiente,".GESUPE  AS SE ", NL," "\
+                            " ON MT.NUMTOU = SE.NUMTOU", NL," "\
+                            "WHERE MT.NUMTOU = ",tNUMMIT, NL," "\
+                            "GROUP BY ", NL," "\
+                            "	 MT.NUMMIT", NL," "\
+                            "	,MT.ETAMIT", "")   
 
-        log("------------------------------------------------------------", NL)
-        log("tQuery: ", NL, tQuery,NL)
-        log("------------------------------------------------------------", NL)
+            log("------------------------------------------------------------", NL)
+            log("tQuery: ", NL, tQuery,NL)
+            log("------------------------------------------------------------", NL)
 
-        if bfSqlSet( tDbBase, "SELECTdb2", tQuery) = FALSE then
-            bfSqlErro()
-            exit(1)	
-        endif
+            if bfSqlSet( tDbBase, "SELECTdb2", tQuery) = FALSE then
+                bfSqlErro()
+                exit(1)	
+            endif
 
-        if bfSqlOpen( tDbBase, "SELECTdb2") = FALSE then
-            bfSqlErro()
-            exit(1)	
-        endif
+            if bfSqlOpen( tDbBase, "SELECTdb2") = FALSE then
+                bfSqlErro()
+                exit(1)	
+            endif
 
-        while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do
-            R_GEEX5950_BP_NUMMIT(taDb2Array["NUMMIT"])
-            R_GEEX5950_BP_ETAMIT(taDb2Array["ETAMIT"])
-            R_GEEX5950_BP_CUMSU1(taDb2Array["SUPE10"])
-            R_GEEX5950_BP_CUMSU2(taDb2Array["SUPE20"])
-            R_GEEX5950_BP_CUMSU3(taDb2Array["SUPE30"])
-            R_GEEX5950_BP_CUMSU4(taDb2Array["SUPE40"])
-            R_GEEX5950_BP_CUMSUP(taDb2Array["CUMSUP"])
-            remove(taDb2Array)
-        endwhile
+            while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                R_GEEX5950_BP_NUMMIT(taDb2Array["NUMMIT"])
+                R_GEEX5950_BP_ETAMIT(taDb2Array["ETAMIT"])
+                R_GEEX5950_BP_CUMSU1(taDb2Array["SUPE10"])
+                R_GEEX5950_BP_CUMSU2(taDb2Array["SUPE20"])
+                R_GEEX5950_BP_CUMSU3(taDb2Array["SUPE30"])
+                R_GEEX5950_BP_CUMSU4(taDb2Array["SUPE40"])
+                R_GEEX5950_BP_CUMSUP(taDb2Array["CUMSUP"])
+                remove(taDb2Array)
+            endwhile
 
-        if bfSqlFree( tDbBase, "SELECTdb2") = FALSE then
-            bfSqlErro()
-            exit(1)	
+            if bfSqlFree( tDbBase, "SELECTdb2") = FALSE then
+                bfSqlErro()
+                exit(1)	
+            endif
         endif
     ! FIM SQL COMPLEMENTO
 
     flush(0,0,NL) >> tFileOutTemp
     nContadorLinhasEscritas++
 
-    !ESCRITA 9900
+        ! TRACE
+            close(tFileOutTemp)
+            bfMajtrace(	"Recebida" \
+                        ,"0" \
+                        ,tNumeroDocumento \
+                        ,tDataDocumento \
+                        ,tFileInput \
+                        ,tFileOutTemp \
+                        ,tMensagem \
+                        ,"" \
+                    )
+        ! FIM TRACE
+
+endline
+
+!==============================================================================
+
+line(1:"99.00")
+
+    if bM5950 then
         R_GEEX9900_BP_CODEXC("99")
         R_GEEX9900_BP_SEPEXC(".")
         R_GEEX9900_BP_SCOEXC("00")
@@ -674,38 +698,28 @@ line(1:"59.50")
         R_GEEX9900_BP_CPTEXC(build(nContLinhasEscritas))
 
         flush(0,0,NL) >> tFileOutTemp
-    !FIM ESCRITA 9900
 
-    ! TRATAMENTO FINAL DOS ARQUIVOS
-        close(tFileOutTemp)
-        copy(tFileOutTemp,tFileOut)
-        close(tFileOutTemp)
-        remove(tFileOutTemp)
-        close(tFileOut)
-    ! FIM TRATAMENTO FINAL DOS ARQUIVOS
+        ! TRATAMENTO FINAL DOS ARQUIVOS
+            close(tFileOutTemp)
+            copy(tFileOutTemp,tFileOut)
+            close(tFileOutTemp)
+            remove(tFileOutTemp)
+            close(tFileOut)
+        ! FIM TRATAMENTO FINAL DOS ARQUIVOS
 
-    ! TRACE
-        bfMajtrace(	"Recebida" \
-                    ,"0" \
-                    ,tNumeroDocumento \
-                    ,tDataDocumento \
-                    ,tFileInput \
-                    ,tFileOut \
-                    ,tMensagem \
-                    ,"" \
-                )
-    ! FIM TRACE
+        ! Enviar interface para o cliente
+            tCmd := build("edisend APIPASS_SFTP ", tFileOut)
+            log("executando o comando - ", tCmd, NL)
+            system(tCmd)
 
-    ! Enviar interface para o cliente
-        tCmd := build("edisend APIPASS_SFTP ", tFileOut)
-        log("executando o comando - ", tCmd, NL)
-        system(tCmd)
+    endif
 
 endline
 
 !==============================================================================
 
 ! Default statements section
+
 default
 
 enddefault
@@ -724,7 +738,7 @@ endend
 
 !==============================================================================
 
-function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErro)
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tOutput,tTipoDocumento,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
 	TRACE.ESTADO := tStatus
 	TRACE.ERRO := tError
@@ -766,9 +780,9 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
 	flush(TRACE)
 
 	if tError="0" then
-		close(tFileOut)
-		copy(tFileOut,TRACE.Out)
-		close(tFileOut)
+		close(tOutput)
+		copy(tOutput,TRACE.Out)
+		close(tOutput)
 		close(TRACE.Out)
 	endif
 
