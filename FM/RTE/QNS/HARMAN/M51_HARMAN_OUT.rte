@@ -86,8 +86,14 @@ line(1:"51.00")
 
 	taControlePedido[nCountPedido] := tREFLIVaConsiderar
 
+	log("taControlePedido[0] = ", taControlePedido[0], NL)
+	log("taControlePedido[1] = ", taControlePedido[1], NL)
+	log("taControlePedido[2] = ", taControlePedido[2], NL)
+
 	while nCountPedidoWhile < nCountPedido then
-		if taControlePedido[nCountPedidoWhile - 1] = tREFLIVaConsiderar then
+		log("Loop", NL)
+		if taControlePedido[nCountPedidoWhile] = tREFLIVaConsiderar then
+			log("IF", NL)
 			bGeraPedido := FALSE
 			break
 		endif
@@ -338,7 +344,7 @@ line(1:"51.00")
 							"         ,G.DS1 ", NL," "\
 							"ORDER BY 1")
 
-			log(tQuery,NL)
+			! log(tQuery,NL)
 
 			if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
 				log("FATAL ", tfSqlErrorStr(),NL,tQuery)
@@ -438,7 +444,7 @@ line(1:"51.00")
 								"FROM FGE50FM",tToInfologPrefixFilename,".GELIVE", NL," "\
 								"WHERE REFLIV LIKE '",tREFLIVaConsiderar,"%'")
 
-				log(tQuery,NL)
+				! log(tQuery,NL)
 
 				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
 					log("FATAL ", tfSqlErrorStr(),NL,tQuery)
@@ -541,7 +547,7 @@ line(1:"51.00")
 									"FROM FGE50FM",tToInfologPrefixFilename,".GEPRO", NL," "\
 									"WHERE CODPRO = '",build(number(taCODPROQuery2[nTempINDContadorSup5130])),"'")
 
-					log(tQuery,NL)
+					! log(tQuery,NL)
 
 					if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
 						log("FATAL ", tfSqlErrorStr(),NL,tQuery)
