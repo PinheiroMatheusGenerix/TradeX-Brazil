@@ -188,8 +188,8 @@ segment SxLgr gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
 endsegment
 
 segment Snro gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
-   tDestNRO := eEnro 
-   tAD2CLI := build(", ",eEnro)
+    tDestNRO := eEnro 
+    tAD2CLI := build(", ",eEnro)
 endsegment
 
 segment SxCpl gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
@@ -205,6 +205,10 @@ endsegment
 segment SxMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
    tDestMun := eExMun 
    tVILCLI := eExMun
+endsegment
+
+segment ScMun gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
+   tDestcMun := eEcMun 
 endsegment
 
 segment SUF gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
@@ -242,7 +246,7 @@ segment SIE gGnfeProc,gGNFe,gGinfNFe,gGdest
     tIEdest := build("IE: ",eEIE)
 endsegment
 
-segment Semail gGnfeProc,gGNFe,gGinfNFe,gGdest
+segment Semail gGnfeProc,gGNFe,gGinfNFe,gGentrega
    tDestEmail := eEemail  
 endsegment
 
@@ -883,7 +887,7 @@ end
                 R_GEEX5005_VALRUB(tQtdVolumes)
 
                 flush(0,0,NL) >> tFileOutTemp
-                nContadorLinhasEscritas++            
+                nContadorLinhasEscritas++    
 
                 nContadorTmpTOTAL := 1
                 nContadorAcumuladoINTE := 0
@@ -962,6 +966,78 @@ end
                 flush(0,0,NL) >> tFileOutTemp   
                 nContadorLinhasEscritas++
 
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("XTP1")
+                R_GEEX5005_VALRUB(tTPNF)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++       
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("STAD")
+                R_GEEX5005_VALRUB(tDestLgr)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++       
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("STNU")
+                R_GEEX5005_VALRUB(tDestNRO)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++       
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("STEC")
+                R_GEEX5005_VALRUB(tDestCpl)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++       
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("STCI")
+                R_GEEX5005_VALRUB(tDestcMun)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++       
+
+                R_GEEX5005_CODEXC("50")
+                R_GEEX5005_SEPEXC(".")
+                R_GEEX5005_SCOEXC("05")
+                R_GEEX5005_CODACT(tCODACT)
+                R_GEEX5005_CODCLI(tCODCLI)
+                R_GEEX5005_REFLIV(tREFLIV)
+                R_GEEX5005_CODRUB("STES")
+                R_GEEX5005_VALRUB(tDestUF)
+
+                flush(0,0,NL) >> tFileOutTemp
+                nContadorLinhasEscritas++   
+
                 R_5011_CODEXC("50")
                 R_5011_SEPEXC(".")
                 R_5011_SCOEXC("11")
@@ -971,6 +1047,7 @@ end
                 R_5011_AD1CLI(tAD1CLI)
                 R_5011_AD2CLI(tAD2CLI)
                 R_5011_AD3CLI(tVILCLI)
+                R_5011_EMLADR(tDestEmail)
 
                 flush(0,0,NL) >> tFileOutTemp   
                 nContadorLinhasEscritas++
@@ -1429,7 +1506,7 @@ end
                         R_GEEX5005_VALRUB(tQtdVolumes)
 
                         flush(0,0,NL) >> tFileOutTemp
-                        nContadorLinhasEscritas++            
+                        nContadorLinhasEscritas++       
                                                         
                         nContadorTmpTOTAL := 1
                         nContadorAcumuladoINTE := 0
@@ -1512,6 +1589,78 @@ end
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
 
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("XTP1")
+                        R_GEEX5005_VALRUB(tTPNF)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STAD")
+                        R_GEEX5005_VALRUB(tDestLgr)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STNU")
+                        R_GEEX5005_VALRUB(tDestNRO)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STEC")
+                        R_GEEX5005_VALRUB(tDestCpl)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STCI")
+                        R_GEEX5005_VALRUB(tDestcMun)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STES")
+                        R_GEEX5005_VALRUB(tDestUF)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++   
+
                         R_5011_CODEXC("50")
                         R_5011_SEPEXC(".")
                         R_5011_SCOEXC("11")
@@ -1521,6 +1670,7 @@ end
                         R_5011_AD1CLI(tAD1CLI)
                         R_5011_AD2CLI(tAD2CLI)
                         R_5011_AD3CLI(tVILCLI)
+                        R_5011_EMLADR(tDestEmail)
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
@@ -1975,6 +2125,78 @@ end
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
 
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("XTP1")
+                        R_GEEX5005_VALRUB(tTPNF)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STAD")
+                        R_GEEX5005_VALRUB(tDestLgr)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STNU")
+                        R_GEEX5005_VALRUB(tDestNRO)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STEC")
+                        R_GEEX5005_VALRUB(tDestCpl)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STCI")
+                        R_GEEX5005_VALRUB(tDestcMun)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++       
+
+                        R_GEEX5005_CODEXC("50")
+                        R_GEEX5005_SEPEXC(".")
+                        R_GEEX5005_SCOEXC("05")
+                        R_GEEX5005_CODACT(tCODACT)
+                        R_GEEX5005_CODCLI(tCODCLI)
+                        R_GEEX5005_REFLIV(tREFLIV)
+                        R_GEEX5005_CODRUB("STES")
+                        R_GEEX5005_VALRUB(tDestUF)
+
+                        flush(0,0,NL) >> tFileOutTemp
+                        nContadorLinhasEscritas++ 
+
                         R_5011_CODEXC("50")
                         R_5011_SEPEXC(".")
                         R_5011_SCOEXC("11")
@@ -1984,6 +2206,7 @@ end
                         R_5011_AD1CLI(tAD1CLI)
                         R_5011_AD2CLI(tAD2CLI)
                         R_5011_AD3CLI(tVILCLI)
+                        R_5011_EMLADR(tDestEmail)
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
