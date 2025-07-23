@@ -73,6 +73,9 @@ begin
 	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
 	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA9"]
 
+	! Parametros do TRACE
+		nMessageID := cMessageID
+
 	!Inicio do processo
 		log("------------------------------------------------------------", NL)
 		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
@@ -91,8 +94,10 @@ begin
 			exit(1)
 		endif
 
-	nMessageID := cMessageID
-	nCount9070 := 0
+	!Variaveis Gerais
+		nCount9070 := 0
+		bArqAux := FALSE
+
 endbegin
 
 !==============================================================================
@@ -602,7 +607,7 @@ endfunction
 
 function bfEnviaEmailInLine(tlSubjectEmail, tlNameEmail, tlToEmail, tlCcEmail, tlEDISEND, tlPrintMessage, tlInput)
 	remove(tArquivoEmailErro)
-	tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/RESUMO_",time("now","%Y%m%d%H%M%S"),".csv")
+	tArquivoEmailErro := build(sHOME,"/EmailsAEnviar/", tlNameEmail)
 	print(tlPrintMessage, NL) >> tArquivoEmailErro
 	switch tlTrace
 		case "1" :
@@ -2121,95 +2126,57 @@ endfunction
 
 ! ABAS SHELF
 	function bfP5_Shelflife()
-		tQuery := build("WITH MOTIMM_VAL AS (",NL," "\
-						"    SELECT DISTINCT",NL," "\
-						"        GL.CODPRO,",NL," "\
-						"        GL.CODACT,",NL," "\
-						"        CASE",NL," "\
-						"            WHEN GL.MOTIMM = '' THEN",NL," "\
-						"                (SELECT VALRUB",NL," "\
-						"                 FROM FGE50FM",tToInfologPrefixFilename,".GEACRUB",NL," "\
-						"                 WHERE CODRUB = 'BRO' AND CODRUB = 'BRO')",NL," "\
-						"            ELSE GL.MOTIMM",NL," "\
-						"        END AS MOTIMM_VAL",NL," "\
-						"    FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS GL",NL," "\
-						")",NL," "\
-						"SELECT",NL," "\
-						"    GL.CODPRO AS SKU,",NL," "\
-						"    SUBSTR(ZRE.CODRUB, 2, 3) AS IMOFVI,",NL," "\
-						"    GL.DS1PRO AS SKU_DESCRICAO,",NL," "\
-						"    GL.CODPAL AS LP,",NL," "\
-						"    GL.NUMPAL AS LPN,",NL," "\
-						"    CASE",NL," "\
-						"        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
-						"        ELSE GL.MOTIMM ",NL," "\
-						"    END AS DEPOSITO,",NL," "\
-						"    RI.VALRUB AS ESTOQUE,",NL," "\
-						"    CASE",NL," "\
-						"        WHEN GL.CODLOT = '' THEN 'NOLOT'",NL," "\
-						"        ELSE GL.CODLOT",NL," "\
-						"    END AS LOTE,",NL," "\
-						"    GP.DESFOU AS NOTE1,",NL," "\
-						"    CASE",NL," "\
-						"        WHEN GL.DATFVI = 0 THEN ''",NL," "\
-						"        ELSE TO_CHAR(TO_DATE(GL.DATFVI || '', 'YYYYMMDD'), 'DD/MM/YYYY')",NL," "\
-						"    END AS EXPR_DATE,",NL," "\
-						"    GL.UVCSTO AS QTY,",NL," "\
-						"    GL.UNIPRO AS UOM_ABREV,",NL," "\
-						"    GL.ZONSTS || '-' || DIGITS(GL.ALLSTS) || '-' || DIGITS(GL.DPLSTS) || '-' || DIGITS(GL.NIVSTS) AS LOCACAO,",NL," "\
-						"    CASE",NL," "\
-						"        WHEN GL.ETAPAL = '50' THEN 'PUT'",NL," "\
-						"        ELSE 'LOC'",NL," "\
-						"    END AS TIPO,",NL," "\
-						"    GL.REFREC AS BL,",NL," "\
-						"    GL.VALPRO AS PKG_NO,",NL," "\
-						"    GL.FAMPRO AS FAMI,",NL," "\
-						"    TO_CHAR(TO_DATE(GL.DATREC || '', 'YYYYMMDD'), 'DD/MM/YYYY') AS DREC,",NL," "\
-						"    CASE",NL," "\
-						"        WHEN GL.DATFVI = 0 THEN NULL",NL," "\
-						"        ELSE DAYS(CURRENT DATE) - DAYS(TO_DATE(GL.DATFVI || '', 'YYYYMMDD'))",NL," "\
-						"    END AS DIAS_VIDA_PROD,",NL," "\
-						"    GP.ANAPRO AS DIVISAO,",NL," "\
-						"    GP.CODTMD AS COD_ONU,",NL," "\
-						"    GP.CODSEC AS CLASSE_RISCO,",NL," "\
-						"    GL.REFREC AS NF,",NL," "\
-						"    GL.DS2PRO AS DESCRICAO",NL," "\
-						"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL AS GL",NL," "\
-						"JOIN MOTIMM_VAL AS M",NL," "\
-						"    ON M.CODPRO = GL.CODPRO",NL," "\
-						"    AND M.CODACT = GL.CODACT",NL," "\
-						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO AS GP",NL," "\
-						"    ON GP.CODPRO = GL.CODPRO",NL," "\
-						"    AND GP.CODACT = GL.CODACT",NL," "\
+		tQuery := build("SELECT",NL," "\
+						"    TRIM(GL.CODPRO)                                             AS SKU,",NL," "\
+						"    SUBSTR(ZRE.CODRUB, 2, 3)                                    AS IMOFVI,",NL," "\
+						"    TRIM(GL.DS1PRO)                                             AS SKU_DESCRICAO,",NL," "\
+						"    GL.CODPAL                                                   AS LP,",NL," "\
+						"    GL.NUMPAL                                                   AS LPN,",NL," "\
+						"    TRIM(CASE GL.MOTIMM ",NL," "\
+						"        WHEN '' THEN AC.VALRUB ",NL," "\
+						"        ELSE GL.MOTIMM END)                                     AS DEPOSITO,",NL," "\
+						"    TRIM(RI.VALRUB)                                             AS ESTOQUE,",NL," "\
+						"    TRIM(CASE GL.CODLOT",NL," "\
+						"        WHEN '' THEN 'NOLOT'",NL," "\
+						"        ELSE GL.CODLOT END)                                     AS LOTE,",NL," "\
+						"    TRIM(GP.DESFOU)                                             AS NOTE1,",NL," "\
+						"    TO_CHAR(TO_DATE(GL.DATFVI || '', 'YYYYMMDD'), 'DD/MM/YYYY') AS EXPR_DATE,",NL," "\
+						"    GL.UVCSTO                                                   AS QTY,",NL," "\
+						"    GL.UNIPRO                                                   AS UOM_ABREV,",NL," "\
+						"    GL.ZONSTS || '-' || DIGITS(GL.ALLSTS) || '-' || ",NL," "\
+						"        DIGITS(GL.DPLSTS) || '-' || DIGITS(GL.NIVSTS)           AS LOCACAO,",NL," "\
+						"    CASE GL.ETAPAL",NL," "\
+						"        WHEN '50' THEN 'PUT'",NL," "\
+						"        ELSE 'LOC' END                                          AS TIPO,",NL," "\
+						"    TRIM(GL.REFREC)                                             AS BL,",NL," "\
+						"    GL.VALPRO                                                   AS PKG_NO,",NL," "\
+						"    GL.FAMPRO                                                   AS FAMI,",NL," "\
+						"    TO_CHAR(TO_DATE(GL.DATREC||'', 'YYYYMMDD'), 'DD/MM/YYYY')   AS DREC,",NL," "\
+						"    DAYS(TO_DATE(GL.DATFVI||'', 'YYYYMMDD'))-DAYS(CURRENT DATE) AS DIAS_VIDA_PROD,",NL," "\
+						"    TRIM(GP.ANAPRO)                                             AS DIVISAO,",NL," "\
+						"    GP.CODTMD                                                   AS COD_ONU,",NL," "\
+						"    GP.CODSEC                                                   AS CLASSE_RISCO,",NL," "\
+						"    TRIM(GL.REFREC)                                             AS NF,",NL," "\
+						"    TRIM(GL.DS2PRO)                                             AS DESCRICAO",NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GEPAL   AS GL",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO   AS GP",NL," "\
+						"  ON GP.CODACT = GL.CODACT",NL," "\
+						" AND GP.CODPRO = GL.CODPRO",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AS AC ",NL," "\
+						"  ON AC.CODRUB = 'BRO'",NL," "\
+						" AND GL.CODACT = AC.CODACT",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU  AS RU",NL," "\
+						"  ON RU.CODRUB = 'SHLF' AND RU.VALRUB = 'SIM'",NL," "\
+						" AND RU.VALCLE = CASE GL.MOTIMM WHEN '' THEN AC.VALRUB ELSE GL.MOTIMM END",NL," "\
 						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS RI",NL," "\
-						"    ON RI.CODRUB = 'STCK'",NL," "\
-						"    AND RI.CODFIC = 'GEZIMO'",NL," "\
-						"    AND RI.VALCLE = CASE",NL," "\
-						"                        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
-						"                        ELSE GL.MOTIMM",NL," "\
-						"                    END",NL," "\
-						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRU AS RU",NL," "\
-						"    ON RU.CODRUB = 'SHLF'",NL," "\
-						"    AND RU.VALCLE = CASE",NL," "\
-						"                        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
-						"                        ELSE GL.MOTIMM",NL," "\
-						"                    END",NL," "\
-						"    AND RU.VALRUB = 'SIM'",NL," "\
-						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRE AS ZRE",NL," "\
-						"    ON SUBSTR(ZRE.CODRUB, 1, 1) = 'S'",NL," "\
-						"    AND ZRE.CODRUB = 'SHLF'",NL," "\
-						"    AND GREATEST(0, GL.DATFVI - '",tDATMVT,"') <= ZRE.DTAMAX",NL," "\
-						"    AND GREATEST(0, GL.DATFVI - '",tDATMVT,"') >= ZRE.DTAMIN",NL," "\
-						"    AND SUBSTR(ZRE.CODRUB, 2, 3) <> CASE",NL," "\
-						"                                        WHEN GL.MOTIMM = '' THEN M.MOTIMM_VAL",NL," "\
-						"                                        ELSE GL.MOTIMM",NL," "\
-						"                                    END",NL," "\
-						"    AND ZRE.TYPDTA = '1'",NL," "\
-						"WHERE GL.CODACT = '",tCODACT,"'",NL," "\
-						"    AND GL.MOTIMM = ''",NL," "\
-						"    AND GL.DATFVI > 0",NL," "\
-						"    AND GL.ETAPAL <> '60'",NL," "\
-						"ORDER BY 1")
+						"  ON RI.CODRUB = 'STCK' AND RI.CODFIC = 'GEZIMO'",NL," "\
+						" AND RI.VALCLE = CASE GL.MOTIMM WHEN '' THEN AC.VALRUB ELSE GL.MOTIMM END",NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GEZZRE  AS ZRE",NL," "\
+						" ON SUBSTR(ZRE.CODRUB, 1, 1) = 'S' AND ZRE.TYPDTA = '1'",NL," "\
+						"WHERE GL.CODACT = '",tCODACT,"' AND GL.DATFVI > 0 AND GL.ETAPAL <> '60'",NL," "\
+						" AND DAYS(TO_DATE(GL.DATFVI||'','YYYYMMDD')) - DAYS(TO_DATE('",tDATMVT,"','YYYYMMDD')) <= ZRE.DTAMAX",NL," "\
+						" AND DAYS(TO_DATE(GL.DATFVI||'','YYYYMMDD')) - DAYS(TO_DATE('",tDATMVT,"','YYYYMMDD')) >= ZRE.DTAMIN",NL," "\
+						"ORDER BY 1, 5 ")
 		
 		log("------------------------------------------------------------", NL)
 		log(tQuery,NL)
@@ -2269,7 +2236,7 @@ endfunction
 					print("SKU;SKU_DESCRICAO;LP;LPN;DEPOSITO;ESTOQUE;LOTE;NOTE1;EXPR_DATE;QTY;UOM_ABREV;LOCACAO;TIPO;BL;PKG_NO;FAMI;DREC;DIAS_VIDA_PROD;DIVISAO;COD_ONU;CLASSE_RISCO;NF;DESCRICAO",NL) >> TRACE3.SHELFLIFE_NOTICE
 				endif
 
-				print(peel(taDb2Array["SKU"]," "),";", \
+				print(  peel(taDb2Array["SKU"]," "),";", \
 						peel(taDb2Array["SKU_DESCRICAO"]," "),";", \
 						peel(taDb2Array["LP"]," "),";", \
 						peel(taDb2Array["LPN"]," "),";", \
@@ -2355,5 +2322,16 @@ endfunction
 								"EmailShelf", \
 								build("***Informações de Shelf-Life-Notice no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL), \
 								TRACE3.SHELFLIFE_NOTICE)
+		
+			! Finalizando com TRACE
+				bfMajtrace3("Recebida" \
+							,"0" \
+							,TRACE_PROFILE \
+							,TRACE_MESSAGE_SHLF \
+							,TRACE_DATE_SHLF \
+							,TRACE_MESSAGE_SHLF)
+
 		endif
 	endfunction
+
+!==============================================================================

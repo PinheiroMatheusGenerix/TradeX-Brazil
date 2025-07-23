@@ -21,36 +21,39 @@
 !base "syslog.cfg" SYSLOG
 base "../trace/trace.cfg" TRACE,autoflush off
 
-!===========================================================
+!==============================================================================
 
 ! Input/output macros file
 #define TX_PROG_INFO "M59_CARREFOUR_OUT"
 #include "include/generix_func.inc"
 #include "include/GEEXM59.inc"
+#include "include/GEEXM59_BYPASS.inc"
 #include "include/GEEXM93.inc"
 
-!===========================================================
+!==============================================================================
 
 ! Initialization section
 
 begin
 	nPos := 1
 	nRec := 1
+	nMainIndex := 0
 	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
     load(0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+    !tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",tAmbiente)]
 
     ! Parametros do TRACE
 		nMessageID := cMessageID
 		tPerfil := ""
 		tSentido := "O"
-		tMensagem := "M93"
+		tMensagem := ""
+		tDataDocumento := time("now","%Y-%m-%d")
 	
 	!Inicio do processo
 		log("------------------------------------------------------------", NL)
 		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
 		log("Arquivo de entrada: ", pEDISEND.ORIGINAL.NAME, NL)
 		log("------------------------------------------------------------", NL)
-
 
 	!Abertura do banco de dados - WMS
         tDbBase		:= "CRFWMS" 
@@ -59,40 +62,70 @@ begin
         tDbUrl		:= taPARAM["WMSDBURL"]	
 
         bfSqlInit()
-
         if not bfSqlJdbc(tDbBase , tDbUsername, tDbPassword, tDbUrl) then
             bfSqlClose(tDbBase)
             bfSqlErro()
             exit(1)
         endif
+
+    !Variaveis Gerais
+		bEcommerce := FALSE
+        bPri := TRUE
+
 endbegin
 
-!===========================================================
+!==============================================================================
 
 line(1:"00.00")
     tCODACT := S_GEEX0000_CODACT
 	tAmbiente := peel(S_GEEX0000_EMTEXC," ")
 	tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",substr(tAmbiente, 8, 3),"")]
     tPerfil := tToInfologPrefixFilename
+
+	! CAMPOS WMS
+		tCODEXC0000 := S_GEEX0000_BP_CODEXC
+		tSEPEXC0000 := S_GEEX0000_BP_SEPEXC
+		tSCOEXC0000 := S_GEEX0000_BP_SCOEXC
+		tTRTEXC0000 := S_GEEX0000_BP_TRTEXC
+		tEMTEXC0000 := S_GEEX0000_BP_EMTEXC
+		tRCTEXC0000 := S_GEEX0000_BP_RCTEXC
+		tDATEXC0000 := S_GEEX0000_BP_DATEXC
+		tHEUEXC0000 := S_GEEX0000_BP_HEUEXC
+		tNUMEXC0000 := S_GEEX0000_BP_NUMEXC
+		tACQEXC0000 := S_GEEX0000_BP_ACQEXC
+		tVEREXC0000 := S_GEEX0000_BP_VEREXC
+		tNOMSYS0000 := S_GEEX0000_BP_NOMSYS
+		tNOMDTQ0000 := S_GEEX0000_BP_NOMDTQ
+		tBIBDTQ0000 := S_GEEX0000_BP_BIBDTQ
+		tLIBEXC0000 := S_GEEX0000_BP_LIBEXC
+		tBIBDST0000 := S_GEEX0000_BP_BIBDST
+		tPGMDST0000 := S_GEEX0000_BP_PGMDST
+		tPARDST0000 := S_GEEX0000_BP_PARDST
+		tCODACT0000 := S_GEEX0000_BP_CODACT
+		tIGLSIT0000 := S_GEEX0000_BP_IGLSIT
+		tEDISIT0000 := S_GEEX0000_BP_EDISIT
+		tIMAEXC0000 := S_GEEX0000_BP_IMAEXC
+		tIDEMSG0000 := S_GEEX0000_BP_IDEMSG
+		tNATEXC0000 := S_GEEX0000_BP_NATEXC
+		tEMTORI0000 := S_GEEX0000_BP_EMTORI
+		tDISEXC0000 := S_GEEX0000_BP_DISEXC
+	! FIM CAMPOS WMS
+
 endline
+
+!==============================================================================
 
 line(1:"59.20")
-    tNUMSUP := S_GEEX5920_NUMSUP
-    tCLILIV := S_GEEX5920_CLILIV
-    tTYPSUP := S_GEEX5920_TYPSUP
-    tETASUP := S_GEEX5920_ETASUP
-    tTRTEXC := S_GEEX5920_TRTEXC
-endline
 
-! Default statements section
-default
+	! VARIAVEIS
+        tMensagem := "M93"
+        tNUMSUP := S_GEEX5920_NUMSUP
+        tCLILIV := S_GEEX5920_CLILIV
+        tTYPSUP := S_GEEX5920_TYPSUP
+        tETASUP := S_GEEX5920_ETASUP
+        tTRTEXC := S_GEEX5920_TRTEXC
+	! FIM VARIAVEIS
 
-enddefault
-
-!===========================================================
-
-! End statements section
-end
     ! Primeira validação
         log("------------------------------------------------------------", NL)
         log("EMTEXC: ",tAmbiente,NL)
@@ -282,6 +315,8 @@ end
                         exit(1)
                     endif
 
+                    tNumeroDocumento := tREFLIV
+
                     ! Criação do arquivo
                         tNameOut := build(tToInfologPrefixFilename,"M93",taREFLIV[tIndex],".DAT")
                         tFileOut := build(sHOME,"/ToInfolog/",tNameOut)
@@ -418,17 +453,292 @@ end
                 endif
             endwhile
             
-            bfSqlClose(tDbBase)
         endif
 
+endline
+
+!==============================================================================
+
+line(1:"59.50")
+
+	! VARIAVEIS
+		bM5950 := TRUE
+		tMensagem := "M59.50"
+        tNumeroDocumento := S_GEEX5950_BP_NUMSUP
+        tNUMMIT := S_GEEX5950_BP_NUMTOU
+	! FIM VARIAVEIS
+
+	! IDENTIFICA O BIB
+		log("EMTEXC: ",tAmbiente,NL)
+		log("UL_C4.: ",tToInfologPrefixFilename,NL)
+		log("CODACT: ",tCODACT,NL)
+		tNUMSUP := S_GEEX5950_BP_NUMSUP
+		log("NUMSUP: ",tNUMSUP,NL)
+		tNUMTOU := peel(S_GEEX5950_BP_NUMTOU," ")
+		log("NUMTOU: ",tNUMTOU,NL)
+		log("ETASUP: ",S_GEEX5950_BP_ETASUP,NL)
+	! FIM IDENTIFICA O BIB
+
+    ! PRIMEIRA LINHA?
+        if bPri then
+            bPri := FALSE
+
+            ! CRIACAO DOS ARQUIVOS
+                tNameOut := build(tToInfologPrefixFilename,"M59",build(nMessageID:R010),".DAT")
+                tFileOut := build(sHOME,"/ToAPIPASS/",tNameOut)
+                tFileOutTemp := build(sHOME,"/ToAPIPASS/Temp/",tNameOut)
+            ! FIM CRIACAO DOS ARQUIVOS
+
+            ! LINHA 00.00
+                R_GEEX0000_CODEXC(tCODEXC0000)
+                R_GEEX0000_SEPEXC(tSEPEXC0000)
+                R_GEEX0000_SCOEXC(tSCOEXC0000)
+                R_GEEX0000_TRTEXC(tTRTEXC0000)
+                R_GEEX0000_EMTEXC(tEMTEXC0000)
+                R_GEEX0000_RCTEXC(tRCTEXC0000)
+                R_GEEX0000_DATEXC(tDATEXC0000)
+                R_GEEX0000_HEUEXC(tHEUEXC0000)
+                R_GEEX0000_NUMEXC(tNUMEXC0000)
+                R_GEEX0000_ACQEXC(tACQEXC0000)
+                R_GEEX0000_VEREXC(tVEREXC0000)
+                R_GEEX0000_NOMSYS(tNOMSYS0000)
+                R_GEEX0000_NOMDTQ(tNOMDTQ0000)
+                R_GEEX0000_BIBDTQ(tBIBDTQ0000)
+                R_GEEX0000_LIBEXC(tLIBEXC0000)
+                R_GEEX0000_BIBDST(tBIBDST0000)
+                R_GEEX0000_PGMDST(tPGMDST0000)
+                R_GEEX0000_PARDST(tPARDST0000)
+                R_GEEX0000_CODACT(tCODACT0000)
+                R_GEEX0000_IGLSIT(tIGLSIT0000)
+                R_GEEX0000_EDISIT(tEDISIT0000)
+                R_GEEX0000_IMAEXC(tIMAEXC0000)
+                R_GEEX0000_IDEMSG(tIDEMSG0000)
+                R_GEEX0000_NATEXC(tNATEXC0000)
+                R_GEEX0000_EMTORI(tEMTORI0000)
+                R_GEEX0000_DISEXC(tDISEXC0000)
+                
+                flush(0,0,NL) >> tFileOutTemp
+            ! FIM LINHA 00.00
+            
+        endif
+    ! FIM PRIMEIRA LINHA?
+
+    ! LINHA 59.50
+        R_GEEX5950_BP_CODEXC(S_GEEX5950_BP_CODEXC)
+        R_GEEX5950_BP_SEPEXC(S_GEEX5950_BP_SEPEXC)
+        R_GEEX5950_BP_SCOEXC(S_GEEX5950_BP_SCOEXC)
+        R_GEEX5950_BP_TRTEXC(S_GEEX5950_BP_TRTEXC)
+        R_GEEX5950_BP_NUMSUP(S_GEEX5950_BP_NUMSUP)
+        R_GEEX5950_BP_SNUSUP(S_GEEX5950_BP_SNUSUP)
+        R_GEEX5950_BP_TYPSUP(S_GEEX5950_BP_TYPSUP)
+        R_GEEX5950_BP_ETASUP(S_GEEX5950_BP_ETASUP)
+        R_GEEX5950_BP_TOPMNQ(S_GEEX5950_BP_TOPMNQ)
+        R_GEEX5950_BP_LIBSUP(S_GEEX5950_BP_LIBSUP)
+        R_GEEX5950_BP_CODEMB(S_GEEX5950_BP_CODEMB)
+        R_GEEX5950_BP_DATPRP(S_GEEX5950_BP_DATPRP)
+        R_GEEX5950_BP_NUMVAG(S_GEEX5950_BP_NUMVAG)
+        R_GEEX5950_BP_NUMTOU(S_GEEX5950_BP_NUMTOU)
+        R_GEEX5950_BP_DATLIV(S_GEEX5950_BP_DATLIV)
+        R_GEEX5950_BP_TOULIV(S_GEEX5950_BP_TOULIV)
+        R_GEEX5950_BP_ORDLIV(S_GEEX5950_BP_ORDLIV)
+        R_GEEX5950_BP_KAILIV(S_GEEX5950_BP_KAILIV)
+        R_GEEX5950_BP_NUMLIV(S_GEEX5950_BP_NUMLIV)
+        R_GEEX5950_BP_SNULIV(S_GEEX5950_BP_SNULIV)
+        R_GEEX5950_BP_REFLIV(S_GEEX5950_BP_REFLIV)
+        R_GEEX5950_BP_CLILIV(S_GEEX5950_BP_CLILIV)
+        R_GEEX5950_BP_CUMPOI(S_GEEX5950_BP_CUMPOI)
+        R_GEEX5950_BP_CUMVOL(S_GEEX5950_BP_CUMVOL)
+        R_GEEX5950_BP_CODACT(S_GEEX5950_BP_CODACT)
+        R_GEEX5950_BP_CIRPIC(S_GEEX5950_BP_CIRPIC)
+        R_GEEX5950_BP_REFMIT(S_GEEX5950_BP_REFMIT)
+        R_GEEX5950_BP_DATCRE(S_GEEX5950_BP_DATCRE)
+        R_GEEX5950_BP_NUMSUG(S_GEEX5950_BP_NUMSUG)
+        R_GEEX5950_BP_SNUSUG(S_GEEX5950_BP_SNUSUG)
+        R_GEEX5950_BP_SURTPT(S_GEEX5950_BP_SURTPT)
+        R_GEEX5950_BP_TOPPAQ(S_GEEX5950_BP_TOPPAQ)
+        R_GEEX5950_BP_CODLDE(S_GEEX5950_BP_CODLDE)
+        R_GEEX5950_BP_NUMCMP(S_GEEX5950_BP_NUMCMP)
+        R_GEEX5950_BP_SNUCMP(S_GEEX5950_BP_SNUCMP)
+        R_GEEX5950_BP_TOPRCN(S_GEEX5950_BP_TOPRCN)
+        R_GEEX5950_BP_DISEXC(S_GEEX5950_BP_DISEXC)
+        R_GEEX5950_BP_NUMMIT("00000000")
+        R_GEEX5950_BP_INDMMI("0")
+        R_GEEX5950_BP_ETAMIT("00")
+        R_GEEX5950_BP_CUMSU1("000")
+        R_GEEX5950_BP_CUMSU2("000")
+        R_GEEX5950_BP_CUMSU3("000")
+        R_GEEX5950_BP_CUMSU4("000")
+        R_GEEX5950_BP_CUMSUP("000")
+    ! FIM LINHA 59.50
+
+    ! VERIFICA SE JA TEM TRACER E SE JA PERTENCE A UMA MISSAO
+        if S_GEEX5950_BP_NUMTOU = "99999999" then
+            TRACE := find(build(sHOME,"/trace") \
+                            ,MENSAGEM=tMensagem \
+                            ,PERFIL=tToInfologPrefixFilename \
+                            ,NUMDOC=tNUMSUP \
+                            )dINDEX
+            if valid(TRACE) then !and TRACE.LIBEXC = tNUMVAG and S_GEEX9750_ETALIV = "30" then
+                log("TRACE: ", TRACE.INDEX, NL)
+                log("LIBEXC: ", TRACE.LIBEXC, NL)
+                if TRACE.LIBEXC <> "99999999" then
+                    tNUMMIT := TRACE.LIBEXC
+		            log("NUMMIT: ",tNUMMIT,NL)
+                    log("Exclusao de rota.", NL)
+                    R_GEEX5950_BP_NUMMIT(TRACE.LIBEXC)
+                    R_GEEX5950_BP_INDMMI("2")
+                else
+                    R_GEEX5950_BP_INDMMI("0")
+                endif
+            else 
+                log("Primeiro TRACE.", NL)
+                R_GEEX5950_BP_INDMMI("2")
+            endif
+        else
+            TRACE := find(build(sHOME,"/trace") \
+                            ,MENSAGEM=tMensagem \
+                            ,PERFIL=tToInfologPrefixFilename \
+                            ,NUMDOC=tNUMSUP \
+                            )dLIBEXC
+            if valid(TRACE) then !and TRACE.LIBEXC = tNUMVAG and S_GEEX9750_ETALIV = "30" then
+                log("TRACE: ", TRACE.INDEX, NL)
+                if S_GEEX5950_BP_NUMTOU = TRACE.LIBEXC then
+                    log("Mesma rota.", NL)
+                    R_GEEX5950_BP_INDMMI("0")
+                else
+                    log("Inclusão de rota", NL)
+                    R_GEEX5950_BP_INDMMI("1")
+                endif
+            else 
+                log("Primeiro TRACE.", NL)
+                R_GEEX5950_BP_INDMMI("0")
+            endif
+        endif
+    ! FIM VERIFICA SE JA TEM TRACER E SE JA PERTENCE A UMA MISSAO
+
+    ! SQL COMPLEMENTO
+        if tNUMMIT <> "99999999" then
+            tQuery := build("SELECT", NL," "\
+                            "	 MT.NUMMIT", NL," "\
+                            "	,MT.ETAMIT", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '10' THEN 1 ELSE 0 END) AS SUPE10", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '20' THEN 1 ELSE 0 END) AS SUPE20", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '30' THEN 1 ELSE 0 END) AS SUPE30", NL," "\
+                            "	,SUM(CASE ETASUP WHEN '40' THEN 1 ELSE 0 END) AS SUPE40", NL," "\
+                            "	,COUNT(NUMSUP)                                AS CUMSUP", NL," "\
+                            "FROM ",tAmbiente,".GEMITS  AS MT", NL," "\
+                            "JOIN ",tAmbiente,".GESUPE  AS SE ", NL," "\
+                            " ON MT.NUMTOU = SE.NUMTOU", NL," "\
+                            "WHERE MT.NUMTOU = ",tNUMMIT, NL," "\
+                            "GROUP BY ", NL," "\
+                            "	 MT.NUMMIT", NL," "\
+                            "	,MT.ETAMIT", "")   
+
+            log("------------------------------------------------------------", NL)
+            log("tQuery: ", NL, tQuery,NL)
+            log("------------------------------------------------------------", NL)
+
+            if bfSqlSet( tDbBase, "SELECTdb2", tQuery) = FALSE then
+                bfSqlErro()
+                exit(1)	
+            endif
+
+            if bfSqlOpen( tDbBase, "SELECTdb2") = FALSE then
+                bfSqlErro()
+                exit(1)	
+            endif
+
+            while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                R_GEEX5950_BP_NUMMIT(taDb2Array["NUMMIT"])
+                R_GEEX5950_BP_ETAMIT(taDb2Array["ETAMIT"])
+                R_GEEX5950_BP_CUMSU1(taDb2Array["SUPE10"])
+                R_GEEX5950_BP_CUMSU2(taDb2Array["SUPE20"])
+                R_GEEX5950_BP_CUMSU3(taDb2Array["SUPE30"])
+                R_GEEX5950_BP_CUMSU4(taDb2Array["SUPE40"])
+                R_GEEX5950_BP_CUMSUP(taDb2Array["CUMSUP"])
+                remove(taDb2Array)
+            endwhile
+
+            if bfSqlFree( tDbBase, "SELECTdb2") = FALSE then
+                bfSqlErro()
+                exit(1)	
+            endif
+        endif
+    ! FIM SQL COMPLEMENTO
+
+    flush(0,0,NL) >> tFileOutTemp
+    nContadorLinhasEscritas++
+
+        ! TRACE
+            close(tFileOutTemp)
+            bfMajtrace(	"Recebida" \
+                        ,"0" \
+                        ,tNumeroDocumento \
+                        ,tDataDocumento \
+                        ,tFileInput \
+                        ,tFileOutTemp \
+                        ,tMensagem \
+                        ,"" \
+                    )
+        ! FIM TRACE
+
+endline
+
+!==============================================================================
+
+line(1:"99.00")
+
+    if bM5950 then
+        R_GEEX9900_BP_CODEXC("99")
+        R_GEEX9900_BP_SEPEXC(".")
+        R_GEEX9900_BP_SCOEXC("00")
+        R_GEEX9900_BP_DATEXC(time("now" ,"%Y%m%d"))
+        R_GEEX9900_BP_HEUEXC(time("now" ,"%H%M%S"))
+        R_GEEX9900_BP_NUMEXC("0000000")
+        R_GEEX9900_BP_CPTEXC(build(nContLinhasEscritas))
+
+        flush(0,0,NL) >> tFileOutTemp
+
+        ! TRATAMENTO FINAL DOS ARQUIVOS
+            close(tFileOutTemp)
+            copy(tFileOutTemp,tFileOut)
+            close(tFileOutTemp)
+            remove(tFileOutTemp)
+            close(tFileOut)
+        ! FIM TRATAMENTO FINAL DOS ARQUIVOS
+
+        ! Enviar interface para o cliente
+            tCmd := build("edisend APIPASS_SFTP ", tFileOut)
+            log("executando o comando - ", tCmd, NL)
+            system(tCmd)
+
+    endif
+
+endline
+
+!==============================================================================
+
+! Default statements section
+
+default
+
+enddefault
+
+!==============================================================================
+
+! End statements section
+end
+
+	bfSqlClose(tDbBase)
 	log("------------------------------------------------------------", NL)
 	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
 	log("------------------------------------------------------------", NL)
+
 endend
 
-!===========================================================
+!==============================================================================
 
-function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErro)
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tOutput,tTipoDocumento,tMensagemErro)
 	TRACE:=new(build(sHOME,"/trace"))
 	TRACE.ESTADO := tStatus
 	TRACE.ERRO := tError
@@ -436,9 +746,10 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
 	TRACE.PERFIL := tPerfil
 	TRACE.SENTIDO := tSentido
 	TRACE.MENSAGEM := tMensagem
-	TRACE.NUMDOC := tREFLIV
-	TRACE.DATDOC := time("now","%d.%m.%Y")
-	TRACE.MESSAGEID := build(nMessageID:R06)
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)
+	TRACE.LIBEXC := tNUMTOU
 	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
 		TRACE.REDE := pEDISEND.ORIGINAL.NAME
 	else
@@ -469,16 +780,16 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
 	flush(TRACE)
 
 	if tError="0" then
-		close(tFileOut)
-		copy(tFileOut,TRACE.Out)
-		close(tFileOut)
+		close(tOutput)
+		copy(tOutput,TRACE.Out)
+		close(tOutput)
 		close(TRACE.Out)
 	endif
 
 	flush(TRACE)
 endfunction
 
-!===========================================================
+!==============================================================================
 
 function bfSqlErro()
     print("FATAL: ",tfSqlErrorStr())
@@ -491,3 +802,5 @@ function bfSqlErro()
                 ,tMensagem \
                 ,build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))     
 endfunction
+
+!==============================================================================
