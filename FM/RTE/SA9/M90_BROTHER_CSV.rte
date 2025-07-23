@@ -73,6 +73,9 @@ begin
 	load(0, build(sHOME,"/config/FM_wms_configuration.properties"), taPARAM)
 	tToInfologPrefixFilename := taPARAM["ToInfologPrefixFilenameSA9"]
 
+	! Parametros do TRACE
+		nMessageID := cMessageID
+
 	!Inicio do processo
 		log("------------------------------------------------------------", NL)
 		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
@@ -91,8 +94,10 @@ begin
 			exit(1)
 		endif
 
-	nMessageID := cMessageID
-	nCount9070 := 0
+	!Variaveis Gerais
+		nCount9070 := 0
+		bArqAux := FALSE
+
 endbegin
 
 !==============================================================================
@@ -612,9 +617,6 @@ function bfEnviaEmailInLine(tlSubjectEmail, tlNameEmail, tlToEmail, tlCcEmail, t
 			copy(tlInput,tArquivoEmailErro)
 			close(tlInput)
 		case "3" :
-			copy(tlInput,tArquivoEmailErro)
-			close(tlInput)
-		default :
 			copy(tlInput,tArquivoEmailErro)
 			close(tlInput)
 	endswitch
@@ -2313,6 +2315,14 @@ endfunction
 							"", \
 							TRACE3.SHELFLIFE_NOTICE)
 		else
+			bfEnviaEmailInLine(build("[",tBeginSubj_shelflife,"]_SHELF-LIFE_NOTICE"), \
+								build("SHELF-LIFE_NOTICE_",time("now","%Y%m%d%H%M%S"),".csv"), \
+								tToEmail_shelflife, \
+								tCcEmail_shelflife, \
+								"EmailShelf", \
+								build("***Informações de Shelf-Life-Notice no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL), \
+								TRACE3.SHELFLIFE_NOTICE)
+		
 			! Finalizando com TRACE
 				bfMajtrace3("Recebida" \
 							,"0" \
@@ -2321,14 +2331,8 @@ endfunction
 							,TRACE_DATE_SHLF \
 							,TRACE_MESSAGE_SHLF)
 
-			bfEnviaEmailInLine(build("[",tBeginSubj_shelflife,"]_SHELF-LIFE_NOTICE"), \
-								build("SHELF-LIFE_NOTICE_",time("now","%Y%m%d%H%M%S"),".csv"), \
-								tToEmail_shelflife, \
-								tCcEmail_shelflife, \
-								"EmailShelf", \
-								build("***Informações de Shelf-Life-Notice no Dia***",NL,NL,"***Não há dados para emissão do arquivo***",NL,NL,"Processo gerado automaticamente, não utilize a opção responder a este remetente.",NL,NL), \
-								TRACE3.SHELFLIFE_NOTICE)
 		endif
 	endfunction
 
 !==============================================================================
+
