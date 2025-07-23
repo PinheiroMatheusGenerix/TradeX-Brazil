@@ -285,6 +285,10 @@ endsegment
         tLIBCPL_SHIP := tfRetiraAcento(eEname1)
     endsegment
 
+    segment Semail gGpickticket,gGpickticket_header,gGship_to
+        tEMLADR_SHIP := tfRetiraAcento(eEemail)
+    endsegment
+
     segment Saddress gGpickticket,gGpickticket_header,gGship_to
         tAD1CLI_AD2CLI_SHIP := tfRetiraAcento(eEaddress)
     endsegment
@@ -458,6 +462,19 @@ end
 
         flush(0,0,NL) >> tFileOutTemp
 
+        R_GEEX2002_CODEXC("20")
+        R_GEEX2002_SEPEXC(".")
+        R_GEEX2002_SCOEXC("02")
+        R_GEEX2002_CODACT(tCODACT)        
+        if bCODTLI_EC = TRUE then
+            R_GEEX2002_CODCLI(tNOMCLI_SHIP)
+        else
+            R_GEEX2002_CODCLI(tCODCLI_SHIP)
+        endif
+        R_GEEX2002_EMLADR(tEMLADR_SHIP)
+
+        flush(0,0,NL) >> tFileOutTemp
+        
         R_GEEX2003_CODEXC("20")
         R_GEEX2003_SEPEXC(".")
         R_GEEX2003_SCOEXC("03")
@@ -638,6 +655,7 @@ end
     R_GEEX5011_CODACT(tCODACT)
     R_GEEX5011_REFLIV(tREFLIV)
     R_GEEX5011_CODCLI(tCODCLI_5005)
+    R_GEEX5011_EMLADR(tEMLADR_SHIP)
     R_GEEX5011_AD2CLI(substr(tAD1CLI_AD2CLI_SHIP, 39, 38))
     R_GEEX5011_AD1CLI(substr(tAD1CLI_AD2CLI_SHIP, 1, 38))
     R_GEEX5011_AD3CLI(substr(tAD3CLI_SHIP, 1, 38))

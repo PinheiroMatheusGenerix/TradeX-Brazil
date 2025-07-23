@@ -1,6 +1,6 @@
-%@(#)  RoutingEntry.rte     modif:21-11-2017
+%@(#)  VEJA_ByPass_Rubrica.rte     modif:21-11-2017
 !==============================================================================
-% File          : RoutingEntry.rte   version 1.0
+% File          : VEJA_ByPass_Rubrica.rte   version 1.0
 !------------------------------------------------------------------------------
 % Description   : <short program description>
 !------------------------------------------------------------------------------
@@ -21,39 +21,151 @@
 ! Message definition
 
 base "syslog.cfg" SYSLOG
+base "../trace/trace.cfg" TRACE,autoflush off
 
-!===========================================================
+! Input/output macros file
+#define PROG_NAME "$RCSfile: $"
+#define PROG_VER  "$Revision: $"
+#define PROG_DATE "$Date: $"
+#define TX_PROG_INFO "VEJA_ByPass_Rubrica"
+
+!==============================================================================
 
 ! Initialization section
 
 begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
 	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
-    close(SYSLOG.a)
 
-    tFileOut := build(sHOME,"/ToInfolog/",pEDISEND.ORIGINAL.NAME)
-    close(tFileOut)
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := "VEJA"
+		tSentido := "I"
+		tMensagem := "RUBRICA"
+		tDataDocumento := time("now","%Y-%m-%d")
 
-    copy(SYSLOG.a, tFileOut)
-    log("O conteúdo do arquivo foi copiado para ", tFileOut, NL)
-    close(tFileOut)
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("------------------------------------------------------------", NL)
+
+    ! Criação dos arquivos
+		tNameOut := build(pEDISEND.ORIGINAL.NAME)
+        tFileOut := build(sHOME,"/ToInfolog/",tNameOut)
+
+    ! Tratamento final dos arquivos
+        close(tFileOut)
+        close(SYSLOG.a)
+        copy(SYSLOG.a, tFileOut)
+        log("O conteúdo do arquivo foi copiado com sucesso.", NL)
+        close(SYSLOG.a)
+        close(tFileOut)
+
+    ! Finalizando com TRACE
+        bfMajtrace(	"Recebida" \
+                    ,"0" \
+                    ,"BYPASS" \
+                    ,tDataDocumento \
+                    ,tFileOut \
+                    ,tFileOut \
+                    ,tMensagem \
+                    ,"")
 
     ! Enviar interface para o WMS
-	tCmd := build("edisend ToInfolog ", tFileOut)
-	log("executando o comando - ", tCmd, NL)
-	system(tCmd)
+	    bfToInfolog()
+
 endbegin
 
-!===========================================================
+!==============================================================================
 
 ! Default statements section
 default
 
 enddefault
 
-!===========================================================
+!==============================================================================
 
 ! End statements section
-
 end
 
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+	exit(0)
+
 endend
+
+!==============================================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tFileInput,tFileOut,tTipoDocumento,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.MENSAGEM := tTipoDocumento
+	TRACE.PERFIL := tPerfil
+	TRACE.SENTIDO := tSentido
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := time("now","%Y-%m-%d") 
+	TRACE.MESSAGEID := build(nMessageID)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	SYSLOG.REFERENCE := build(nMessageID)
+	TRACE.LIBEXC := tLIBEXC
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	flush(TRACE)
+endfunction
+
+!==============================================================================
+
+function bfToInfolog()
+
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+
+endfunction
+
+!==============================================================================

@@ -1,0 +1,369 @@
+	%@(#) $Id:  M63_CARREFOUR_OUT.rte,v 1.2 2020/04/23 17:02:20 gmt Exp $
+!===========================================================================================================
+% File         : $RCSfile: M63_CARREFOUR_OUT.rte $   $Revision: 1.2 $
+!-----------------------------------------------------------------------------------------------------------
+% Description   : M63_CARREFOUR_OUT
+!-----------------------------------------------------------------------------------------------------------
+% Author        : GMT - GENERIX BR
+!===========================================================================================================
+! 2020/04/23 GMT 1.2 Creation
+!===========================================================================================================
+!
+! M63_CARREFOUR_OUT
+!
+!===========================================================================================================
+! Message definition
+base "../trace/trace.cfg" TRACE,autoflush off
+
+#define TX_PROG_INFO "M63_CARREFOUR_OUT"
+
+#include "include/generix_func.inc"
+#include "include/GEEXM63_BYPASS.inc"
+
+!===========================================================================================================
+
+! Initialization section
+
+begin
+	nPos := 1
+	nRec := 1
+	nMainIndex := 0
+	SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	load (0, build(sHOME,"/config/CRF_wms_configuration.properties"), taPARAM)
+
+	! Parametros do TRACE
+		nMessageID := cMessageID
+		tPerfil := ""
+		tSentido := "O"
+		tMensagem := "M63 - TMS"
+		tDataDocumento := time("now","%Y-%m-%d")
+
+	!Inicio do processo
+		log("------------------------------------------------------------", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",pEDISEND.ORIGINAL.NAME, NL)
+		log("Arquivo de entrada: ",substr(pDATAFILE,51,50), NL)
+		log("------------------------------------------------------------", NL)
+	
+	!Abertura do banco de dados - WMS
+		tDbBase		:= "CRFWMS" 
+		tDbUsername	:= taPARAM["WMSDBUSER"]
+		tDbPassword	:= "GNXBR21"
+		tDbUrl		:= taPARAM["WMSDBURL"]	
+		
+		bfSqlInit()
+		if not bfSqlJdbc(tDbBase , tDbUsername, tDbPassword, tDbUrl) then
+			bfSqlErro()
+			exit(1)
+		endif
+
+	!Variaveis Gerais
+		bM6300 := FALSE
+	
+endbegin
+
+!===========================================================================================================
+
+line(1:"00.00")
+
+	! IDENTIFICA O BIB
+		tAmbiente := peel(S_GEEX0000_BP_EMTEXC," ")
+		log("EMTEXC: ",tAmbiente,NL)
+		tToInfologPrefixFilename := taPARAM[build("ToInfologPrefixFilename",substr(S_GEEX0000_BP_EMTEXC, 8, 3),"")]
+		log("UL_C4.: ",tToInfologPrefixFilename,NL)
+		tCODACT := S_GEEX0000_BP_CODACT
+		log("CODACT: ",tCODACT,NL)
+	! FIM IDENTIFICA O BIB
+
+	! CAMPOS WMS
+		tCODEXC0000 := S_GEEX0000_BP_CODEXC
+		tSEPEXC0000 := S_GEEX0000_BP_SEPEXC
+		tSCOEXC0000 := S_GEEX0000_BP_SCOEXC
+		tTRTEXC0000 := S_GEEX0000_BP_TRTEXC
+		tEMTEXC0000 := S_GEEX0000_BP_EMTEXC
+		tRCTEXC0000 := S_GEEX0000_BP_RCTEXC
+		tDATEXC0000 := S_GEEX0000_BP_DATEXC
+		tHEUEXC0000 := S_GEEX0000_BP_HEUEXC
+		tNUMEXC0000 := S_GEEX0000_BP_NUMEXC
+		tACQEXC0000 := S_GEEX0000_BP_ACQEXC
+		tVEREXC0000 := S_GEEX0000_BP_VEREXC
+		tNOMSYS0000 := S_GEEX0000_BP_NOMSYS
+		tNOMDTQ0000 := S_GEEX0000_BP_NOMDTQ
+		tBIBDTQ0000 := S_GEEX0000_BP_BIBDTQ
+		tLIBEXC0000 := S_GEEX0000_BP_LIBEXC
+		tBIBDST0000 := S_GEEX0000_BP_BIBDST
+		tPGMDST0000 := S_GEEX0000_BP_PGMDST
+		tPARDST0000 := S_GEEX0000_BP_PARDST
+		tCODACT0000 := S_GEEX0000_BP_CODACT
+		tIGLSIT0000 := S_GEEX0000_BP_IGLSIT
+		tEDISIT0000 := S_GEEX0000_BP_EDISIT
+		tIMAEXC0000 := S_GEEX0000_BP_IMAEXC
+		tIDEMSG0000 := S_GEEX0000_BP_IDEMSG
+		tNATEXC0000 := S_GEEX0000_BP_NATEXC
+		tEMTORI0000 := S_GEEX0000_BP_EMTORI
+		tDISEXC0000 := S_GEEX0000_BP_DISEXC
+	! FIM CAMPOS WMS
+endline
+
+!===========================================================
+
+line(1:"63.00")
+
+	! VARIAVEIS
+		bM6300 := TRUE
+		tNumeroDocumento := peel(S_GEEX6300_BP_REFMIT," ")
+	! FIM VARIAVEIS
+
+	! CRIACAO DOS ARQUIVOS
+		tNameOut := build(tToInfologPrefixFilename,"M63",build(nMessageID:R010),".DAT")
+		tFileOut := build(sHOME,"/ToAPIPASS/",tNameOut)
+		tFileOutTemp := build(sHOME,"/ToAPIPASS/Temp/",tNameOut)
+	! FIM CRIACAO DOS ARQUIVOS
+
+	! LINHA 00.00
+		R_GEEX0000_BP_CODEXC(tCODEXC0000)
+		R_GEEX0000_BP_SEPEXC(tSEPEXC0000)
+		R_GEEX0000_BP_SCOEXC(tSCOEXC0000)
+		R_GEEX0000_BP_TRTEXC(tTRTEXC0000)
+		R_GEEX0000_BP_EMTEXC(tEMTEXC0000)
+		R_GEEX0000_BP_RCTEXC(tRCTEXC0000)
+		R_GEEX0000_BP_DATEXC(tDATEXC0000)
+		R_GEEX0000_BP_HEUEXC(tHEUEXC0000)
+		R_GEEX0000_BP_NUMEXC(tNUMEXC0000)
+		R_GEEX0000_BP_ACQEXC(tACQEXC0000)
+		R_GEEX0000_BP_VEREXC(tVEREXC0000)
+		R_GEEX0000_BP_NOMSYS(tNOMSYS0000)
+		R_GEEX0000_BP_NOMDTQ(tNOMDTQ0000)
+		R_GEEX0000_BP_BIBDTQ(tBIBDTQ0000)
+		R_GEEX0000_BP_LIBEXC(tLIBEXC0000)
+		R_GEEX0000_BP_BIBDST(tBIBDST0000)
+		R_GEEX0000_BP_PGMDST(tPGMDST0000)
+		R_GEEX0000_BP_PARDST(tPARDST0000)
+		R_GEEX0000_BP_CODACT(tCODACT0000)
+		R_GEEX0000_BP_IGLSIT(tIGLSIT0000)
+		R_GEEX0000_BP_EDISIT(tEDISIT0000)
+		R_GEEX0000_BP_IMAEXC(tIMAEXC0000)
+		R_GEEX0000_BP_IDEMSG(tIDEMSG0000)
+		R_GEEX0000_BP_NATEXC(tNATEXC0000)
+		R_GEEX0000_BP_EMTORI(tEMTORI0000)
+		R_GEEX0000_BP_DISEXC(tDISEXC0000)
+		
+		flush(0,0,NL) >> tFileOutTemp
+	! FIM LINHA 00.00
+
+	! 63.00
+		R_GEEX6300_BP_CODEXC(S_GEEX6300_BP_CODEXC)
+		R_GEEX6300_BP_SEPEXC(S_GEEX6300_BP_SEPEXC)
+		R_GEEX6300_BP_SCOEXC(S_GEEX6300_BP_SCOEXC)
+		R_GEEX6300_BP_TRTEXC(S_GEEX6300_BP_TRTEXC)
+		R_GEEX6300_BP_REFMIT(S_GEEX6300_BP_REFMIT)
+		R_GEEX6300_BP_NUMTOU(S_GEEX6300_BP_NUMTOU)
+		R_GEEX6300_BP_CODTRA(S_GEEX6300_BP_CODTRA)
+		R_GEEX6300_BP_ETATOU(S_GEEX6300_BP_ETATOU)
+		R_GEEX6300_BP_CODCAM(S_GEEX6300_BP_CODCAM)
+		R_GEEX6300_BP_CODCHF(S_GEEX6300_BP_CODCHF)
+		R_GEEX6300_BP_DATCAM2(S_GEEX6300_BP_DATCAM2)
+		R_GEEX6300_BP_HEUCAM2(S_GEEX6300_BP_HEUCAM2)
+		R_GEEX6300_BP_DATEXP(S_GEEX6300_BP_DATEXP)
+		R_GEEX6300_BP_HEUEXP(S_GEEX6300_BP_HEUEXP)
+		R_GEEX6300_BP_CODSIT(S_GEEX6300_BP_CODSIT)
+		R_GEEX6300_BP_SITRCT(S_GEEX6300_BP_SITRCT)
+		R_GEEX6300_BP_TYPTRT(S_GEEX6300_BP_TYPTRT)
+		R_GEEX6300_BP_DISEXC(S_GEEX6300_BP_DISEXC)
+
+		! SQL ROTA / CLILIV e CUMSUP
+			tQuery := build("SELECT TE.TOULIV, SE.CLILIV, TE.DATCHT1, TE.HEUCHT1, COUNT(*) AS CUMSUP", NL," "\
+							"FROM ",tAmbiente,".GETOUE AS TE ", NL," "\
+							"JOIN ",tAmbiente,".GESUPE AS SE ", NL," "\
+							"  ON TE.NUMTOU = SE.NUMTOU ", NL," "\
+							"WHERE 1 = 1 ", NL," "\
+							" AND TE.NUMTOU = ",S_GEEX6300_BP_NUMTOU, NL," "\
+							"GROUP BY TE.TOULIV, SE.CLILIV, TE.DATCHT1, TE.HEUCHT1", "")   
+
+			log("------------------------------------------------------------", NL)
+			log("tQuery ", NL, tQuery, NL)
+			log("------------------------------------------------------------", NL)
+
+			if bfSqlSet( tDbBase, "SELECTdb2", tQuery) = FALSE then
+				bfSqlErro()
+				exit(1)	
+			endif
+
+			if bfSqlOpen( tDbBase, "SELECTdb2") = FALSE then
+				bfSqlErro()
+				exit(1)	
+			endif
+
+			while bfSqlFetchArray( tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+				tTOULIV := taDb2Array["TOULIV"]
+				tCLILIV := taDb2Array["CLILIV"]
+				tDATCHT1 := taDb2Array["DATCHT1"]
+				tHEUCHT1 := taDb2Array["HEUCHT1"]
+				tCUMSUP := taDb2Array["CUMSUP"]
+				remove(taDb2Array)
+			endwhile
+
+			if bfSqlFree( tDbBase, "SELECTdb2") = FALSE then
+				bfSqlErro()
+				exit(1)	
+			endif
+		! FIM SQL
+
+		if S_GEEX6300_BP_TYPTRT <> "2" then
+			R_GEEX6300_BP_DATCAM2(tDATCHT1)
+			R_GEEX6300_BP_HEUCAM2(build(number(tHEUCHT1):R06))
+		endif
+
+		R_GEEX6300_BP_CLILIV(tCLILIV)
+		R_GEEX6300_BP_TOULIV(build(number(tTOULIV):R04))
+		R_GEEX6300_BP_CUMSUP(build(number(tCUMSUP):R04))
+
+		flush(0,0,NL) >> tFileOutTemp
+		nContadorLinhasEscritas++
+	! FIM 63.00
+
+	if bM6300 then
+		! 99.00
+			R_GEEX9900_BP_CODEXC("99")
+			R_GEEX9900_BP_SEPEXC(".")
+			R_GEEX9900_BP_SCOEXC("00")
+			R_GEEX9900_BP_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX9900_BP_HEUEXC(time("now" ,"%H%M%S"))
+			R_GEEX9900_BP_NUMEXC("0000000")
+			R_GEEX9900_BP_CPTEXC(build(nContadorLinhasEscritas))
+
+			flush(0,0,NL) >> tFileOutTemp
+		! FIM 99.00
+
+		! TRATAMENTO FINAL DOS ARQUIVOS
+			close(tFileOutTemp)
+			copy(tFileOutTemp,tFileOut)
+			close(tFileOutTemp)
+			remove(tFileOutTemp)
+			close(tFileOut)
+		! FIM TRATAMENTO FINAL DOS ARQUIVOS
+
+		! TRACE
+			bfMajtrace(	"Recebida" \
+						,"0" \
+						,tNumeroDocumento \
+						,tDataDocumento \
+						,tFileInput \
+						,tFileOut \
+						,"" \
+						,"" \
+					)
+		! FIM TRACE
+
+		! Enviar interface para o cliente
+			tCmd := build("edisend APIPASS_SFTP ", tFileOut)
+			log("executando o comando - ", tCmd, NL)
+			system(tCmd)
+
+	endif
+
+endline
+
+!===========================================================
+
+! Default statements section
+default
+
+enddefault
+
+!===========================================================
+
+! End statements section
+
+end
+
+	bfSqlClose(tDbBase)
+	log("------------------------------------------------------------", NL)
+	log("Fim...: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("------------------------------------------------------------", NL)
+
+endend
+
+!===========================================================================================================
+
+function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumento,tMensagemErro)
+	TRACE:=new(build(sHOME,"/trace"))
+	TRACE.ESTADO := tStatus
+	TRACE.ERRO := tError
+	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
+	TRACE.PERFIL := tToInfologPrefixFilename
+	TRACE.SENTIDO := tSentido
+	TRACE.MENSAGEM := tMensagem
+	TRACE.NUMDOC := tNumDoc
+	TRACE.DATDOC := tDataDoc
+	TRACE.MESSAGEID := build(nMessageID:R010)
+	if pEDISEND.ORIGINAL.NAME <> build(SYSLOG.INDEX) then
+		TRACE.REDE := pEDISEND.ORIGINAL.NAME
+	else
+		TRACE.REDE := "REPROCESSADO"
+	endif
+	TRACE.SYSLOG_INDEX := build(SYSLOG.INDEX)
+	TRACE.FICHEIROSAIDA := tNameOut
+	TRACE.LIBEXC := tLIBEXC
+
+	if tError = "0" then
+		print(build("Ficheiro de Saida: "),tFileOut,NL,NL) >> TRACE.Detail
+		print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+		print("Traduzida com Sucesso",NL) >> TRACE.Detail
+	else
+		if tError = "1" then
+			print(build(time("now" ,"%Y-%m-%dT%H:%M:%S"),"\t|\t")) >> TRACE.Detail
+			print("Erro de Traducao",NL) >> TRACE.Detail
+			print(tMensagemErro,NL) >> TRACE.Detail
+		endif
+	endif
+
+	close(TRACE.Detail)
+
+	if nMainIndex = 0 then
+		close(SYSLOG.a)
+		copy(SYSLOG.a,TRACE.In)
+		close(SYSLOG.a)
+		close(TRACE.In)
+
+		nMainIndex := TRACE.INDEX
+	else
+		tCmd := build("ln -s ", sHOME, "/trace/files/In/", nMainIndex, " ", TRACE.In)
+		system(tCmd)
+	endif
+
+	if tError = "0" then
+		close(tFileOut)
+		copy(tFileOut,TRACE.Out)
+		close(tFileOut)
+		close(TRACE.Out)
+	endif
+
+	system("sleep 1")
+	flush(TRACE)
+
+endfunction
+
+!===========================================================================================================
+
+function bfToInfolog()
+
+	tCmd := build("edisend ToInfolog ", tFileOut)
+	log("executando o comando - ", tCmd, NL)
+	system(tCmd)
+
+endfunction
+
+!===========================================================================================================
+
+function bfSqlErro()
+    print("FATAL: ",tfSqlErrorStr())
+    bfMajtrace(	"Erro de Traducao" \
+                ,"1" \
+                ,tNumeroDocumento \
+                ,tDataDocumento \
+                ,tFileInput \
+                ,tFileOut \
+                ,tMensagem \
+                ,build("Erro no banco de dados: ",tfSqlErrorStr()))     
+endfunction
