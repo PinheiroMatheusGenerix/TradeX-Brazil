@@ -535,6 +535,13 @@ endfunction
 		close(tFileOutM06)
 		close(TRACE3.Out)
 
+		if bQueryTemResul = FALSE then
+			log("Não retornou resultado!", NL)
+			print("Consulta não retornou resultados",NL) >> TRACE3.SHELFLIFE_NOTICE
+		endif
+
+		close(TRACE3.SHELFLIFE_NOTICE)
+
 		flush(TRACE3)
 	endfunction
 
@@ -2294,13 +2301,6 @@ endfunction
 				bfToInfolog("3")
 		endif
 
-
-		if bQueryTemResul = FALSE then
-			print("Consulta não retornou resultados",NL) >> TRACE3.SHELFLIFE_NOTICE
-		endif
-
-		close(TRACE3.SHELFLIFE_NOTICE)
-
 		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
 			bfSqlErro(tBeginSubj_shelflife, "3")
 			exit(1)
@@ -2335,4 +2335,3 @@ endfunction
 	endfunction
 
 !==============================================================================
-
