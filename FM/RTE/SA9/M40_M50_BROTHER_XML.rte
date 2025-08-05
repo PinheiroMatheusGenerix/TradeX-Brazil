@@ -174,7 +174,7 @@ endsegment
 
 segment SCPF gGnfeProc,gGNFe,gGinfNFe,gGdest
 	tDestCPF  := eECPF
-	if tCODCLI <> "" then
+	if tCODCLI = "" then
 		tCODCLI := eECPF 
 	endif
 endsegment
