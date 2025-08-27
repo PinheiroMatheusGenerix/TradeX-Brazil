@@ -1694,8 +1694,8 @@ endfunction
 !===========================================================
 
 function bfCriaRubricaGELIRUB(tCODRUB_FUNC, tVALRUB_FUNC)
-	tNUMLIVCSV := tNUMLIVQur
-	tSNULIVCSV := tSNULIVQur
+	tNUMLIVCSV := tNUMLIV
+	tSNULIVCSV := tSNULIV
 	tTYPRUBCSV := "2"
 	tCODRUBCSV := tCODRUB_FUNC
 	tVALRUBCSV := tVALRUB_FUNC
@@ -1726,8 +1726,8 @@ endfunction
 !===========================================================
 
 function bfCriaRubricaGETXL(tSEQTXL_FUNC, tLIBTXL_FUNC)
-    tNUMLIVCSV := tNUMLIVQur
-	tSNULIVCSV := tSNULIVQur
+    tNUMLIVCSV := tNUMLIV
+	tSNULIVCSV := tSNULIV
 	tSEQTXLCSV := tSEQTXL_FUNC
 	tLIBTXLCSV := tLIBTXL_FUNC
 	tDISPOCSV  := ""
