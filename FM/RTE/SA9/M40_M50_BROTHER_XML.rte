@@ -793,6 +793,8 @@ end
 		endif
 
 	! Faz M50
+		bPrimeiroRegistoCSV := TRUE
+		bPrimeiroRegistoCSV2 := TRUE
 		if bGeraM50 then
 			! QUERY bPedidoExiste
 				tQuery := build("SELECT  REFLIV, ETALIV, NUMLIV, SNULIV", NL," "\
@@ -835,7 +837,7 @@ end
 				endif
 			! Fim QUERY bPedidoExiste
 		
-			if tETALIV = "10" or bPedidoExiste = FALSE then
+			if bPedidoExiste = FALSE then
 				log("Primeira condição: ETALIV = ", tETALIV, " ou bPedidoExiste = FALSE", NL)
 				tFileOut:= build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
 				tFileOutTemp:= build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
@@ -1401,146 +1403,143 @@ end
 				! Enviar interface para o cliente
 					bfToInfolog()
 			else
-				if number(tETALIV) > 10 then
-					log("Segunda condição: ETALIV = ", tETALIV, NL)
-					nSeqCsv := cSeqCsvSignify
+				log("Segunda condição: ETALIV = ", tETALIV, NL)
+				nSeqCsv := cSeqCsvSignify
 
-					! INICIO GELIRUB
-						tFileOutCSV := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
-						tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
-						tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+				! INICIO GELIRUB
+					tFileOutCSV := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+					tFileOutTempCSV := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+					tNameOutCSV := build("I-FGE50FM",tToInfologPrefixFilename,"GELIRUB_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
 
-						if bPrimeiroRegistoCSV = TRUE then
-							bPrimeiroRegistoCSV := FALSE
-							print("NUMLIV;"\
-									"SNULIV;"\
-									"TYPRUB;"\
-									"CODRUB;"\
-									"VALRUB;"\
-									"VALNUM;"\
-									"DISPO;"\
-									"MAJCRE;"\
-									"MAJDAT;"\
-									"MAJHMS;"\
-									"MAJPGM;"\
-									"MAJUTI;"\
-									"MAJECR",NL) >> tFileOutTempCSV
-						endif
+					if bPrimeiroRegistoCSV = TRUE then
+						bPrimeiroRegistoCSV := FALSE
+						print("NUMLIV;"\
+								"SNULIV;"\
+								"TYPRUB;"\
+								"CODRUB;"\
+								"VALRUB;"\
+								"VALNUM;"\
+								"DISPO;"\
+								"MAJCRE;"\
+								"MAJDAT;"\
+								"MAJHMS;"\
+								"MAJPGM;"\
+								"MAJUTI;"\
+								"MAJECR",NL) >> tFileOutTempCSV
+					endif
 
-						bfCriaRubricaGELIRUB("DT01", \
-												tfConvertDate(tDhEmi, "YYYY-MM-DDTHH:MM:SS" , "DD/MM/YYYY"))
+					bfCriaRubricaGELIRUB("DT01", \
+											tfConvertDate(tDhEmi, "YYYY-MM-DDTHH:MM:SS" , "DD/MM/YYYY"))
 
-						bfCriaRubricaGELIRUB("XTP1", \
-												tTpNF)
+					bfCriaRubricaGELIRUB("XTP1", \
+											tTpNF)
 
-						bfCriaRubricaGELIRUB("XIE1", \
-												tIEemit)
+					bfCriaRubricaGELIRUB("XIE1", \
+											tIEemit)
 
-						bfCriaRubricaGELIRUB("VL01", \
-												tTotalvNF)
+					bfCriaRubricaGELIRUB("VL01", \
+											tTotalvNF)
 
-						bfCriaRubricaGELIRUB("VO01", \
-												tQVol)
+					bfCriaRubricaGELIRUB("VO01", \
+											tQVol)
 
-						bfCriaRubricaGELIRUB("PS01", \
-												substr(tPesoB, 1, index(tPesoB, ".") + 4))
+					bfCriaRubricaGELIRUB("PS01", \
+											substr(tPesoB, 1, index(tPesoB, ".") + 4))
 
-						bfCriaRubricaGELIRUB("XCH1", \
-												tChNFe)
+					bfCriaRubricaGELIRUB("XCH1", \
+											tChNFe)
 
-						bfCriaRubricaGELIRUB("XPT1", \
-												tNProt)
+					bfCriaRubricaGELIRUB("XPT1", \
+											tNProt)
 
-						bfCriaRubricaGELIRUB("SE01", \
-												tNumeroSerie)
+					bfCriaRubricaGELIRUB("SE01", \
+											tNumeroSerie)
 
-						bfCriaRubricaGELIRUB("NF01", \
-												tNumeroDocumento)
+					bfCriaRubricaGELIRUB("NF01", \
+											tNumeroDocumento)
 
-						if length(build(tQVol)) = 1 then
-							bfCriaRubricaGELIRUB("*GM1", \
-												build("FORMAR 0",tQVol," VOLUME(S)"))
-						else
-							bfCriaRubricaGELIRUB("*GM1", \
-												build("FORMAR ",tQVol," VOLUME(S)"))
-						endif
+					if length(build(tQVol)) = 1 then
+						bfCriaRubricaGELIRUB("*GM1", \
+											build("FORMAR 0",tQVol," VOLUME(S)"))
+					else
+						bfCriaRubricaGELIRUB("*GM1", \
+											build("FORMAR ",tQVol," VOLUME(S)"))
+					endif
 
-						close(tFileOutTempCSV)
-						copy(tFileOutTempCSV,tFileOutCSV)
-						close(tFileOutTempCSV)
-						remove(tFileOutTempCSV)
-						close(tFileOutCSV)
+					close(tFileOutTempCSV)
+					copy(tFileOutTempCSV,tFileOutCSV)
+					close(tFileOutTempCSV)
+					remove(tFileOutTempCSV)
+					close(tFileOutCSV)
 
-						bfMajtraceRub("Recebida", \
+					bfMajtraceRub("Recebida", \
+									"0", \
+									tREFLIV, \
+									tVALRUBNF, \
+									tFileInput, \
+									tFileOut, \
+									"NF - RUBRICA", \
+									"")
+
+					! Enviar interface para o WMS
+					tCmd := build("edisend ToInfolog ", tFileOutCSV)
+					log("executando o comando - ", tCmd, NL)
+					system(tCmd)
+				! FIM GELIRUB
+
+				! INICIO LIBTXL
+					tFileOutCSV2 := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GETXL_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+					tFileOutTempCSV2 := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GETXL_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+					tNameOutCSV2 := build("I-FGE50FM",tToInfologPrefixFilename,"GETXL_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
+
+					if bPrimeiroRegistoCSV2 = TRUE then
+						bPrimeiroRegistoCSV2 := FALSE
+						print("NUMLIV;SNULIV;SEQTXL;LIBTXL;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTempCSV2
+					endif
+
+					tLIBTXL := build(substr(tfCompleteSpaces(tChNFe, 44), 1, 44), \
+									substr(tfCompleteSpaces(tNProt, 15), 1, 15), \
+									substr(tTpNF, 1, 1), \
+									substr(tfCompleteSpaces(tDhEmi, 19), 1, 19), \
+									substr(substr(tfCompleteSpaces(tTotalvNF, 15), 1, index(tfCompleteSpaces(tTotalvNF, 15), ".") + 2), 1, 15), \
+									substr(tfCompleteSpaces(tDIPLIV5121, 15), 1, 15), \
+									substr(tIdeTPEmis, 1, 1), \
+									substr(tfCompleteSpaces(tNumeroDocumento, 8), 1, 8), \
+									substr(tfCompleteSpaces(tNumeroSerie, 2), 1, 2))
+
+					log("LIBTXL", NL)
+					log("1 = ", substr(tfCompleteSpaces(tChNFe, 44), 1, 44), NL)
+					log("2 = ", substr(tfCompleteSpaces(tNProt, 15), 1, 15), NL)
+					log("3 = ", substr(tTpNF, 1, 1), NL)
+					log("4 = ", substr(tfCompleteSpaces(tDhEmi, 19), 1, 19), NL)
+					log("5 = ", substr(substr(tfCompleteSpaces(tTotalvNF, 15), 1, index(tfCompleteSpaces(tTotalvNF, 15), ".") + 2), 1, 15), NL)
+					log("6 = ", substr(tfCompleteSpaces(tDIPLIV5121, 15), 1, 15), NL)
+					log("7 = ", substr(tIdeTPEmis, 1, 1), NL)
+					log("8 = ", substr(tfCompleteSpaces(tNumeroDocumento, 8), 1, 8), NL)
+					log("9 = ", substr(tfCompleteSpaces(tNumeroSerie, 2), 1, 2), NL)
+
+					bfCriaRubricaGETXL("10", tLIBTXL)
+
+					close(tFileOutTempCSV2)
+					copy(tFileOutTempCSV2,tFileOutCSV2)
+					close(tFileOutTempCSV2)
+					remove(tFileOutTempCSV2)
+					close(tFileOutCSV2)
+
+					bfMajtraceRubTxl("Recebida", \
 										"0", \
 										tREFLIV, \
 										tVALRUBNF, \
 										tFileInput, \
 										tFileOut, \
-										"NF - RUBRICA", \
+										"Produtos", \
 										"")
 
-						! Enviar interface para o WMS
-						tCmd := build("edisend ToInfolog ", tFileOutCSV)
-						log("executando o comando - ", tCmd, NL)
-						system(tCmd)
-					! FIM GELIRUB
-
-					! INICIO LIBTXL
-						tFileOutCSV2 := build(sHOME,"/ToInfolog/I-FGE50FM",tToInfologPrefixFilename,"GETXL_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
-						tFileOutTempCSV2 := build(sHOME,"/ToInfolog/Temp/I-FGE50FM",tToInfologPrefixFilename,"GETXL_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
-						tNameOutCSV2 := build("I-FGE50FM",tToInfologPrefixFilename,"GETXL_BRO_",time("now" ,"%Y%m%d"),"_",build(nSeqCsv:R010),".DAT")
-
-						if bPrimeiroRegistoCSV2 = TRUE then
-							bPrimeiroRegistoCSV2 := FALSE
-							print("NUMLIV;SNULIV;SEQTXL;LIBTXL;DISPO;MAJCRE;MAJDAT;MAJHMS;MAJPGM;MAJUTI;MAJECR",NL) >> tFileOutTempCSV2
-						endif
-
-						tLIBTXL := build(substr(tfCompleteSpaces(tChNFe, 44), 1, 44), \
-										substr(tfCompleteSpaces(tNProt, 15), 1, 15), \
-										substr(tTpNF, 1, 1), \
-										substr(tfCompleteSpaces(tDhEmi, 19), 1, 19), \
-										substr(substr(tfCompleteSpaces(tTotalvNF, 15), 1, index(tfCompleteSpaces(tTotalvNF, 15), ".") + 2), 1, 15), \
-										substr(tfCompleteSpaces(tDIPLIV5121, 15), 1, 15), \
-										substr(tIdeTPEmis, 1, 1), \
-										substr(tfCompleteSpaces(tNumeroDocumento, 8), 1, 8), \
-										substr(tfCompleteSpaces(tNumeroSerie, 2), 1, 2))
-
-						log("LIBTXL", NL)
-						log("1 = ", substr(tfCompleteSpaces(tChNFe, 44), 1, 44), NL)
-						log("2 = ", substr(tfCompleteSpaces(tNProt, 15), 1, 15), NL)
-						log("3 = ", substr(tTpNF, 1, 1), NL)
-						log("4 = ", substr(tfCompleteSpaces(tDhEmi, 19), 1, 19), NL)
-						log("5 = ", substr(substr(tfCompleteSpaces(tTotalvNF, 15), 1, index(tfCompleteSpaces(tTotalvNF, 15), ".") + 2), 1, 15), NL)
-						log("6 = ", substr(tfCompleteSpaces(tDIPLIV5121, 15), 1, 15), NL)
-						log("7 = ", substr(tIdeTPEmis, 1, 1), NL)
-						log("8 = ", substr(tfCompleteSpaces(tNumeroDocumento, 8), 1, 8), NL)
-						log("9 = ", substr(tfCompleteSpaces(tNumeroSerie, 2), 1, 2), NL)
-
-						bfCriaRubricaGETXL("10", tLIBTXL)
-
-						close(tFileOutTempCSV2)
-						copy(tFileOutTempCSV2,tFileOutCSV2)
-						close(tFileOutTempCSV2)
-						remove(tFileOutTempCSV2)
-						close(tFileOutCSV2)
-
-						bfMajtraceRubTxl("Recebida", \
-											"0", \
-											tREFLIV, \
-											tVALRUBNF, \
-											tFileInput, \
-											tFileOut, \
-											"Produtos", \
-											"")
-
-						! Enviar interface para o WMS
-						tCmd := build("edisend ToInfolog ", tFileOutTempCSV2)
-						log("executando o comando - ", tCmd, NL)
-						system(tCmd)
-					! FIM LIBTXL
-
-				endif
+					! Enviar interface para o WMS
+					tCmd := build("edisend ToInfolog ", tFileOutTempCSV2)
+					log("executando o comando - ", tCmd, NL)
+					system(tCmd)
+				! FIM LIBTXL
 			endif
 		endif
 
