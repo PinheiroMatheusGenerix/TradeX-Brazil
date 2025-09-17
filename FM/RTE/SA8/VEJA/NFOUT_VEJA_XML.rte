@@ -554,7 +554,11 @@ end
                                 "FAXCLI = '",tIEdest,"',", NL," "\
                                 "MSGLIV2 = '",tDestFone,"',", NL," "\
                                 "DIPLIV = '",tChNFe,"',", NL," "\
-                                "EMLADR = '",tDestEmail,"'", NL," "\
+                                "EMLADR = (CASE '",tDestEmail,"'", NL," "\
+                                "			WHEN ''", NL," "\
+                                "			THEN EMLADR", NL," "\
+                                "			ELSE '",tDestEmail,"'", NL," "\
+                                "		END)", NL," "\
                                 "WHERE NUMLIV = '",tNUMLIVQur,"' WITH NONE")
         
         log("------------------------------------------------------------", NL)
