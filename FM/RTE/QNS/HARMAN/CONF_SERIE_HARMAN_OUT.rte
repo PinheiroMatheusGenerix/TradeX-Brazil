@@ -65,16 +65,50 @@ begin
 	tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,tCODACTLido,"_",time("now" ,"%Y%m%d%H%M%S"),"CNS_SERIE_EXP_DIA_AUT.csv")
 	tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLido,"_",time("now" ,"%Y%m%d%H%M%S"),"CNS_SERIE_EXP_DIA_AUT.csv")
 
-	tQuery := build("select A.CODPRO PRODUTO, A.CODSER NUM_SERIE, SUBSTR(A.REFLIV,1,LOCATE ('.', A.REFLIV)-1) NF, B.DT_EMI ,C.DT_EXP ||' '|| C.HR_EXP as DT_EXP  "\
-					"from FGE50FM",tToInfologPrefixFilename,".geseri a   "\
-					"left join (select NUMLIV, TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) dt_emi   "\
-					"from FGE50FM",tToInfologPrefixFilename,".gelirub where codrub='DT01') B ON A.NUMLIV=B.NUMLIV  "\
-					"LEFT JOIN (SELECT TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),7,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP  "\
-					", SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP  "\
-					", TD.NUMLIV FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD WHERE TE.NUMTOU=TD.NUMTOU) C ON A.NUMLIV=C.NUMLIV  "\
-					"where C.DT_EXP='",time("now - 1d","%d/%m/%Y"),"'  ")
+	tQuery := build("SELECT  RUB.VALRUB_NF01           AS NF01", NL," "\
+					"       ,RUB.VALRUB_SE01           AS SE01", NL," "\
+					"       ,A.CODPRO                  AS PRODUTO", NL," "\
+					"       ,PRO.DS1PRO                AS DS1PRO", NL," "\
+					"       ,A.CODSER                  AS NUM_SERIE", NL," "\
+					"       ,B.DT_EMI                  AS DT_EMI", NL," "\
+					"       ,C.DT_EXP ||' '|| C.HR_EXP AS DT_EXP", NL," "\
+					"       ,LVE.DIPLIV                AS DIPLIV", NL," "\
+					"FROM FGE50FM",tToInfologPrefixFilename,".GESERI A", NL," "\
+					"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIVE LVE", NL," "\
+					"ON A.NUMLIV = LVE.NUMLIV", NL," "\
+					"LEFT JOIN", NL," "\
+					"(", NL," "\
+					"	SELECT  NUMLIV", NL," "\
+					"	       ,MAX(CASE WHEN CODRUB = 'NF01' THEN VALRUB END) AS VALRUB_NF01", NL," "\
+					"	       ,MAX(CASE WHEN CODRUB = 'SE01' THEN VALRUB END) AS VALRUB_SE01", NL," "\
+					"	FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB", NL," "\
+					"	WHERE CODRUB IN ('NF01', 'SE01')", NL," "\
+					"	GROUP BY  NUMLIV", NL," "\
+					") RUB", NL," "\
+					"ON A.NUMLIV = RUB.NUMLIV", NL," "\
+					"JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PRO", NL," "\
+					"ON A.CODPRO = PRO.CODPRO", NL," "\
+					"LEFT JOIN", NL," "\
+					"(", NL," "\
+					"	SELECT  NUMLIV", NL," "\
+					"	       ,TRIM(TRIM(SUBSTR(CHAR(TRIM(VALRUB)),1,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),3,2)||'/'||SUBSTR(CHAR(TRIM(VALRUB)),5,4))) DT_EMI", NL," "\
+					"	FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB", NL," "\
+					"	WHERE CODRUB = 'DT01' ", NL," "\
+					") B", NL," "\
+					"ON A.NUMLIV = B.NUMLIV", NL," "\
+					"LEFT JOIN", NL," "\
+					"(", NL," "\
+					"	SELECT  TRIM(SUBSTR(CHAR(TRIM(TE.DATEXP)),7,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),5,2)||'/'||SUBSTR(CHAR(TRIM(TE.DATEXP)),1,4)) DT_EXP", NL," "\
+					"	       ,SUBSTR(CHAR(TRIM(TE.HEUEXP)),1,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),3,2)||':'||SUBSTR(CHAR(TRIM(TE.HEUEXP)),5,2) HR_EXP", NL," "\
+					"	       ,TD.NUMLIV", NL," "\
+					"	FROM FGE50FM",tToInfologPrefixFilename,".GETOUE TE, FGE50FM",tToInfologPrefixFilename,".GETOUD TD", NL," "\
+					"	WHERE TE.NUMTOU = TD.NUMTOU", NL," "\
+					") C", NL," "\
+					"ON A.NUMLIV = C.NUMLIV", NL," "\
+					"WHERE LVE.CODTLI NOT IN ('GEC', 'GEV', 'GEX')", NL," "\
+					"AND C.DT_EXP = '",time("now - 1d","%d/%m/%Y"),"'")
 										
-	log(NL,tQuery,NL)
+	log(tQuery,NL)
 									
 	! 1a passagem para determinar volumas
 	if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
@@ -91,30 +125,42 @@ begin
 									
 	nContadorResultadosQuery := 0
 	tVolumeAnterior := ""
-	while bfSqlFetchArray( tDbBase , "SELECTdb2" ,taDb2Array) = TRUE do
+	while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
 		nContadorResultadosQuery++
-		taCODPROSerie[nContadorResultadosQuery] := peel(taDb2Array["PRODUTO"]," ")
-		taCODSERSerie[nContadorResultadosQuery] := build(" ",peel(taDb2Array["NUM_SERIE"]," "))
-		taNFSerie[nContadorResultadosQuery] := peel(taDb2Array["NF"]," ")
-		
-		remove(taNumNFSerie)
-		split(taNFSerie[nContadorResultadosQuery],taNumNFSerie,".")
-		
-		taDT_EMISerie[nContadorResultadosQuery] := peel(taDb2Array["DT_EMI"]," ")
-		taDT_EXPSerie[nContadorResultadosQuery] := peel(taDb2Array["DT_EXP"]," ")
 		bFezMsgSerie := TRUE
 		
 		if nContadorResultadosQuery = 1 then
-			print(build("Produto;\"Numero de serie\";\"Nota fiscal\";\"Data Emissao\";\"Data Expedicao\"",NL))		 >> tFileOutTemp					
+			print("\"Nota fiscal\";" \
+					"\"Serie da NF\";", \
+					"Produto;", \
+					"\"Descricao do produto\";", \
+					"\"Numero de serie\";", \
+					"\"Data emissao\";", \
+					"\"Data expedicao\";", \
+					"\"Chave da nota fiscal\";", \
+					"Garantia",NL) >> tFileOutTemp					
 		endif
 
-		R_SERIE_Produto(taCODPROSerie[nContadorResultadosQuery])
-		R_SERIE_NumeroSerie(taCODSERSerie[nContadorResultadosQuery])
-		R_SERIE_NotaFiscal(taNumNFSerie[1])
-		R_SERIE_DataEmissao(taDT_EMISerie[nContadorResultadosQuery]) 
-		R_SERIE_DatExpedicao(taDT_EXPSerie[nContadorResultadosQuery])
+		R_SERIE_NotaFiscal(peel(taDb2Array["NF01"], " "))
+		R_SERIE_SerieNF(peel(taDb2Array["SE01"], " "))
+		R_SERIE_Produto(peel(taDb2Array["PRODUTO"], " "))
+		R_SERIE_DescricaoProduto(peel(taDb2Array["DS1PRO"], " "))
+		R_SERIE_NumeroSerie(peel(taDb2Array["NUM_SERIE"], " "))
+		R_SERIE_DataEmissao(peel(taDb2Array["DT_EMI"], " "))
+		R_SERIE_DataExpedicao(peel(taDb2Array["DT_EXP"], " "))
+		R_SERIE_ChaveNF(peel(taDb2Array["DIPLIV"], " "))
+		R_SERIE_Garantia("")
 		
-		print(taSERIE[1],";",taSERIE[2],";",taSERIE[3],";",taSERIE[4],";",taSERIE[5], NL) >> tFileOutTemp
+		print(taSERIE[1],";", \
+				taSERIE[2],";", \
+				taSERIE[3],";", \
+				taSERIE[4],";", \
+				taSERIE[5],";", \
+				taSERIE[6],";", \
+				taSERIE[7],";", \
+				taSERIE[8],";", \
+				taSERIE[9], NL) >> tFileOutTemp
+
 		remove(taSERIE)
 		remove(taDb2Array)
 	endwhile
