@@ -215,8 +215,8 @@ end
                         R_GEEX3000_CODPRO(taCODPRO[nContadorTmpTOTAL])  
                         R_GEEX3000_CODMDR("VEJ")
                         R_GEEX3000_CODMDS("VEJ")
-                        if length(peel(taDS1PRO[nNumeroLinha], " ")) > 0 then
-                            R_GEEX3000_DS1PRO(taDS1PRO[nNumeroLinha])
+                        if length(peel(taDS1PRO[nContadorTmpTOTAL], " ")) > 0 then
+                            R_GEEX3000_DS1PRO(taDS1PRO[nContadorTmpTOTAL])
                         else
                             R_GEEX3000_DS1PRO("PRODUTO NOVO")
                         endif

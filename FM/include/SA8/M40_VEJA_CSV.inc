@@ -95,3 +95,4 @@
 #define S_REGISTRO_CODPROPRIETARIO taREGISTRO[23]
 #define R_REGISTRO_CODPROPRIETARIO(A) taREGISTRO[23] := build(A :0.35)
 !-----------------------------------------------------------
+
