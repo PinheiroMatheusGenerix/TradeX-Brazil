@@ -715,6 +715,7 @@ line(1:"97.50")
                                 "  ON PR.CODACT = SD.CODACT", NL," "\
                                 " AND PR.CODPRO = SD.CODPRO", NL," "\
                                 "WHERE SE.REFLIV = '",tREFLIV,"'", NL," "\
+                                "AND SE.TYPSUP <> '3'", NL," "\
                                 "GROUP BY  SD.CODPRO", NL," "\
                                 "         ,PR.EDIPRO", NL," "\
                                 "         ,SD.NUMLIV", NL," "\
