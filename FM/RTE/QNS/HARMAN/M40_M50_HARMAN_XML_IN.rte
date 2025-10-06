@@ -69,6 +69,7 @@ begin
 	tCODMOP := ""
     bGeraM40 := FALSE
     bGeraM50 := FALSE
+    bGarantia := FALSE
 
     if pEDISEND.ORIGINAL.NAME = build(SYSLOG.INDEX) then
     	log("Esta interface não pode ser reprocessada", NL)
@@ -223,18 +224,7 @@ endsegment
 
 segment SxPais gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
     tPAYCLI := substr(toupper(eExPais),1,3)
-    if tNumeroSerie = "8" or tNumeroSerie = "25" then
-        tCODMOP := "ECO"
-        tCODTLI := "EC"
-    endif
-    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and eExPais = "BRASIL" then
-        tCODMOP := "VEN"
-        tCODTLI := "VD"
-    endif
-    if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and eExPais <> "BRASIL"  then
-        tCODMOP := "EXP"
-        tCODTLI := "EX"
-    endif
+    tXPais := eExPais
 endsegment
 
 segment Sfone gGnfeProc,gGNFe,gGinfNFe,gGdest,gGenderDest
@@ -347,9 +337,11 @@ segment SobsCont gGnfeProc,gGNFe,gGinfNFe,gGinfAdic
 endsegment
 
 segment SxTexto gGnfeProc,gGNFe,gGinfNFe,gGinfAdic,gGobsCont 
-    if tXCampo = "xCub" then
-        tXtexto := eExTexto
-    endif
+    switch tXCampo
+        case "Garantia":
+            bGarantia := TRUE
+    endswitch
+    taXtexto[tXCampo] := eExTexto
 endsegment
 
 segment SchNFe gGnfeProc,gGprotNFe,gGinfProt
@@ -373,6 +365,35 @@ enddefault
 end
     tCODACT := "HAR"
     tPerfil := "HARMAN"
+
+    if bGarantia = TRUE then
+        if tNumeroSerie = "8" or tNumeroSerie = "25" then
+            tCODMOP := "GEC"
+            tCODTLI := "GEC"
+        endif
+        if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and tXPais = "BRASIL" then
+            tCODMOP := "GEN"
+            tCODTLI := "GEV"
+        endif
+        if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and tXPais <> "BRASIL" then
+            tCODMOP := "GEX"
+            tCODTLI := "GEX"
+        endif
+    endif
+    if bGarantia = FALSE then
+        if tNumeroSerie = "8" or tNumeroSerie = "25" then
+            tCODMOP := "ECO"
+            tCODTLI := "EC"
+        endif
+        if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and tXPais = "BRASIL" then
+            tCODMOP := "VEN"
+            tCODTLI := "VD"
+        endif
+        if (tNumeroSerie = "9" or tNumeroSerie = "18" or tNumeroSerie = "23" or tNumeroSerie = "24" or tNumeroSerie = "26" or tNumeroSerie = "27") and tXPais <> "BRASIL" then
+            tCODMOP := "EXP"
+            tCODTLI := "EX"
+        endif
+    endif
 
 	if length(tCODCLI) = 0 or tCODCLI = "0" then
 		tCODCLI := "EXPORTACAO"
@@ -636,7 +657,7 @@ end
             log("taUVCCDE Final = ",taUVCCDE[nContadorTmpTOTAL],NL)
             log("-----------------------------------------------------",NL)
 
-            if tCODACT = "HAR" and tCODMOP <> "VEN" then
+            if tCODACT = "HAR" and (tNumeroSerie = "8" or tNumeroSerie = "25") then
                 log("1 - tCODACT - ",tCODACT,NL)
                 log("1 - tCODMOP - ",tCODMOP,NL)						
                             
@@ -1037,6 +1058,20 @@ end
 
                 flush(0,0,NL) >> tFileOutTemp
                 nContadorLinhasEscritas++   
+                
+                if bGarantia = TRUE then
+                    R_GEEX5005_CODEXC("50")
+                    R_GEEX5005_SEPEXC(".")
+                    R_GEEX5005_SCOEXC("05")
+                    R_GEEX5005_CODACT(tCODACT)
+                    R_GEEX5005_CODCLI(tCODCLI)
+                    R_GEEX5005_REFLIV(tREFLIV)
+                    R_GEEX5005_CODRUB("GRTA")
+                    R_GEEX5005_VALRUB(taXtexto["Garantia"])
+
+                    flush(0,0,NL) >> tFileOutTemp
+                    nContadorLinhasEscritas++   
+                endif
 
                 R_5011_CODEXC("50")
                 R_5011_SEPEXC(".")
@@ -1151,7 +1186,7 @@ end
                 bfMajtrace50("Recebida","0",tNumeroDocumento,tDataDocumento,tFileInput,tFileOut,"Produtos","")
             endif
             
-            if tCODACT = "HAR" and tCODMOP = "VEN" then
+            if tCODACT = "HAR" and (tNumeroSerie <> "8" and tNumeroSerie <> "25") then
                 log("------------------------------------------------------------", NL)
                 log("2 - tCODACT - ",tCODACT,NL)		
                 log("2 - tCODMOP - ",tCODMOP,NL)
@@ -1256,25 +1291,15 @@ end
                             R_0000HEADER_CODEXC("00")
                             R_0000HEADER_SEPEXC(".")
                             R_0000HEADER_SCOEXC("00")
-                            R_0000HEADER_TRTEXC("")
                             R_0000HEADER_EMTEXC("FM") 
-                            R_0000HEADER_RCTEXC("")
                             R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
                             R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
                             R_0000HEADER_NUMEXC("0000000")
                             R_0000HEADER_ACQEXC("0")
                             R_0000HEADER_VEREXC("5.00") 
-                            R_0000HEADER_NOMSYS("")  
                             R_0000HEADER_NOMDTQ("M50")
-                            R_0000HEADER_BIBDTQ("")
                             R_0000HEADER_LIBEXC(build(nMessageID:R010))
-                            R_0000HEADER_BIBDST("")
-                            R_0000HEADER_PGMDST("")
-                            R_0000HEADER_PARDST("")
-                            R_0000HEADER_CODACT("")
-                            R_0000HEADER_IGLSIT("")
                             R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
-                            R_0000HEADER_IMAEXC("")  
 
                             flush(0,0,NL) >> tFileOutTemp   
                             nContadorLinhasEscritas++
@@ -1384,7 +1409,11 @@ end
                         endif
 
                         R_5000ORDERHEADER_CODRGT(tLIBCPLSelect)
-                        R_5000ORDERHEADER_CODMOP(tCODMOP)
+                        if bGarantia = TRUE then
+                            R_5000ORDERHEADER_CODMOP("GEN")
+                        else
+                            R_5000ORDERHEADER_CODMOP("VEN")
+                        endif
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
@@ -1431,7 +1460,7 @@ end
                         R_GEEX5005_CODCLI(tCODCLI)
                         R_GEEX5005_REFLIV(tREFLIV)
                         R_GEEX5005_CODRUB("VC01")
-                        R_GEEX5005_VALRUB(tXtexto)
+                        R_GEEX5005_VALRUB(taXtexto["xCub"])
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
@@ -1661,6 +1690,20 @@ end
                         flush(0,0,NL) >> tFileOutTemp
                         nContadorLinhasEscritas++   
 
+                        if bGarantia = TRUE then
+                            R_GEEX5005_CODEXC("50")
+                            R_GEEX5005_SEPEXC(".")
+                            R_GEEX5005_SCOEXC("05")
+                            R_GEEX5005_CODACT(tCODACT)
+                            R_GEEX5005_CODCLI(tCODCLI)
+                            R_GEEX5005_REFLIV(tREFLIV)
+                            R_GEEX5005_CODRUB("GRTA")
+                            R_GEEX5005_VALRUB(taXtexto["Garantia"])
+
+                            flush(0,0,NL) >> tFileOutTemp
+                            nContadorLinhasEscritas++   
+                        endif
+
                         R_5011_CODEXC("50")
                         R_5011_SEPEXC(".")
                         R_5011_SCOEXC("11")
@@ -1791,25 +1834,15 @@ end
                             R_0000HEADER_CODEXC("00")
                             R_0000HEADER_SEPEXC(".")
                             R_0000HEADER_SCOEXC("00")
-                            R_0000HEADER_TRTEXC("")
                             R_0000HEADER_EMTEXC("FM") 
-                            R_0000HEADER_RCTEXC("")
                             R_0000HEADER_DATEXC(time("now" ,"%Y%m%d"))
                             R_0000HEADER_HEUEXC(time("now" ,"%H%M%S"))
                             R_0000HEADER_NUMEXC("0000000")
                             R_0000HEADER_ACQEXC("0")
                             R_0000HEADER_VEREXC("5.00") 
-                            R_0000HEADER_NOMSYS("")  
                             R_0000HEADER_NOMDTQ("M50")
-                            R_0000HEADER_BIBDTQ("")
                             R_0000HEADER_LIBEXC(build(nMessageID:R010))
-                            R_0000HEADER_BIBDST("")
-                            R_0000HEADER_PGMDST("")
-                            R_0000HEADER_PARDST("")
-                            R_0000HEADER_CODACT("")
-                            R_0000HEADER_IGLSIT("")
                             R_0000HEADER_EDISIT(build(number(tCentro_De_Custo)))
-                            R_0000HEADER_IMAEXC("")  
 
                             flush(0,0,NL) >> tFileOutTemp   
                             nContadorLinhasEscritas++
@@ -1919,7 +1952,11 @@ end
                         endif
                         
                         R_5000ORDERHEADER_CODRGT(tLIBCPLSelect)
-                        R_5000ORDERHEADER_CODMOP("VUN")
+                        if bGarantia = TRUE then
+                            R_5000ORDERHEADER_CODMOP("GUN")
+                        else
+                            R_5000ORDERHEADER_CODMOP("VUN")
+                        endif
                         R_5000ORDERHEADER_ORDLIV("0001")
                         R_5000ORDERHEADER_CODTLI(tCODTLI)
 
@@ -1968,7 +2005,7 @@ end
                         R_GEEX5005_CODCLI(tCODCLI)
                         R_GEEX5005_REFLIV(tREFLIV)
                         R_GEEX5005_CODRUB("VC01")
-                        R_GEEX5005_VALRUB(tXtexto)
+                        R_GEEX5005_VALRUB(taXtexto["xCub"])
 
                         flush(0,0,NL) >> tFileOutTemp   
                         nContadorLinhasEscritas++
@@ -2196,6 +2233,20 @@ end
 
                         flush(0,0,NL) >> tFileOutTemp
                         nContadorLinhasEscritas++ 
+
+                        if bGarantia = TRUE then
+                            R_GEEX5005_CODEXC("50")
+                            R_GEEX5005_SEPEXC(".")
+                            R_GEEX5005_SCOEXC("05")
+                            R_GEEX5005_CODACT(tCODACT)
+                            R_GEEX5005_CODCLI(tCODCLI)
+                            R_GEEX5005_REFLIV(tREFLIV)
+                            R_GEEX5005_CODRUB("GRTA")
+                            R_GEEX5005_VALRUB(taXtexto["Garantia"])
+
+                            flush(0,0,NL) >> tFileOutTemp
+                            nContadorLinhasEscritas++
+                        endif 
 
                         R_5011_CODEXC("50")
                         R_5011_SEPEXC(".")
