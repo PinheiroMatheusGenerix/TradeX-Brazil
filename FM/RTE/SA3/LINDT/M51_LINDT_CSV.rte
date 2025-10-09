@@ -87,9 +87,9 @@ line(1:"51.00")
     tREFLIV := S_GEEX5100_REFLIV
 
     ! INCIO CONFIRMACAO DE PEDIDO - TOTVS RM
-        tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"MAR_PED.",nMessageID,".csv")
-        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"MAR_PED.",nMessageID,".csv")
-        tNameOut := build("FM",tToInfologPrefixFilename,"MAR_PED.",nMessageID,".csv")
+        tFileOut := build(sHOME,"/FMBR_AS2/FM",tToInfologPrefixFilename,"LIN_PED.",nMessageID,".csv")
+        tFileOutTemp := build(sHOME,"/FMBR_AS2/Temp/FM",tToInfologPrefixFilename,"LIN_PED.",nMessageID,".csv")
+        tNameOut := build("FM",tToInfologPrefixFilename,"LIN_PED.",nMessageID,".csv")
         
         tCODACT := S_GEEX5100_CODACT
         tCodigoCliente := S_GEEX5100_CODCLI
