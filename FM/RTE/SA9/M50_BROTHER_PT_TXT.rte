@@ -589,6 +589,7 @@ end
 											"SET IMMFRG = '",tIMMFRG,"'", NL," "\
 											"WHERE REFLIV = '",taREFLIV[tLinha],"'", NL," "\
 											"AND CODPRO = '",taCODPRO[tLinha],"'", NL," "\
+											"AND NLILIV = '",taNLILIV[tLinha],"'", NL," "\
 											"WITH NONE")
 					
 					log("------------------------------------------------------------", NL)
