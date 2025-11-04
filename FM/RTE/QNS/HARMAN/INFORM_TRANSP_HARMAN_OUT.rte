@@ -114,6 +114,7 @@ begin
 					"       ,CASE WHEN J.VALRUB IS NULL THEN L.CUMCOL  ELSE J.VALRUB END VOLUMES ", NL," "\
 					"       ,CASE WHEN K.VALRUB IS NULL THEN TO_CHAR(L.CUMVOL)  ELSE K.VALRUB END CUBAGEM ", NL," "\
 					"       ,L.CRILIV ", NL," "\
+					"       ,L.DIPLIV ", NL," "\
 					"FROM ", NL," "\
 					"( ", NL," "\
 					"	SELECT  A.DATLIV ", NL," "\
@@ -194,6 +195,7 @@ begin
 			taVOLUMES_Query2[nContRegistosQuery2] := peel(taDb2Array["VOLUMES"]," ")
 			taCUBAGEM_Query2[nContRegistosQuery2] := peel(taDb2Array["CUBAGEM"]," ")
 			taCRILIV_Query2[nContRegistosQuery2] := peel(taDb2Array["CRILIV"]," ")
+			taDIPLIV_Query2[nContRegistosQuery2] := peel(taDb2Array["DIPLIV"]," ")
 			baRegistroDuplicado[nContRegistosQuery2] := FALSE									
 		endif
 		remove(taDb2Array)
@@ -268,7 +270,7 @@ begin
 				print(taHeader[1],";",taHeader[2],";",taHeader[3], NL) >> tFileOutTempCSV
 				remove(taHeader)
 				
-				print("SERIE;NOTA_FISCAL;DATA_EMISSAO;TRANSPORTADORA;NOME;CNPJ;VALOR_NOTAL_FISCAL;ESTADO_DESTINO;CIDADE;PESO_BRUTO;QTD_EMBALAGEM;VOLUME_M3;CARGA_AGENDADA", NL) >> tFileOutTempCSV
+				print("SERIE;NOTA_FISCAL;DATA_EMISSAO;TRANSPORTADORA;NOME;CNPJ;VALOR_NOTAL_FISCAL;ESTADO_DESTINO;CIDADE;PESO_BRUTO;QTD_EMBALAGEM;VOLUME_M3;CARGA_AGENDADA;CHAVES_ACESSO_NOTAS_FISCAIS", NL) >> tFileOutTempCSV
 			endif
 					   
 			R_Detalhe_Serie(taVAL_SERIE_Query2[nTempContRegistosQuery2])
@@ -286,10 +288,11 @@ begin
 			R_Detalhe_QtdEmbalagem(taVOLUMES_Query2[nTempContRegistosQuery2])
 			tAuxxxxxxx := peel(build(number(taCUBAGEM_Query2[nTempContRegistosQuery2]):R10.4)," ")
 			R_Detalhe_VolumeM3(replace(tAuxxxxxxx,".",","))
+			R_Detalhe_Chaves_acesso_notas_fiscais(taDIPLIV_Query2[nTempContRegistosQuery2]) 
 
 			print(taDetalhe[1],";",taDetalhe[2],";",taDetalhe[3],";",taDetalhe[4],";", \
 					taDetalhe[5],";",taDetalhe[6],";",taDetalhe[7],";",taDetalhe[8],";", \
-					taDetalhe[9],";",taDetalhe[10],";",taDetalhe[11],";",taDetalhe[12],";",taCRILIV_Query2[nTempContRegistosQuery2], NL) >> tFileOutTempCSV
+					taDetalhe[9],";",taDetalhe[10],";",taDetalhe[11],";",taDetalhe[12],";",taCRILIV_Query2[nTempContRegistosQuery2],";",taDetalhe[13], NL) >> tFileOutTempCSV
 					remove(taDetalhe)
    
 			tCODTRA_Query2Anterior := taCODTRA_Query2[nTempContRegistosQuery2]

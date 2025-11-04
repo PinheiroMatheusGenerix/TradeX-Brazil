@@ -67,3 +67,7 @@
 #define S_Detalhe_VolumeM3 taDetalhe[12]
 #define R_Detalhe_VolumeM3(A) taDetalhe[12] := build(A :0.20)
 !-----------------------------------------------------------
+! FIELD : Chaves_acesso_notas_fiscais 
+#define S_Detalhe_Chaves_acesso_notas_fiscais taDetalhe[13]
+#define R_Detalhe_Chaves_acesso_notas_fiscais(A) taDetalhe[13] := build(A :0.100)
+!-----------------------------------------------------------
