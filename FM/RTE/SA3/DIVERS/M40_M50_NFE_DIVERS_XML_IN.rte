@@ -1146,7 +1146,7 @@ end
 	endif
    
 	!divers
-	if ((substr(pEDISEND.ORIGINAL.NAME,4,8) = "ALE_INB_" or substr(pEDISEND.ORIGINAL.NAME,4,8) = "SIS_INB_" or substr(pEDISEND.ORIGINAL.NAME,4,8) = "VEN_INB_") and (tCODACT = "ALE" or tCODACT = "SIS" or tCODACT = "VEN")) or ((substr(pEDISEND.ORIGINAL.NAME,7,8) = "ALE_INB_" or substr(pEDISEND.ORIGINAL.NAME,7,8) = "SIS_INB_" or substr(pEDISEND.ORIGINAL.NAME,7,8) = "VEN_INB_") and (tCODACT = "ALE" or tCODACT = "SIS" or tCODACT = "VEN")) then
+	if ((substr(pEDISEND.ORIGINAL.NAME,4,8) = "ALE_INB_" or substr(pEDISEND.ORIGINAL.NAME,4,8) = "SIS_INB_" or substr(pEDISEND.ORIGINAL.NAME,4,8) = "VEN_INB_") and (tCODACT = "ALE" or tCODACT = "SIS" or tCODACT = "VEN")) or ((substr(pEDISEND.ORIGINAL.NAME,7,8) = "ALE_INB_" or substr(pEDISEND.ORIGINAL.NAME,7,8) = "SIS_INB_" or substr(pEDISEND.ORIGINAL.NAME,7,8) = "VEN_INB_") and (tCODACT = "ALE" or tCODACT = "SIS" or tCODACT = "VEN") or (tCODACT = "SIS")) then
 				
 		tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
 		tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"40",build(nMessageID:R015),".DAT")
@@ -1293,7 +1293,11 @@ function bfMajtrace(tStatus,tError,tNumDoc,tDataDoc,tInput,tFileOut,tTipoDocumen
 	TRACE.DATATRADUCAO := time("now","%Y-%m-%dT%H:%M:%S")
 	TRACE.PERFIL := tPerfil
 	TRACE.SENTIDO := "I"
-	TRACE.MENSAGEM := build("XML - NFE - M40 - ",tCODACT,"-",substr(pEDISEND.ORIGINAL.NAME,7,4))
+	if tCODACT = "SIS" then
+		TRACE.MENSAGEM := build("XML - NFE - M40 - ",tCODACT	)
+	else
+		TRACE.MENSAGEM := build("XML - NFE - M40 - ",tCODACT,"-",substr(pEDISEND.ORIGINAL.NAME,7,4))
+	endif
 	TRACE.NUMDOC := tREFREC
 	TRACE.DATDOC := substr(tSaiEnt,1,10)
 	TRACE.MESSAGEID := build(nMessageID:R010)   
