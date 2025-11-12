@@ -495,8 +495,7 @@ line(1:"97.50")
 					tNameOut := build("FM",tToInfologPrefixFilename,tCODACTLidoConvertido,"SISCONFSEP",time("now" ,"%Y%m%d%H%M%S"),"_",taNumSerie[1],".txt")
 					
 					tCODPRO := ""
-					tQuery := build("SELECT CASE SE.CODACT ", NL," "\
-									"		WHEN 'SIS' THEN '016587166000439' END CNPJ_ORIGEM ", NL," "\
+					tQuery := build("SELECT CASE SE.CODACT WHEN 'SIS' THEN '016587166000439' END CNPJ_ORIGEM ", NL," "\
 									"	,'002462805000778' CNPJ_DESTINATARIO ", NL," "\
 									"	,LE.CODTLI AS TIPO_OPERACAO ", NL," "\
 									"	,SE.DATPRP AS DATA_SEPARACAO ", NL," "\
@@ -522,7 +521,7 @@ line(1:"97.50")
 									"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPAL   AS GP ", NL," "\
 									"	ON GP.NUMPAL = SD.NUMPAL AND GP.CODPAL = SD.CODPAL AND GP.CODACT = SD.CODACT ", NL," "\
 									"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEACRUB AS AC ", NL," "\
-									"	ON AC.CODACT = SD.CODACT ", NL," "\
+									"	ON AC.CODACT = SD.CODACT AND AC.CODRUB = 'SIS' ", NL," "\
 									"WHERE SE.NUMLIV = ",tNUMLIV," ", NL," "\
 									"AND SE.LIBSUP NOT IN ('Support de manquants (packing)' , 'Faltantes' , 'Manquants') ", NL," "\
 									"AND SD.UVCLIV > 0 ", NL," "\
@@ -961,11 +960,11 @@ line(1:"97.50")
 											"    AND S.CODACT='",S_GEEX9750_CODACT,"' ",NL," "\
 											"    GROUP BY S.NUMLIV ",NL," "\
 											") BANC ",NL," "\
-											"ON BANC.NUMLIV = SE.NUMLIV ",NL," "\
+											"  ON BANC.NUMLIV = SE.NUMLIV ",NL," "\
 											"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEZEMB EM ",NL," "\
-											"ON SE.CODEMB=EM.CODEMB ",NL," "\
+											"  ON SE.CODEMB = EM.CODEMB ",NL," "\
 											"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PR ",NL," "\
-											"ON SD.CODPRO=PR.CODPRO ",NL," "\
+											"  ON SD.CODPRO = PR.CODPRO AND SD.CODACT = PR.CODACT ",NL," "\
 											"WHERE SE.NUMLIV='",tNUMLIV,"' ",NL," "\
 											"AND AC.VALRUB = '",S_GEEX9750_CODCLI,"' ",NL," "\
 											"AND SE.TOPMNQ <> '1' ",NL," "\
