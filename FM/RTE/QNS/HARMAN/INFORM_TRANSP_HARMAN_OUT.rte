@@ -278,7 +278,7 @@ begin
 			R_Detalhe_DataEmissao(taDATA_EMI_Query2[nTempContRegistosQuery2])
 			R_Detalhe_Transportadora(taNOMTRA_Query2[nTempContRegistosQuery2])
 			R_Detalhe_Nome(taNOMCLI_Query2[nTempContRegistosQuery2])
-			R_Detalhe_CNPJ(taCLILIV_Query2[nTempContRegistosQuery2])
+			R_Detalhe_CNPJ(build("'", taCLILIV_Query2[nTempContRegistosQuery2]))
 			tAuxxxxxxx := peel(build(number(taVALOR_NF_Query2[nTempContRegistosQuery2]):R10.2)," ")
 			R_Detalhe_ValorNotaFiscal(replace(tAuxxxxxxx,".",","))
 			R_Detalhe_EstadoDestino(taUF_Query2[nTempContRegistosQuery2])
@@ -288,7 +288,7 @@ begin
 			R_Detalhe_QtdEmbalagem(taVOLUMES_Query2[nTempContRegistosQuery2])
 			tAuxxxxxxx := peel(build(number(taCUBAGEM_Query2[nTempContRegistosQuery2]):R10.4)," ")
 			R_Detalhe_VolumeM3(replace(tAuxxxxxxx,".",","))
-			R_Detalhe_Chaves_acesso_notas_fiscais(taDIPLIV_Query2[nTempContRegistosQuery2]) 
+			R_Detalhe_Chaves_acesso_notas_fiscais(build("'", taDIPLIV_Query2[nTempContRegistosQuery2])) 
 
 			print(taDetalhe[1],";",taDetalhe[2],";",taDetalhe[3],";",taDetalhe[4],";", \
 					taDetalhe[5],";",taDetalhe[6],";",taDetalhe[7],";",taDetalhe[8],";", \
