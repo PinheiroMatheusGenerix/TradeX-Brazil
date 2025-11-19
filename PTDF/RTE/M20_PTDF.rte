@@ -1,0 +1,450 @@
+message "XML/PTDF/M20_V1.4.xsd" receiving, passthru
+! message "XML/PHARMA/DTD/responseAPI.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "documenttracker.cfg" TRACE
+
+!===========================================================================================================
+
+#define SYS_SOURCE_ID "PTDF"
+#define CODACT "001"
+#define VIRTUAL_SEPARATOR(A)	replace(build(number(A):R08.3),".","")	
+
+#include "include/GEEXM20.inc"
+ 
+#define _VERSION_ "1.0.0 01-07-2024"
+#define LOG(LOG_label,LOG_value) log("* ",LOG_label:5.5," :",LOG_value,NL)
+#define PRINT(LOG_label,LOG_value) print("* ",LOG_label:5.5," :",time ("%d.%m.%y %H:%M:%S")," :",LOG_value,NL)
+#define PRINT_FATAL(A) PRINT("FATAL",A)
+#define LOG_INFO(A) LOG("INFO",A)
+#define LOG_FATAL(A) LOG("FATAL",A)
+#define GET_CONF(A)	taPARAM[A]
+#define PEEL(A)  peel(A," ")
+#define REPLACE(A) replace(A, "\"", " ")
+
+!===========================================================================================================
+! Initialization section
+begin
+	nRec := 1
+	nPos := 1
+	nMessageID := cMessageID
+	
+    TRACE := new(build(sHOME,"/documenttracker"))
+
+   	if (pINDEX) <> EMPTY then
+		SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	endif
+
+    tInputFileName := pFTP.ORIGINAL.FILENAME
+	if tInputFileName = EMPTY then
+		tInputFileName := pEDISEND.ORIGINAL.NAME
+	endif
+
+    ! tNameFile := build("/tmp/DF0MA30",nMessageID,".DAT")
+    ! tFileOut := build(sHOME, tNameFile)
+
+	!Inicio do processo
+		log("########################################################", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",tInputFileName, NL)
+		log("########################################################", NL)
+
+	!Variaveis Gerais
+		nCount := 0
+
+endbegin
+
+!===========================================================================================================
+
+! CLIENT
+	segment STRTEXC gGMESSAGE,gGCLIENT
+		nCount++
+		taTRTEXC[nCount] := eETRTEXC
+	endsegment
+
+	segment SCODACT gGMESSAGE,gGCLIENT
+		taCODACT[nCount] := eECODACT
+	endsegment
+
+	segment SCODCLI gGMESSAGE,gGCLIENT
+		taCODCLI[nCount] := eECODCLI
+	endsegment
+
+	segment STYPCLI gGMESSAGE,gGCLIENT
+		taTYPCLI[nCount] := eETYPCLI
+	endsegment
+
+	segment SCATCLI gGMESSAGE,gGCLIENT
+		taCATCLI[nCount] := eECATCLI
+	endsegment
+
+	segment SCLILIV gGMESSAGE,gGCLIENT
+		taCLILIV[nCount] := eECLILIV
+	endsegment
+
+	segment SEDICLI gGMESSAGE,gGCLIENT
+		taEDICLI[nCount] := eEEDICLI
+	endsegment
+
+	segment SNOMCLI gGMESSAGE,gGCLIENT
+		taNOMCLI[nCount] := eENOMCLI
+	endsegment
+
+	segment SAD1CLI gGMESSAGE,gGCLIENT
+		taAD1CLI[nCount] := eEAD1CLI
+	endsegment
+
+	segment SAD2CLI gGMESSAGE,gGCLIENT
+		taAD2CLI[nCount] := eEAD2CLI
+	endsegment
+
+	segment SCPOCLI gGMESSAGE,gGCLIENT
+		taCPOCLI[nCount] := eECPOCLI
+	endsegment
+
+	segment SVILCLI gGMESSAGE,gGCLIENT
+		taVILCLI[nCount] := eEVILCLI
+	endsegment
+
+	segment SPAYCLI gGMESSAGE,gGCLIENT
+		taPAYCLI[nCount] := eEPAYCLI
+	endsegment
+
+	segment STELCLI gGMESSAGE,gGCLIENT
+		taTELCLI[nCount] := eETELCLI
+	endsegment
+
+	segment SFAXCLI gGMESSAGE,gGCLIENT
+		taFAXCLI[nCount] := eEFAXCLI
+	endsegment
+
+	segment STLXCLI gGMESSAGE,gGCLIENT
+		taTLXCLI[nCount] := eETLXCLI
+	endsegment
+
+	segment SCODLGE gGMESSAGE,gGCLIENT
+		taCODLGE[nCount] := eECODLGE
+	endsegment
+
+	segment SCODDEV gGMESSAGE,gGCLIENT
+		taCODDEV[nCount] := eECODDEV
+	endsegment
+
+	segment SIGLSIT gGMESSAGE,gGCLIENT
+		taIGLSIT[nCount] := eEIGLSIT
+	endsegment
+
+	segment SPTYCLI gGMESSAGE,gGCLIENT
+		taPTYCLI[nCount] := eEPTYCLI
+	endsegment
+
+	segment SETACLI gGMESSAGE,gGCLIENT
+		taETACLI[nCount] := eEETACLI
+	endsegment
+
+! CLIENT
+
+! Nao esta no mapeamento.
+	! COMPLEMENT_01
+		segment SRSPCLI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tRSPCLI := eERSPCLI
+		endsegment
+		
+		segment SCODMOP gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCODMOP := eECODMOP
+		endsegment
+		
+		segment SCODRGT gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCODRGT := eECODRGT
+		endsegment
+		
+		segment SCODRGT gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCODRGT := eECODRGT
+		endsegment
+		
+		segment SCODTRA gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCODTRA := eECODTRA
+		endsegment
+		
+		segment STOULIV gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tTOULIV := eETOULIV
+		endsegment
+		
+		segment SORDLIV gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tORDLIV := eEORDLIV
+		endsegment
+		
+		segment SKAILIV gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tKAILIV := eKAILIV
+		endsegment
+		
+		segment SGSTALC gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tGSTALC := eEGSTALC
+		endsegment
+		
+		segment SPTYDES gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tPTYDES := eEPTYDES
+		endsegment
+		
+		segment SNUMACS gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tNUMACS := eENUMACS
+		endsegment
+		
+		segment SCPICLI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCPICLI := eECPICLI
+		endsegment
+		
+		segment TVACCE gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tTVACCE := eETVACCE
+		endsegment
+		
+		segment SIDEALC gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tIDEALC := eEIDEALC
+		endsegment
+		
+		segment SCTRPRP gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCTRPRP := eECTRPRP
+		endsegment
+		
+		segment SCLIDAE gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tCLIDAE := eECLIDAE
+		endsegment
+		
+		segment STYPDES gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tTYPDES := eETYPDES
+		endsegment
+		
+		segment SBUREXP gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tBUREXP := eEBUREXP
+		endsegment
+		
+		segment SPTYPRP gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tPTYPRP := eEPTYPRP
+		endsegment
+		
+		segment SGENAVI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_01
+			tGENAVI := eEGENAVI
+		endsegment
+
+	! COMPLEMENT_01
+
+	! COMPLEMENT_02
+		segment SCM1CLI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_02
+			tCM1CLI := eECM1CLI
+		endsegment
+		
+		segment SCM2CLI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_02
+			tCM2CLI := eECM2CLI
+		endsegment
+		
+		segment SCM3CLI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_02
+			tCM3CLI := eECM3CLI
+		endsegment
+		
+		segment SEMLADR gGMESSAGE,gGCLIENT,gGCOMPLEMENT_02
+			tEMLADR := eEEMLADR
+		endsegment
+		
+		segment SCPICLI gGMESSAGE,gGCLIENT,gGCOMPLEMENT_02
+			tCPICLI := eECPICLI
+		endsegment
+
+	! COMPLEMENT_02
+
+	! COMPLEMENT_03
+		segment SCODRST gGMESSAGE,gGCLIENT,gGCOMPLEMENT_03
+			tCODRST := eECODRST
+		endsegment
+		
+		segment SLIBCPL gGMESSAGE,gGCLIENT,gGCOMPLEMENT_03
+			tLIBCPL := eELIBCPL
+		endsegment
+		
+		segment SLIBCP2 gGMESSAGE,gGCLIENT,gGCOMPLEMENT_03
+			tLIBCP2 := eELIBCP2
+		endsegment
+		
+		segment SEXLGRP gGMESSAGE,gGCLIENT,gGCOMPLEMENT_03
+			tEXLGRP := eEEXLGRP
+		endsegment
+		
+		segment STYPDSV gGMESSAGE,gGCLIENT,gGCOMPLEMENT_03
+			tTYPDSV := eETYPDSV
+		endsegment
+		
+		segment SPTYSND gGMESSAGE,gGCLIENT,gGCOMPLEMENT_03
+			tPTYSND := eEPTYSND
+		endsegment
+
+	! COMPLEMENT_03
+! Nao esta no mapeamento.
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+    log("tTRTEXC = ", tTRTEXC, NL)
+    log("tCODPRO = ", tCODPRO, NL)
+
+	! 00.00
+		R_GEEX0000_CODEXC(00)
+		R_GEEX0000_SEPEXC(".")
+		R_GEEX0000_SCOEXC(00)
+		!R_GEEX0000_TRTEXC(A)
+		R_GEEX0000_EMTEXC("PTDF")
+		!R_GEEX0000_RCTEXC(A)
+		R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+		!R_GEEX0000_NUMEXC(A)
+		!R_GEEX0000_ACQEXC(A)
+		!R_GEEX0000_VEREXC(A)
+		!R_GEEX0000_NOMSYS(A)
+		!R_GEEX0000_NOMDTQ(A)
+		!R_GEEX0000_BIBDTQ(A)
+		!R_GEEX0000_LIBEXC(A)
+		!R_GEEX0000_BIBDST(A)
+		!R_GEEX0000_PGMDST(A)
+		!R_GEEX0000_PARDST(A)
+		!R_GEEX0000_CODACT(A)
+		!R_GEEX0000_IGLSIT(A)
+		!R_GEEX0000_EDISIT(A)
+		!R_GEEX0000_IMAEXC(A)
+		!R_GEEX0000_IDEMSG(A)
+		!R_GEEX0000_NATEXC(A)
+		!R_GEEX0000_EMTORI(A)
+		!R_GEEX0000_DISEXC(A)
+
+	! 00.00
+
+	while tIndex in taTRTEXC do
+
+		! 20.00
+			R_GEEX2000_CODEXC(20)
+			R_GEEX2000_SEPEXC(".")
+			R_GEEX2000_SCOEXC(00)
+			R_GEEX2000_TRTEXC(taTRTEXC[tIndex])
+			R_GEEX2000_CODACT(taCODACT[tIndex])
+			R_GEEX2000_CODCLI(taCODCLI[tIndex])
+			R_GEEX2000_TYPCLI(taTYPCLI[tIndex])
+			R_GEEX2000_CATCLI(taCATCLI[tIndex])
+			R_GEEX2000_CLILIV(taCLILIV[tIndex])
+			R_GEEX2000_EDICLI(taEDICLI[tIndex])
+			R_GEEX2000_NOMCLI(taNOMCLI[tIndex])
+			R_GEEX2000_AD1CLI(taAD1CLI[tIndex])
+			R_GEEX2000_AD2CLI(taAD2CLI[tIndex])
+			R_GEEX2000_CPOCLI(taCPOCLI[tIndex])
+			R_GEEX2000_VILCLI(taVILCLI[tIndex])
+			R_GEEX2000_PAYCLI(taPAYCLI[tIndex])
+			R_GEEX2000_TELCLI(taTELCLI[tIndex])
+			R_GEEX2000_FAXCLI(taFAXCLI[tIndex])
+			R_GEEX2000_TLXCLI(taTLXCLI[tIndex])
+			R_GEEX2000_CODLGE(taCODLGE[tIndex])
+			R_GEEX2000_CODDEV(taCODDEV[tIndex])
+			R_GEEX2000_IGLSIT(taIGLSIT[tIndex])
+			R_GEEX2000_PTYCLI(taPTYCLI[tIndex])
+			R_GEEX2000_ETACLI(taETACLI[tIndex])
+			!R_GEEX2000_INDADR(taINDADR[tIndex])
+			!R_GEEX2000_DISEXC(taDISEXC[tIndex])
+		! 20.00
+
+		! Nao esta no mapeamento.
+			! 20.01
+				R_GEEX2001_CODEXC(20)
+				R_GEEX2001_SEPEXC(".")
+				R_GEEX2001_SCOEXC(01)
+				R_GEEX2001_TRTEXC(A)
+				R_GEEX2001_CODACT(A)
+				R_GEEX2001_CODCLI(A)
+				R_GEEX2001_RSPCLI(A)
+				R_GEEX2001_CODMOP(A)
+				R_GEEX2001_CODRGT(A)
+				R_GEEX2001_CODTRA(A)
+				R_GEEX2001_TOULIV(A)
+				R_GEEX2001_ORDLIV(A)
+				R_GEEX2001_KAILIV(A)
+				R_GEEX2001_GSTALC(A)
+				R_GEEX2001_PTYDES(A)
+				R_GEEX2001_NUMACS(A)
+				R_GEEX2001_CPICLI(A)
+				R_GEEX2001_TVACCE(A)
+				R_GEEX2001_IDEALC(A)
+				R_GEEX2001_CTRPRP(A)
+				R_GEEX2001_CLIDAE(A)
+				R_GEEX2001_TYPDES(A)
+				R_GEEX2001_BUREXP(A)
+				R_GEEX2001_PTYPRP(A)
+				R_GEEX2001_GENAVI(A)
+				R_GEEX2001_HEUCHV(A)
+				R_GEEX2001_TYPDES2(A)
+				R_GEEX2001_DISEXC(A)
+			! 20.01
+
+			! 20.02
+				R_GEEX2002_CODEXC(20)
+				R_GEEX2002_SEPEXC(".")
+				R_GEEX2002_SCOEXC(02)
+				R_GEEX2002_CODEXC(A)
+				R_GEEX2002_SEPEXC(A)
+				R_GEEX2002_SCOEXC(A)
+				R_GEEX2002_TRTEXC(A)
+				R_GEEX2002_CODACT(A)
+				R_GEEX2002_CODCLI(A)
+				R_GEEX2002_CM1CLI(A)
+				R_GEEX2002_CM2CLI(A)
+				R_GEEX2002_CM3CLI(A)
+				R_GEEX2002_EMLADR(A)
+				R_GEEX2002_CPICLI(A)
+				R_GEEX2002_DISEXC(A)
+			! 20.02
+
+			! 20.03
+				R_GEEX2003_CODEXC(20)
+				R_GEEX2003_SEPEXC(".")
+				R_GEEX2003_SCOEXC(03)
+				R_GEEX2003_TRTEXC(A)
+				R_GEEX2003_CODACT(A)
+				R_GEEX2003_CODCLI(A)
+				R_GEEX2003_CODRST(A)
+				R_GEEX2003_LIBCPL(A)
+				R_GEEX2003_LIBCP2(A)
+				R_GEEX2003_EXLGRP(A)
+				R_GEEX2003_TYPDSV(A)
+				R_GEEX2003_PTYSND(A)
+				R_GEEX2003_IDEEXT(A)
+				R_GEEX2003_ARDPEN(A)
+				R_GEEX2003_DISEXC(A)
+			! 20.03
+		! Nao esta no mapeamento.
+
+	endwhile
+
+	! 99.00
+		R_GEEX9900_CODEXC(99)
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC(00)
+		!R_GEEX9900_TRTEXC(A)
+		R_GEEX9900_EMTEXC("PTDF")
+		!R_GEEX9900_RCTEXC(A)
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_NUMEXC(build(nCount:R08.0))
+		!R_GEEX9900_CPTEXC(A)
+		!R_GEEX9900_NOMSYS(A)
+		!R_GEEX9900_NOMDTQ(A)
+		!R_GEEX9900_BIBDTQ(A)
+		!R_GEEX9900_IDEMSG(A)
+		!R_GEEX9900_DISEXC(A)
+	! 99.00
+
+	log("########################################################", NL)
+	log("Fim: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("########################################################", NL)
+
+endend
+
+!===========================================================================================================

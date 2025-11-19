@@ -1,0 +1,345 @@
+message "XML/PTDF/M10_V1.3.xsd" receiving, passthru
+! message "XML/PHARMA/DTD/responseAPI.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "documenttracker.cfg" TRACE
+
+!===========================================================================================================
+
+#define SYS_SOURCE_ID "PTDF"
+#define CODACT "001"
+#define VIRTUAL_SEPARATOR(A)	replace(build(number(A):R08.3),".","")	
+
+#include "include/GEEXM10.inc"
+ 
+#define _VERSION_ "1.0.0 01-07-2024"
+#define LOG(LOG_label,LOG_value) log("* ",LOG_label:5.5," :",LOG_value,NL)
+#define PRINT(LOG_label,LOG_value) print("* ",LOG_label:5.5," :",time ("%d.%m.%y %H:%M:%S")," :",LOG_value,NL)
+#define PRINT_FATAL(A) PRINT("FATAL",A)
+#define LOG_INFO(A) LOG("INFO",A)
+#define LOG_FATAL(A) LOG("FATAL",A)
+#define GET_CONF(A)	taPARAM[A]
+#define PEEL(A)  peel(A," ")
+#define REPLACE(A) replace(A, "\"", " ")
+
+!===========================================================================================================
+! Initialization section
+begin
+	nRec := 1
+	nPos := 1
+	nMessageID := cMessageID
+	
+    TRACE := new(build(sHOME,"/documenttracker"))
+
+   	if (pINDEX) <> EMPTY then
+		SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	endif
+
+    tInputFileName := pFTP.ORIGINAL.FILENAME
+	if tInputFileName = EMPTY then
+		tInputFileName := pEDISEND.ORIGINAL.NAME
+	endif
+
+    ! tNameFile := build("/tmp/DF0MA30",nMessageID,".DAT")
+    ! tFileOut := build(sHOME, tNameFile)
+
+	!Inicio do processo
+		log("########################################################", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",tInputFileName, NL)
+		log("########################################################", NL)
+
+	!Variaveis Gerais
+		nCount := 0
+
+endbegin
+
+!===========================================================================================================
+
+! SUPPLIER
+	segment STRTEXC gGMESSAGE,gGSUPPLIER
+		nCount++
+		taTRTEXC[nCount] := eETRTEXC
+	endsegment
+
+	segment SCODACT gGMESSAGE,gGSUPPLIER
+		taCODACT[nCount] := eECODACT
+	endsegment
+
+	segment SCODFOU gGMESSAGE,gGSUPPLIER
+		taCODFOU[nCount] := eECODFOU
+	endsegment
+
+	segment STYPFOU gGMESSAGE,gGSUPPLIER
+		taTYPFOU[nCount] := eETYPFOU
+	endsegment
+
+	segment SNOMFOU gGMESSAGE,gGSUPPLIER
+		taNOMFOU[nCount] := eENOMFOU
+	endsegment
+
+	segment SAD1FOU gGMESSAGE,gGSUPPLIER
+		taAD1FOU[nCount] := eEAD1FOU
+	endsegment
+
+	segment SAD2FOU gGMESSAGE,gGSUPPLIER
+		taAD2FOU[nCount] := eEAD2FOU
+	endsegment
+
+	segment SCPOFOU gGMESSAGE,gGSUPPLIER
+		taCPOFOU[nCount] := eECPOFOU
+	endsegment
+
+	segment SVILFOU gGMESSAGE,gGSUPPLIER
+		taVILFOU[nCount] := eEVILFOU
+	endsegment
+
+	segment SPAYFOU gGMESSAGE,gGSUPPLIER
+		taPAYFOU[nCount] := eEPAYFOU
+	endsegment
+
+	segment STELFOU gGMESSAGE,gGSUPPLIER
+		taTELFOU[nCount] := eETELFOU
+	endsegment
+
+	segment SFAXFOU gGMESSAGE,gGSUPPLIER
+		taFAXFOU[nCount] := eEFAXFOU
+	endsegment
+
+	segment STLXFOU gGMESSAGE,gGSUPPLIER
+		taTLXFOU[nCount] := eETLXFOU
+	endsegment
+
+	segment SEDIFOU gGMESSAGE,gGSUPPLIER
+		taEDIFOU[nCount] := eEEDIFOU
+	endsegment
+
+	segment SCODTRA gGMESSAGE,gGSUPPLIER
+		taCODTRA[nCount] := eECODTRA
+	endsegment
+
+	segment SIGLSIT gGMESSAGE,gGSUPPLIER
+		taIGLSIT[nCount] := eEIGLSIT
+	endsegment
+
+	segment SCODTRE gGMESSAGE,gGSUPPLIER
+		taCODTRE[nCount] := eECODTRE
+	endsegment
+
+	segment SGSTAVI gGMESSAGE,gGSUPPLIER
+		taGSTAVI [nCount]:= eEGSTAVI
+	endsegment
+
+	segment SGSTRCP gGMESSAGE,gGSUPPLIER
+		taGSTRCP[nCount] := eEGSTRCP
+	endsegment
+
+	segment STYPPRT gGMESSAGE,gGSUPPLIER
+		taTYPPRT[nCount] := eETYPPRT
+	endsegment
+
+	segment SCPIFOU gGMESSAGE,gGSUPPLIER
+		taCPIFOU[nCount] := eECPIFOU
+	endsegment
+
+	segment SEMBTIE gGMESSAGE,gGSUPPLIER
+		taEMBTIE[nCount] := eEEMBTIE
+	endsegment
+! SUPPLIER
+
+! Nao esta no mapeamento.
+	! COMPLEMENT_01
+		segment SRSPFOU gGMESSAGE,gGSUPPLIER,gGCOMPLEMENT_01
+			taRSPFOU[nCount] := eERSPFOU
+		endsegment
+		
+		segment SEMLADR gGMESSAGE,gGSUPPLIER,gGCOMPLEMENT_01
+			taEMLADR[nCount] := eEEMLADR
+		endsegment
+	! COMPLEMENT_01
+
+	! COMPLEMENT_02
+		segment SCM1FOU gGMESSAGE,gGSUPPLIER,gGCOMPLEMENT_02
+			taCM1FOU[nCount] := eECM1FOU
+		endsegment
+		
+		segment SCM2FOU gGMESSAGE,gGSUPPLIER,gGCOMPLEMENT_02
+			taCM2FOU[nCount] := eECM2FOU
+		endsegment
+		
+		segment SCM3FOU gGMESSAGE,gGSUPPLIER,gGCOMPLEMENT_02
+			taCM3FOU[nCount] := eECM3FOU
+		endsegment
+		
+		segment SLIBCPL gGMESSAGE,gGSUPPLIER,gGCOMPLEMENT_02
+			taLIBCPL[nCount] := eELIBCPL
+		endsegment
+	! COMPLEMENT_02
+! Nao esta no mapeamento.
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+    log("tTRTEXC = ", tTRTEXC, NL)
+    log("tCODPRO = ", tCODPRO, NL)
+
+		! 00.00
+			R_GEEX0000_CODEXC(00)
+			R_GEEX0000_SEPEXC(".")
+			R_GEEX0000_SCOEXC(00)
+			!R_GEEX0000_TRTEXC(A)
+			R_GEEX0000_EMTEXC("PTDF")
+			!R_GEEX0000_RCTEXC(A)
+			R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+			R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+			!R_GEEX0000_NUMEXC(A)
+			!R_GEEX0000_ACQEXC(A)
+			!R_GEEX0000_VEREXC(A)
+			!R_GEEX0000_NOMSYS(A)
+			!R_GEEX0000_NOMDTQ(A)
+			!R_GEEX0000_BIBDTQ(A)
+			!R_GEEX0000_LIBEXC(A)
+			!R_GEEX0000_BIBDST(A)
+			!R_GEEX0000_PGMDST(A)
+			!R_GEEX0000_PARDST(A)
+			!R_GEEX0000_CODACT(A)
+			!R_GEEX0000_IGLSIT(A)
+			!R_GEEX0000_EDISIT(A)
+			!R_GEEX0000_IMAEXC(A)
+			!R_GEEX0000_IDEMSG(A)
+			!R_GEEX0000_NATEXC(A)
+			!R_GEEX0000_EMTORI(A)
+			!R_GEEX0000_DISEXC(A)
+
+		! 00.00
+
+	while tIndex in taTRTEXC do
+
+		! 10.00
+			R_GEEX1000_CODEXC(10)
+			R_GEEX1000_SEPEXC(".")
+			R_GEEX1000_SCOEXC(00)
+			R_GEEX1000_TRTEXC(taTRTEXC[tIndex])
+			R_GEEX1000_CODACT(taCODACT[tIndex])
+			R_GEEX1000_CODFOU(taCODFOU[tIndex])
+			R_GEEX1000_TYPFOU(taTYPFOU[tIndex])
+			R_GEEX1000_NOMFOU(taNOMFOU[tIndex])
+			R_GEEX1000_AD1FOU(taAD1FOU[tIndex])
+			R_GEEX1000_AD2FOU(taAD2FOU[tIndex])
+			R_GEEX1000_CPOFOU(taCPOFOU[tIndex])
+			R_GEEX1000_VILFOU(taVILFOU[tIndex])
+			R_GEEX1000_PAYFOU(taPAYFOU[tIndex])
+			R_GEEX1000_TELFOU(taTELFOU[tIndex])
+			R_GEEX1000_FAXFOU(taFAXFOU[tIndex])
+			R_GEEX1000_TLXFOU(taTLXFOU[tIndex])
+			R_GEEX1000_EDIFOU(taEDIFOU[tIndex])
+			R_GEEX1000_CODTRA(taCODTRA[tIndex])
+			R_GEEX1000_IGLSIT(taIGLSIT[tIndex])
+			R_GEEX1000_CODTRE(taCODTRE[tIndex])
+			R_GEEX1000_GSTAVI(taGSTAVI[tIndex])
+			R_GEEX1000_GSTRCP(taGSTRCP[tIndex])
+			R_GEEX1000_TYPPRT(taTYPPRT[tIndex])
+			R_GEEX1000_CPIFOU(taCPIFOU[tIndex])
+			R_GEEX1000_EMBTIE(taEMBTIE[tIndex])
+			!R_GEEX1000_FOUGMA(taFOUGMA)
+			!R_GEEX1000_SYSMES(taSYSMES)
+			!R_GEEX1000_DISEXC(taDISEXC)
+
+		! 10.00
+
+		! Nao esta no mapeamento.
+			! 10.01
+				R_GEEX1001_CODEXC(A)
+				R_GEEX1001_SEPEXC(A)
+				R_GEEX1001_SCOEXC(A)
+				R_GEEX1001_TRTEXC(A)
+				R_GEEX1001_CODACT(A)
+				R_GEEX1001_CODFOU(A)
+				R_GEEX1001_RSPFOU(A)
+				R_GEEX1001_EMLADR(A)
+				R_GEEX1001_CODCOG(A)
+				R_GEEX1001_NUMACS(A)
+				R_GEEX1001_AFFFAB(A)
+				R_GEEX1001_CODENL(A)
+				R_GEEX1001_CODFDC(A)
+				R_GEEX1001_CODGRP(A)
+				R_GEEX1001_CODICM(A)
+				R_GEEX1001_CODTCT(A)
+				R_GEEX1001_CUMPRT(A)
+				R_GEEX1001_FOUGRP(A)
+				R_GEEX1001_METREC(A)
+				R_GEEX1001_NULRLQ(A)
+				R_GEEX1001_PAYFAB(A)
+				R_GEEX1001_PEREMB(A)
+				R_GEEX1001_UNIFSR(A)
+				R_GEEX1001_CODRGT(A)
+				R_GEEX1001_DISEXC(A)
+
+			! 10.01
+
+			! 10.02
+				R_GEEX1002_CODEXC(A)
+				R_GEEX1002_SEPEXC(A)
+				R_GEEX1002_SCOEXC(A)
+				R_GEEX1002_TRTEXC(A)
+				R_GEEX1002_CODACT(A)
+				R_GEEX1002_CODFOU(A)
+				R_GEEX1002_CM1FOU(A)
+				R_GEEX1002_CM2FOU(A)
+				R_GEEX1002_CM3FOU(A)
+				R_GEEX1002_LIBCPL(A)
+				R_GEEX1002_LIBCP2(A)
+				R_GEEX1002_DISEXC(A)
+			! 10.02
+
+			! 10.03
+				R_GEEX1003_CODEXC(A)
+				R_GEEX1003_SEPEXC(A)
+				R_GEEX1003_SCOEXC(A)
+				R_GEEX1003_TRTEXC(A)
+				R_GEEX1003_CODACT(A)
+				R_GEEX1003_CODFOU(A)
+				R_GEEX1003_NOMFOU(A)
+				R_GEEX1003_AD1FOU(A)
+				R_GEEX1003_AD2FOU(A)
+				R_GEEX1003_AD3FOU(A)
+				R_GEEX1003_VILFOU(A)
+				R_GEEX1003_CODCLV(A)
+				R_GEEX1003_DISEXC(A)
+
+			! 10.03
+		! Nao esta no mapeamento.
+
+	endwhile
+
+	! 99.00
+		R_GEEX9900_CODEXC(99)
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC(00)
+		!R_GEEX9900_TRTEXC(A)
+		R_GEEX9900_EMTEXC("PTDF")
+		!R_GEEX9900_RCTEXC(A)
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_NUMEXC(build(nCount:R08.0))
+		!R_GEEX9900_CPTEXC(A)
+		!R_GEEX9900_NOMSYS(A)
+		!R_GEEX9900_NOMDTQ(A)
+		!R_GEEX9900_BIBDTQ(A)
+		!R_GEEX9900_IDEMSG(A)
+		!R_GEEX9900_DISEXC(A)
+	! 99.00
+
+	log("########################################################", NL)
+	log("Fim: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("########################################################", NL)
+
+endend
+
+!===========================================================================================================

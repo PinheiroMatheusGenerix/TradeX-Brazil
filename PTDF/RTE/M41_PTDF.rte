@@ -1,0 +1,519 @@
+message "XML/PTDF/M41_V1.5.xsd" receiving, passthru
+! message "XML/PHARMA/DTD/responseAPI.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "documenttracker.cfg" TRACE
+
+!===========================================================================================================
+
+#define SYS_SOURCE_ID "PTDF"
+#define CODACT "001"
+#define VIRTUAL_SEPARATOR(A)	replace(build(number(A):R08.3),".","")	
+
+#include "include/GEEXM41.inc"
+ 
+#define _VERSION_ "1.0.0 01-07-2024"
+#define LOG(LOG_label,LOG_value) log("* ",LOG_label:5.5," :",LOG_value,NL)
+#define PRINT(LOG_label,LOG_value) print("* ",LOG_label:5.5," :",time ("%d.%m.%y %H:%M:%S")," :",LOG_value,NL)
+#define PRINT_FATAL(A) PRINT("FATAL",A)
+#define LOG_INFO(A) LOG("INFO",A)
+#define LOG_FATAL(A) LOG("FATAL",A)
+#define GET_CONF(A)	taPARAM[A]
+#define PEEL(A)  peel(A," ")
+#define REPLACE(A) replace(A, "\"", " ")
+
+!===========================================================================================================
+! Initialization section
+begin
+	nRec := 1
+	nPos := 1
+	nMessageID := cMessageID
+	
+    TRACE := new(build(sHOME,"/documenttracker"))
+
+   	if (pINDEX) <> EMPTY then
+		SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	endif
+
+    tInputFileName := pFTP.ORIGINAL.FILENAME
+	if tInputFileName = EMPTY then
+		tInputFileName := pEDISEND.ORIGINAL.NAME
+	endif
+
+    ! tNameFile := build("/tmp/DF0MA30",nMessageID,".DAT")
+    ! tFileOut := build(sHOME, tNameFile)
+
+	!Inicio do processo
+		log("########################################################", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",tInputFileName, NL)
+		log("########################################################", NL)
+
+	!Variaveis Gerais
+		nCount := 0
+		
+
+endbegin
+
+!===========================================================================================================
+
+line(1:"00.00")
+	tDATEXC_0000 := S_GEEX0000_DATEXC
+	tHEUEXC_0000 := S_GEEX0000_HEUEXC
+endline
+
+!===========================================================================================================
+
+line(1:"41.00")
+
+	! Cabeçalho por Variavel
+		tTRTEXC := S_GEEX4100_TRTEXC
+		tNUMREC := S_GEEX4100_NUMREC
+		tSNUREC := S_GEEX4100_SNUREC
+		tREFREC := S_GEEX4100_REFREC
+		tCODAPP := S_GEEX4100_CODAPP
+		tCODLDR := S_GEEX4100_CODLDR
+		tCODTRE := S_GEEX4100_CODTRE
+		tORICDE := S_GEEX4100_ORICDE
+		tCODACT := S_GEEX4100_CODACT
+		tCODFOU := S_GEEX4100_CODFOU
+		tCODTRA := S_GEEX4100_CODTRA
+		tDTIREC := S_GEEX4100_DTIREC
+		tHEIREC := S_GEEX4100_HEIREC
+		tDTMREC := S_GEEX4100_DTMREC
+		tHEMREC := S_GEEX4100_HEMREC
+		tDTRREC := S_GEEX4100_DTRREC
+		tHERREC := S_GEEX4100_HERREC
+		tKAIREC := S_GEEX4100_KAIREC
+		tCTRREC := S_GEEX4100_CTRREC
+		tREFCNT := S_GEEX4100_REFCNT
+		tCMTREC := S_GEEX4100_CMTREC
+		tDATRLQ := S_GEEX4100_DATRLQ
+		tCODACR := S_GEEX4100_CODACR
+		tNATREC := S_GEEX4100_NATREC
+		tEDIFOU := S_GEEX4100_EDIFOU
+		tCODCNT := S_GEEX4100_CODCNT
+		tTYPRMT := S_GEEX4100_TYPRMT
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment STRTEXC gGRECEPTION_CONFIRMATION,gGHEADER
+			eETRTEXC := S_GEEX4100_TRTEXC
+		endsegment
+
+		segment SNUMREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eENUMREC := S_GEEX4100_NUMREC
+		endsegment
+
+		segment SSNUREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eESNUREC := S_GEEX4100_SNUREC
+		endsegment
+
+		segment SREFREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEREFREC := S_GEEX4100_REFREC
+		endsegment
+
+		segment SCODAPP gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODAPP := S_GEEX4100_CODAPP
+		endsegment
+
+		segment SCODLDR gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODLDR := S_GEEX4100_CODLDR
+		endsegment
+
+		segment SCODTRE gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODTRE := S_GEEX4100_CODTRE
+		endsegment
+
+		segment SORICDE gGRECEPTION_CONFIRMATION,gGHEADER
+			eEORICDE := S_GEEX4100_ORICDE
+		endsegment
+
+		segment SCODACT gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODACT := S_GEEX4100_CODACT
+		endsegment
+
+		segment SCODFOU gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODFOU := S_GEEX4100_CODFOU
+		endsegment
+
+		segment SCODTRA gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODTRA := S_GEEX4100_CODTRA
+		endsegment
+
+		segment SDTIREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEDTIREC := S_GEEX4100_DTIREC
+		endsegment
+
+		segment SHEIREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEHEIREC := S_GEEX4100_HEIREC
+		endsegment
+
+		segment SDTMREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEDTMREC := S_GEEX4100_DTMREC
+		endsegment
+
+		segment SHEMREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEHEMREC := S_GEEX4100_HEMREC
+		endsegment
+
+		segment SDTRREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEDTRREC := S_GEEX4100_DTRREC
+		endsegment
+
+		segment SHERREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEHERREC := S_GEEX4100_HERREC
+		endsegment
+
+		segment SKAIREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eEKAIREC := S_GEEX4100_KAIREC
+		endsegment
+
+		segment SCTRREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eECTRREC := S_GEEX4100_CTRREC
+		endsegment
+
+		segment SREFCNT gGRECEPTION_CONFIRMATION,gGHEADER
+			eEREFCNT := S_GEEX4100_REFCNT
+		endsegment
+
+		segment SCMTREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eECMTREC := S_GEEX4100_CMTREC
+		endsegment
+
+		segment SDATRLQ gGRECEPTION_CONFIRMATION,gGHEADER
+			eEDATRLQ := S_GEEX4100_DATRLQ
+		endsegment
+
+		segment SCODACR gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODACR := S_GEEX4100_CODACR
+		endsegment
+
+		segment SNATREC gGRECEPTION_CONFIRMATION,gGHEADER
+			eENATREC := S_GEEX4100_NATREC
+		endsegment
+
+		segment SEDIFOU gGRECEPTION_CONFIRMATION,gGHEADER
+			eEEDIFOU := S_GEEX4100_EDIFOU
+		endsegment
+
+		segment SCODCNT gGRECEPTION_CONFIRMATION,gGHEADER
+			eECODCNT := S_GEEX4100_CODCNT
+		endsegment
+
+		segment STYPRMT gGRECEPTION_CONFIRMATION,gGHEADER
+			eETYPRMT := S_GEEX4100_TYPRMT
+		endsegment
+	! Cabeçalho por segmento
+
+endline
+
+!===========================================================================================================
+
+line(1:"41.20")
+
+	! Cabeçalho por Variavel
+		tNUMREC := S_GEEX4120_NUMREC
+		tSNUREC := S_GEEX4120_SNUREC
+		tNLIREC := S_GEEX4120_NLIREC
+		tCODACT := S_GEEX4120_CODACT
+		tCODCLI := S_GEEX4120_CODCLI
+		tCODPRO := S_GEEX4120_CODPRO
+		tVALPRO := S_GEEX4120_VALPRO
+		tUVCREA := S_GEEX4120_UVCREA
+		tUNICDE := S_GEEX4120_UNICDE
+		tCODPRN := S_GEEX4120_CODPRN
+		tTYPOPE := S_GEEX4120_TYPOPE
+		tNUMOPE := S_GEEX4120_NUMOPE
+		tCODACR := S_GEEX4120_CODACR
+		tUVCREC := S_GEEX4120_UVCREC
+		tUVCGRA := S_GEEX4120_UVCGRA
+		tUVCIMM := S_GEEX4120_UVCIMM
+		tMOTIMM := S_GEEX4120_MOTIMM
+		tUVCRFU := S_GEEX4120_UVCRFU
+		tMOTRFU := S_GEEX4120_MOTRFU
+		tUVCRLQ := S_GEEX4120_UVCRLQ
+		tDATFVI := S_GEEX4120_DATFVI
+		tMESPRO := S_GEEX4120_MESPRO
+		tPDNREC := S_GEEX4120_PDNREC
+		tDATFAB := S_GEEX4120_DATFAB
+		tCODLOT := S_GEEX4120_CODLOT
+		tNUMLOT := S_GEEX4120_NUMLOT
+		tRECSOL := S_GEEX4120_RECSOL
+		tCODMTR := S_GEEX4120_CODMTR
+		tINDPRO := S_GEEX4120_INDPRO
+
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment SNUMREC gGRECEPTION_CONFIRMATION,gGITEM
+			eENUMREC := S_GEEX4120_NUMREC
+		endsegment
+
+		segment SSNUREC gGRECEPTION_CONFIRMATION,gGITEM
+			eESNUREC := S_GEEX4120_SNUREC
+		endsegment
+
+		segment SNLIREC gGRECEPTION_CONFIRMATION,gGITEM
+			eENLIREC := S_GEEX4120_NLIREC
+		endsegment
+
+		segment SCODACT gGRECEPTION_CONFIRMATION,gGITEM
+			eECODACT := S_GEEX4120_CODACT
+		endsegment
+
+		segment SCODCLI gGRECEPTION_CONFIRMATION,gGITEM
+			eECODCLI := S_GEEX4120_CODCLI
+		endsegment
+
+		segment SCODPRO gGRECEPTION_CONFIRMATION,gGITEM
+			eECODPRO := S_GEEX4120_CODPRO
+		endsegment
+
+		segment SVALPRO gGRECEPTION_CONFIRMATION,gGITEM
+			eEVALPRO := S_GEEX4120_VALPRO
+		endsegment
+
+		segment SUVCREA gGRECEPTION_CONFIRMATION,gGITEM
+			eEUVCREA := S_GEEX4120_UVCREA
+		endsegment
+
+		segment SUNICDE gGRECEPTION_CONFIRMATION,gGITEM
+			eEUNICDE := S_GEEX4120_UNICDE
+		endsegment
+
+		segment SCODPRN gGRECEPTION_CONFIRMATION,gGITEM
+			eECODPRN := S_GEEX4120_CODPRN
+		endsegment
+
+		segment STYPOPE gGRECEPTION_CONFIRMATION,gGITEM
+			eETYPOPE := S_GEEX4120_TYPOPE
+		endsegment
+
+		segment SNUMOPE gGRECEPTION_CONFIRMATION,gGITEM
+			eENUMOPE := S_GEEX4120_NUMOPE
+		endsegment
+
+		segment SCODACR gGRECEPTION_CONFIRMATION,gGITEM
+			eECODACR := S_GEEX4120_CODACR
+		endsegment
+
+		segment SUVCREC gGRECEPTION_CONFIRMATION,gGITEM
+			eEUVCREC := S_GEEX4120_UVCREC
+		endsegment
+
+		segment SUVCGRA gGRECEPTION_CONFIRMATION,gGITEM
+			eEUVCGRA := S_GEEX4120_UVCGRA
+		endsegment
+
+		segment SUVCIMM gGRECEPTION_CONFIRMATION,gGITEM
+			eEUVCIMM := S_GEEX4120_UVCIMM
+		endsegment
+
+		segment SMOTIMM gGRECEPTION_CONFIRMATION,gGITEM
+			eEMOTIMM := S_GEEX4120_MOTIMM
+		endsegment
+
+		segment SUVCRFU gGRECEPTION_CONFIRMATION,gGITEM
+			eEUVCRFU := S_GEEX4120_UVCRFU
+		endsegment
+
+		segment SMOTRFU gGRECEPTION_CONFIRMATION,gGITEM
+			eEMOTRFU := S_GEEX4120_MOTRFU
+		endsegment
+
+		segment SUVCRLQ gGRECEPTION_CONFIRMATION,gGITEM
+			eEUVCRLQ := S_GEEX4120_UVCRLQ
+		endsegment
+
+		segment SDATFVI gGRECEPTION_CONFIRMATION,gGITEM
+			eEDATFVI := S_GEEX4120_DATFVI
+		endsegment
+
+		segment SMESPRO gGRECEPTION_CONFIRMATION,gGITEM
+			eEMESPRO := S_GEEX4120_MESPRO
+		endsegment
+
+		segment SPDNREC gGRECEPTION_CONFIRMATION,gGITEM
+			eEPDNREC := S_GEEX4120_PDNREC
+		endsegment
+
+		segment SDATFAB gGRECEPTION_CONFIRMATION,gGITEM
+			eEDATFAB := S_GEEX4120_DATFAB
+		endsegment
+
+		segment SCODLOT gGRECEPTION_CONFIRMATION,gGITEM
+			eECODLOT := S_GEEX4120_CODLOT
+		endsegment
+
+		segment SNUMLOT gGRECEPTION_CONFIRMATION,gGITEM
+			eENUMLOT := S_GEEX4120_NUMLOT
+		endsegment
+
+		segment SRECSOL gGRECEPTION_CONFIRMATION,gGITEM
+			eERECSOL := S_GEEX4120_RECSOL
+		endsegment
+
+		segment SCODMTR gGRECEPTION_CONFIRMATION,gGITEM
+			eECODMTR := S_GEEX4120_CODMTR
+		endsegment
+
+		segment SINDPRO gGRECEPTION_CONFIRMATION,gGITEM
+			eEINDPRO := S_GEEX4120_INDPRO
+		endsegment
+	! Cabeçalho por segmento
+
+endline
+
+!===========================================================================================================
+
+line(1:"41.30")
+
+	! Cabeçalho por Variavel
+		tUVCMVT := S_GEEX4130_UVCMVT
+		tSPCPRO := S_GEEX4130_SPCPRO
+		tPCBPRO := S_GEEX4130_PCBPRO
+		tCODLOT := S_GEEX4130_CODLOT
+		tNUMLOT := S_GEEX4130_NUMLOT
+		tCODNDS := S_GEEX4130_CODNDS
+		tDATFAB := S_GEEX4130_DATFAB
+		tDATFVI := S_GEEX4130_DATFVI
+		tCODPAL := S_GEEX4130_CODPAL
+		tMOTIMM := S_GEEX4130_MOTIMM
+		tDATIMM := S_GEEX4130_DATIMM
+		tHEUIMM := S_GEEX4130_HEUIMM
+		tCODSIT := S_GEEX4130_CODSIT
+		tZONSTS := S_GEEX4130_ZONSTS
+		tALLSTS := S_GEEX4130_ALLSTS
+		tDPLSTS := S_GEEX4130_DPLSTS
+		tNIVSTS := S_GEEX4130_NIVSTS
+		tCODACT := S_GEEX4130_CODACT
+		tCODCLI := S_GEEX4130_CODCLI
+		tCODPRO := S_GEEX4130_CODPRO
+		tVALPRO := S_GEEX4130_VALPRO
+		tPRXPRO := S_GEEX4130_PRXPRO
+		tPDBPAL := S_GEEX4130_PDBPAL
+		tPDNREC := S_GEEX4130_PDNREC
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment SUVCMVT gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEUVCMVT := S_GEEX4130_UVCMVT
+		endsegment
+
+		segment SSPCPRO gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eESPCPRO := S_GEEX4130_SPCPRO
+		endsegment
+
+		segment SPCBPRO gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPCBPRO := S_GEEX4130_PCBPRO
+		endsegment
+
+		segment SCODLOT gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODLOT := S_GEEX4130_CODLOT
+		endsegment
+
+		segment SNUMLOT gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eENUMLOT := S_GEEX4130_NUMLOT
+		endsegment
+
+		segment SCODNDS gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODNDS := S_GEEX4130_CODNDS
+		endsegment
+
+		segment SDATFAB gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEDATFAB := S_GEEX4130_DATFAB
+		endsegment
+
+		segment SDATFVI gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEDATFVI := S_GEEX4130_DATFVI
+		endsegment
+
+		segment SCODPAL gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODPAL := S_GEEX4130_CODPAL
+		endsegment
+
+		segment SMOTIMM gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEMOTIMM := S_GEEX4130_MOTIMM
+		endsegment
+
+		segment SDATIMM gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEDATIMM := S_GEEX4130_DATIMM
+		endsegment
+
+		segment SHEUIMM gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEHEUIMM := S_GEEX4130_HEUIMM
+		endsegment
+
+		segment SCODSIT gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODSIT := S_GEEX4130_CODSIT
+		endsegment
+
+		segment SZONSTS gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEZONSTS := S_GEEX4130_ZONSTS
+		endsegment
+
+		segment SALLSTS gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEALLSTS := S_GEEX4130_ALLSTS
+		endsegment
+
+		segment SDPLSTS gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEDPLSTS := S_GEEX4130_DPLSTS
+		endsegment
+
+		segment SNIVSTS gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eENIVSTS := S_GEEX4130_NIVSTS
+		endsegment
+
+		segment SCODACT gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODACT := S_GEEX4130_CODACT
+		endsegment
+
+		segment SCODCLI gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODCLI := S_GEEX4130_CODCLI
+		endsegment
+
+		segment SCODPRO gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODPRO := S_GEEX4130_CODPRO
+		endsegment
+
+		segment SVALPRO gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEVALPRO := S_GEEX4130_VALPRO
+		endsegment
+
+		segment SPRXPRO gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPRXPRO := S_GEEX4130_PRXPRO
+		endsegment
+
+		segment SPDBPAL gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPDBPAL := S_GEEX4130_PDBPAL
+		endsegment
+
+		segment SPDNREC gGRECEPTION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPDNREC := S_GEEX4130_PDNREC
+		endsegment
+	! Cabeçalho por segmento
+
+endline
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+    log("tTRTEXC = ", tTRTEXC, NL)
+    log("tCODPRO = ", tCODPRO, NL)
+
+	!print(MESSAGE) >> tFileOutTemp
+
+	log("########################################################", NL)
+	log("Fim: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("########################################################", NL)
+
+endend
+
+!===========================================================================================================

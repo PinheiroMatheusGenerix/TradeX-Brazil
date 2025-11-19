@@ -1,0 +1,86 @@
+<!-- edited with XMLSpy v2006 sp2 U (http://www.altova.com) by Influe Portugal, Sistemas de Informação, S.A. (Influe Portugal, Sistemas de Informação, S.A.) -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="MESSAGE">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="COPACKINGPLAN">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="TRTEXC">
+								<xs:annotation>
+									<xs:documentation>motion processing codes</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="1"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="REFCAF">
+								<xs:annotation>
+									<xs:documentation>Référence de la fabrication</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CODLOT">
+								<xs:annotation>
+									<xs:documentation>Code du lot stocké</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CODACT">
+								<xs:annotation>
+									<xs:documentation>Code activité logistique</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CODCLI">
+								<xs:annotation>
+									<xs:documentation>Code du client propriétaire du stock</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CODPRN">
+								<xs:annotation>
+									<xs:documentation>Code produit d'une nomenclature (idem PRODN)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="VALPRO">
+								<xs:annotation>
+									<xs:documentation>Variante logistique (Gencod)      </xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="UVCCDE">
+								<xs:annotation>
+									<xs:documentation>Nombre d'U.V.C. commandées</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="UNICDE">
+								<xs:annotation>
+									<xs:documentation>Unité de saisie des quantités commandées</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="DATFAB">
+								<xs:annotation>
+									<xs:documentation>Dates de fabrication prévue</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CODMDF">
+								<xs:annotation>
+									<xs:documentation>Méthode processus de fabrication</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="EDIPRO">
+								<xs:annotation>
+									<xs:documentation>Code du produit pour E.D.I. </xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="DISEXC">
+								<xs:annotation>
+									<xs:documentation>Constant 1</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

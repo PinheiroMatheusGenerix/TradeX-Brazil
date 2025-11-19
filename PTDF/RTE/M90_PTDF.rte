@@ -1,0 +1,253 @@
+message "XML/PTDF/M90_V1.3.xsd" receiving, passthru
+! message "XML/PHARMA/DTD/responseAPI.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "documenttracker.cfg" TRACE
+
+!===========================================================================================================
+
+#define SYS_SOURCE_ID "PTDF"
+#define CODACT "001"
+#define VIRTUAL_SEPARATOR(A)	replace(build(number(A):R08.3),".","")	
+
+#include "include/GEEXM41.inc"
+ 
+#define _VERSION_ "1.0.0 01-07-2024"
+#define LOG(LOG_label,LOG_value) log("* ",LOG_label:5.5," :",LOG_value,NL)
+#define PRINT(LOG_label,LOG_value) print("* ",LOG_label:5.5," :",time ("%d.%m.%y %H:%M:%S")," :",LOG_value,NL)
+#define PRINT_FATAL(A) PRINT("FATAL",A)
+#define LOG_INFO(A) LOG("INFO",A)
+#define LOG_FATAL(A) LOG("FATAL",A)
+#define GET_CONF(A)	taPARAM[A]
+#define PEEL(A)  peel(A," ")
+#define REPLACE(A) replace(A, "\"", " ")
+
+!===========================================================================================================
+! Initialization section
+begin
+	nRec := 1
+	nPos := 1
+	nMessageID := cMessageID
+	
+    TRACE := new(build(sHOME,"/documenttracker"))
+
+   	if (pINDEX) <> EMPTY then
+		SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	endif
+
+    tInputFileName := pFTP.ORIGINAL.FILENAME
+	if tInputFileName = EMPTY then
+		tInputFileName := pEDISEND.ORIGINAL.NAME
+	endif
+
+    ! tNameFile := build("/tmp/DF0MA30",nMessageID,".DAT")
+    ! tFileOut := build(sHOME, tNameFile)
+
+	!Inicio do processo
+		log("########################################################", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",tInputFileName, NL)
+		log("########################################################", NL)
+
+	!Variaveis Gerais
+		nCount := 0
+		
+
+endbegin
+
+!===========================================================================================================
+
+line(1:"00.00")
+	tDATEXC_0000 := S_GEEX0000_DATEXC
+	tHEUEXC_0000 := S_GEEX0000_HEUEXC
+endline
+
+!===========================================================================================================
+
+line(1:"90.00") ! STOCKITEM
+
+	! Cabeçalho por Variavel
+		tCODEXC := S_GEEX9000_CODEXC
+		tSEPEXC := S_GEEX9000_SEPEXC
+		tSCOEXC := S_GEEX9000_SCOEXC
+		tTRTEXC := S_GEEX9000_TRTEXC
+		tCODACT := S_GEEX9000_CODACT
+		tCODCLI := S_GEEX9000_CODCLI
+		tCODPRO := S_GEEX9000_CODPRO
+		tVALPRO := S_GEEX9000_VALPRO
+		tCODLOT := S_GEEX9000_CODLOT
+		tNUMLOT := S_GEEX9000_NUMLOT
+		tTOTUVC := S_GEEX9000_TOTUVC
+		tTOTCOL := S_GEEX9000_TOTCOL
+		tTOTPAL := S_GEEX9000_TOTPAL
+		tENCUVC := S_GEEX9000_ENCUVC
+		tENCCOL := S_GEEX9000_ENCCOL
+		tENCPAL := S_GEEX9000_ENCPAL
+		tPRPUVC := S_GEEX9000_PRPUVC
+		tPRPCOL := S_GEEX9000_PRPCOL
+		tPRPPAL := S_GEEX9000_PRPPAL
+		tIMOUVC := S_GEEX9000_IMOUVC
+		tIMOCOL := S_GEEX9000_IMOCOL
+		tIMOPAL := S_GEEX9000_IMOPAL
+		tCOMUVC := S_GEEX9000_COMUVC
+		tCOMCOL := S_GEEX9000_COMCOL
+		tCOMPAL := S_GEEX9000_COMPAL
+		tMINREC := S_GEEX9000_MINREC
+		tMAXREC := S_GEEX9000_MAXREC
+		tMINFVI := S_GEEX9000_MINFVI
+		tMAXFVI := S_GEEX9000_MAXFVI
+		tTOTPOI := S_GEEX9000_TOTPOI
+		tEXSPIC := S_GEEX9000_EXSPIC
+		tPCBPRO := S_GEEX9000_PCBPRO
+		tINDSTK := S_GEEX9000_INDSTK
+
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment STRTEXC gGSTOCKITEM
+			eETRTEXC := S_GEEX9000_TRTEXC
+		endsegment
+
+		segment SCODACT gGSTOCKITEM
+			eECODACT := S_GEEX9000_CODACT
+		endsegment
+
+		segment SCODCLI gGSTOCKITEM
+			eECODCLI := S_GEEX9000_CODCLI
+		endsegment
+
+		segment SCODPRO gGSTOCKITEM
+			eECODPRO := S_GEEX9000_CODPRO
+		endsegment
+
+		segment SVALPRO gGSTOCKITEM
+			eEVALPRO := S_GEEX9000_VALPRO
+		endsegment
+
+		segment SCODLOT gGSTOCKITEM
+			eECODLOT := S_GEEX9000_CODLOT
+		endsegment
+
+		segment SNUMLOT gGSTOCKITEM
+			eENUMLOT := S_GEEX9000_NUMLOT
+		endsegment
+
+		segment STOTUVC gGSTOCKITEM
+			eETOTUVC := S_GEEX9000_TOTUVC
+		endsegment
+
+		segment STOTCOL gGSTOCKITEM
+			eETOTCOL := S_GEEX9000_TOTCOL
+		endsegment
+
+		segment STOTPAL gGSTOCKITEM
+			eETOTPAL := S_GEEX9000_TOTPAL
+		endsegment
+
+		segment SENCUVC gGSTOCKITEM
+			eEENCUVC := S_GEEX9000_ENCUVC
+		endsegment
+
+		segment SENCCOL gGSTOCKITEM
+			eEENCCOL := S_GEEX9000_ENCCOL
+		endsegment
+
+		segment SENCPAL gGSTOCKITEM
+			eEENCPAL := S_GEEX9000_ENCPAL
+		endsegment
+
+		segment SPRPUVC gGSTOCKITEM
+			eEPRPUVC := S_GEEX9000_PRPUVC
+		endsegment
+
+		segment SPRPCOL gGSTOCKITEM
+			eEPRPCOL := S_GEEX9000_PRPCOL
+		endsegment
+
+		segment SPRPPAL gGSTOCKITEM
+			eEPRPPAL := S_GEEX9000_PRPPAL
+		endsegment
+
+		segment SIMOUVC gGSTOCKITEM
+			eEIMOUVC := S_GEEX9000_IMOUVC
+		endsegment
+
+		segment SIMOCOL gGSTOCKITEM
+			eEIMOCOL := S_GEEX9000_IMOCOL
+		endsegment
+
+		segment SIMOPAL gGSTOCKITEM
+			eEIMOPAL := S_GEEX9000_IMOPAL
+		endsegment
+
+		segment SCOMUVC gGSTOCKITEM
+			eECOMUVC := S_GEEX9000_COMUVC
+		endsegment
+
+		segment SCOMCOL gGSTOCKITEM
+			eECOMCOL := S_GEEX9000_COMCOL
+		endsegment
+
+		segment SCOMPAL gGSTOCKITEM
+			eECOMPAL := S_GEEX9000_COMPAL
+		endsegment
+
+		segment SMINREC gGSTOCKITEM
+			eEMINREC := S_GEEX9000_MINREC
+		endsegment
+
+		segment SMAXREC gGSTOCKITEM
+			eEMAXREC := S_GEEX9000_MAXREC
+		endsegment
+
+		segment SMINFVI gGSTOCKITEM
+			eEMINFVI := S_GEEX9000_MINFVI
+		endsegment
+
+		segment SMAXFVI gGSTOCKITEM
+			eEMAXFVI := S_GEEX9000_MAXFVI
+		endsegment
+
+		segment STOTPOI gGSTOCKITEM
+			eETOTPOI := S_GEEX9000_TOTPOI
+		endsegment
+
+		segment SEXSPIC gGSTOCKITEM
+			eEEXSPIC := S_GEEX9000_EXSPIC
+		endsegment
+
+		segment SPCBPRO gGSTOCKITEM
+			eEPCBPRO := S_GEEX9000_PCBPRO
+		endsegment
+
+		segment SINDSTK gGSTOCKITEM
+			eEINDSTK := S_GEEX9000_INDSTK
+		endsegment
+
+
+	! Cabeçalho por segmento
+
+endline
+
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+    log("tTRTEXC = ", tTRTEXC, NL)
+    log("tCODPRO = ", tCODPRO, NL)
+
+	!print(MESSAGE) >> tFileOutTemp
+
+	log("########################################################", NL)
+	log("Fim: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("########################################################", NL)
+
+endend
+
+!===========================================================================================================

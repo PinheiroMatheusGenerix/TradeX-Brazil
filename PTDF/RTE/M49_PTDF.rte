@@ -1,0 +1,673 @@
+message "XML/PTDF/M49_V1.0.xsd" receiving, passthru
+! message "XML/PHARMA/DTD/responseAPI.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "documenttracker.cfg" TRACE
+
+!===========================================================================================================
+
+#define SYS_SOURCE_ID "PTDF"
+#define CODACT "001"
+#define VIRTUAL_SEPARATOR(A)	replace(build(number(A):R08.3),".","")	
+
+#include "include/GEEXM40.inc"
+ 
+#define _VERSION_ "1.0.0 01-07-2024"
+#define LOG(LOG_label,LOG_value) log("* ",LOG_label:5.5," :",LOG_value,NL)
+#define PRINT(LOG_label,LOG_value) print("* ",LOG_label:5.5," :",time ("%d.%m.%y %H:%M:%S")," :",LOG_value,NL)
+#define PRINT_FATAL(A) PRINT("FATAL",A)
+#define LOG_INFO(A) LOG("INFO",A)
+#define LOG_FATAL(A) LOG("FATAL",A)
+#define GET_CONF(A)	taPARAM[A]
+#define PEEL(A)  peel(A," ")
+#define REPLACE(A) replace(A, "\"", " ")
+
+!===========================================================================================================
+! Initialization section
+begin
+	nRec := 1
+	nPos := 1
+	nMessageID := cMessageID
+	
+    TRACE := new(build(sHOME,"/documenttracker"))
+
+   	if (pINDEX) <> EMPTY then
+		SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	endif
+
+    tInputFileName := pFTP.ORIGINAL.FILENAME
+	if tInputFileName = EMPTY then
+		tInputFileName := pEDISEND.ORIGINAL.NAME
+	endif
+
+    ! tNameFile := build("/tmp/DF0MA30",nMessageID,".DAT")
+    ! tFileOut := build(sHOME, tNameFile)
+
+	!Inicio do processo
+		log("########################################################", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",tInputFileName, NL)
+		log("########################################################", NL)
+
+	!Variaveis Gerais
+		nCount := 0
+		
+
+endbegin
+
+!===========================================================================================================
+
+! DESPATCHADVICE
+	segment STRTEXC gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		nCount++
+		taTRTEXC[nCount] := eETRTEXC
+	endsegment
+
+	segment SCODFOU gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taCODFOU[nCount] := eECODFOU
+	endsegment
+
+	segment SAVIREF gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taAVIREF[nCount] := eEAVIREF
+	endsegment
+
+	segment SCODACT gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taCODACT[nCount] := eECODACT
+	endsegment
+
+	segment SREFLET gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taREFLET[nCount] := eEREFLET
+	endsegment
+
+	segment SEDIFOU gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taEDIFOU[nCount] := eEEDIFOU
+	endsegment
+
+	segment SEDIACT gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taEDIACT[nCount] := eEEDIACT
+	endsegment
+
+	segment SEDITRA gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taEDITRA[nCount] := eEEDITRA
+	endsegment
+
+	segment SCODTRA gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taCODTRA[nCount] := eECODTRA
+	endsegment
+
+	segment SDATEXP gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taDATEXP[nCount] := eEDATEXP
+	endsegment
+
+	segment SHEUEXP gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taHEUEXP[nCount] := eEHEUEXP
+	endsegment
+
+	segment SDATLIV gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taDATLIV[nCount] := eEDATLIV
+	endsegment
+
+	segment SHEULIV gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taHEULIV[nCount] := eEHEULIV
+	endsegment
+
+	segment STYPTPT gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taTYPTPT[nCount] := eETYPTPT
+	endsegment
+
+	segment STYPCHT gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taTYPCHT[nCount] := eETYPCHT
+	endsegment
+
+	segment SREFPLB gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taREFPLB[nCount] := eEREFPLB
+	endsegment
+
+	segment SCAMCOD gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taCAMCOD[nCount] := eECAMCOD
+	endsegment
+
+	segment SDIPAVI gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taDIPAVI[nCount] := eEDIPAVI
+	endsegment
+
+	segment SSITRCT gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taSITRCT[nCount] := eESITRCT
+	endsegment
+
+	segment SCRERCP gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taCRERCP[nCount] := eECRERCP
+	endsegment
+
+	segment SNUMTOU gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taNUMTOU[nCount] := eENUMTOU
+	endsegment
+
+	segment SINDSBY gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taINDSBY[nCount] := eEINDSBY
+	endsegment
+
+	segment SCODTRE gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taCODTRE[nCount] := eECODTRE
+	endsegment
+
+	segment STYPRMT gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taTYPRMT[nCount] := eETYPRMT
+	endsegment
+
+	segment SDISEXC gGMESSAGE,gGDESPATCHADVICE,gGHEADER
+		taDISEXC[nCount] := eEDISEXC
+	endsegment
+
+! DESPATCHADVICE
+
+! HEADER / DETAIL
+	segment SCODOBL gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCODOBL[nCount] := eECODOBL
+	endsegment
+
+	segment SCODACT gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCODACT[nCount] := eECODACT
+	endsegment
+
+	segment SAVINLI gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taAVINLI[nCount] := eEAVINLI
+	endsegment
+
+	segment SCUMCOL gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCUMCOL[nCount] := eECUMCOL
+	endsegment
+
+	segment STYPMQG gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taTYPMQG[nCount] := eETYPMQG
+	endsegment
+
+	segment SCODEB1 gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCODEB1[nCount] := eECODEB1
+	endsegment
+
+	segment SCODEB2 gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCODEB2[nCount] := eECODEB2
+	endsegment
+
+	segment SPDBOBL gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taPDBOBL[nCount] := eEPDBOBL
+	endsegment
+
+	segment SUNIPDB gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taUNIPDB[nCount] := eEUNIPDB
+	endsegment
+
+	segment SLNGOBL gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taLNGOBL[nCount] := eELNGOBL
+	endsegment
+
+	segment SLRGOBL gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taLRGOBL[nCount] := eELRGOBL
+	endsegment
+
+	segment SHAUOBL gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taHAUOBL[nCount] := eEHAUOBL
+	endsegment
+
+	segment SUNIDIM gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taUNIDIM[nCount] := eEUNIDIM
+	endsegment
+
+	segment SDATCRE gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taDATCRE[nCount] := eEDATCRE
+	endsegment
+
+	segment SHEUCRE gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taHEUCRE[nCount] := eEHEUCRE
+	endsegment
+
+	segment SPROEMB gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taPROEMB[nCount] := eEPROEMB
+	endsegment
+
+	segment SCODTOB gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCODTOB[nCount] := eECODTOB
+	endsegment
+
+	segment SDATSUP gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taDATSUP[nCount] := eEDATSUP
+	endsegment
+
+	segment SHEUSUP gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taHEUSUP[nCount] := eEHEUSUP
+	endsegment
+
+	segment SCOEUOT gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taCOEUOT[nCount] := eECOEUOT
+	endsegment
+
+	segment SDISEXC gGMESSAGE,gGDESPATCHADVICE,gGHEADER,gGDETAIL
+		taDISEXC[nCount] := eEDISEXC
+	endsegment
+
+! HEADER / DETAIL
+
+! HEADER / DETAIL / ITEM
+	segment SNLIOBL gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		! Criando um index entre header e detalhe 
+			! Ex tIndexLinha := 001-00001
+			tIndexLinha := build(	 number(nCount):R03.0 \
+									, "-" \
+									,number(eENLIOBL):R05.0)
+		
+		! Criando referencia para o detalhe
+			! Ex nCountLinha[001-00001] := 1
+			naCountLinha[taIndexLinha] := nCount
+
+		taNLIOBL[taIndexLinha] := eENLIOBL
+	endsegment
+
+	segment SCODACT gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taCODACT[taIndexLinha] := eECODACT
+	endsegment
+
+	segment SAVINLI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taAVINLI[taIndexLinha] := eEAVINLI
+	endsegment
+
+	segment SCODOBI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taCODOBI[taIndexLinha] := eECODOBI
+	endsegment
+
+	segment SEDIPRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taEDIPRO[taIndexLinha] := eEEDIPRO
+	endsegment
+
+	segment SCODPRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taCODPRO[taIndexLinha] := eECODPRO
+	endsegment
+
+	segment SVALPRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taVALPRO[taIndexLinha] := eEVALPRO
+	endsegment
+
+	segment SEDICLI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taEDICLI[taIndexLinha] := eEEDICLI
+	endsegment
+
+	segment SCODCLI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taCODCLI[taIndexLinha] := eECODCLI
+	endsegment
+
+	segment SCODPAY gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taCODPAY[taIndexLinha] := eECODPAY
+	endsegment
+
+	segment SNATSTK gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taNATSTK[taIndexLinha] := eENATSTK
+	endsegment
+
+	segment SCODLOT gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taCODLOT[taIndexLinha] := eECODLOT
+	endsegment
+
+	segment SPDNLIV gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taPDNLIV[taIndexLinha] := eEPDNLIV
+	endsegment
+
+	segment SPCBPRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taPCBPRO[taIndexLinha] := eEPCBPRO
+	endsegment
+
+	segment SDISEXC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM
+		taDISEXC[taIndexLinha] := eEDISEXC
+	endsegment
+
+! HEADER / DETAIL / ITEM
+
+! HEADER / DETAIL / ITEM / COMPLEMENT_21
+	segment SDATFVI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taDATFVI[taIndexLinha] := eEDATFVI
+	endsegment
+
+	segment SDATFAB gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taDATFAB[taIndexLinha] := eEDATFAB
+	endsegment
+
+	segment SUVCOBI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taUVCOBI[taIndexLinha] := eEUVCOBI
+	endsegment
+
+	segment SUNIUVC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taUNIUVC[taIndexLinha] := eEUNIUVC
+	endsegment
+
+	segment SNUOOBI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taNUOOBI[taIndexLinha] := eENUOOBI
+	endsegment
+
+	segment SUNIUOA gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taUNIUOA[taIndexLinha] := eEUNIUOA
+	endsegment
+
+	segment SMOTIMM gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taMOTIMM[taIndexLinha] := eEMOTIMM
+	endsegment
+
+	segment SEDICLF gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taEDICLF[taIndexLinha] := eEEDICLF
+	endsegment
+
+	segment SCLILIV gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taCLILIV[taIndexLinha] := eECLILIV
+	endsegment
+
+	segment SREFREC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taREFREC[taIndexLinha] := eEREFREC
+	endsegment
+
+	segment SNLIREC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taNLIREC[taIndexLinha] := eENLIREC
+	endsegment
+
+	segment SDIPAVI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taDIPAVI[taIndexLinha] := eEDIPAVI
+	endsegment
+
+	segment STYPREF gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taTYPREF[taIndexLinha] := eETYPREF
+	endsegment
+
+	segment SDISEXC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_21
+		taDISEXC[taIndexLinha] := eEDISEXC
+	endsegment
+
+! HEADER / DETAIL / ITEM / COMPLEMENT_21
+
+! HEADER / DETAIL / ITEM / COMPLEMENT_22
+	segment SEANUVC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taEANUVC[taIndexLinha] := eEEANUVC
+	endsegment
+
+	segment SPRXAVI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taPRXAVI[taIndexLinha] := eEPRXAVI
+	endsegment
+
+	segment SPDNAVI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taPDNAVI[taIndexLinha] := eEPDNAVI
+	endsegment
+
+	segment SREFLIV gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taREFLIV[taIndexLinha] := eEREFLIV
+	endsegment
+
+	segment SNLILIV gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taNLILIV[taIndexLinha] := eENLILIV
+	endsegment
+
+	segment SDS1PRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taDS1PRO[taIndexLinha] := eEDS1PRO
+	endsegment
+
+	segment SDS2PRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taDS2PRO[taIndexLinha] := eEDS2PRO
+	endsegment
+
+	segment STOPLIV gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taTOPLIV[taIndexLinha] := eETOPLIV
+	endsegment
+
+	segment SPDNLIV gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taPDNLIV[taIndexLinha] := eEPDNLIV
+	endsegment
+
+	segment SPCBPRO gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taPCBPRO[taIndexLinha] := eEPCBPRO
+	endsegment
+
+	segment SVOLCOL gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taVOLCOL[taIndexLinha] := eEVOLCOL
+	endsegment
+
+	segment SCODTLI gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taCODTLI[taIndexLinha] := eECODTLI
+	endsegment
+
+	segment SDISEXC gGMESSAGE,gGDESPATCHADVICE,gGDETAIL,gGITEM,gGCOMPLEMENT_22
+		taDISEXC[taIndexLinha] := eEDISEXC
+	endsegment
+
+! HEADER / DETAIL / ITEM / COMPLEMENT_22
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+    log("tTRTEXC = ", tTRTEXC, NL)
+    log("tCODPRO = ", tCODPRO, NL)
+
+	! 00.00
+		R_GEEX0000_CODEXC(00)
+		R_GEEX0000_SEPEXC(".")
+		R_GEEX0000_SCOEXC(00)
+		!R_GEEX0000_TRTEXC(A)
+		R_GEEX0000_EMTEXC("PTDF")
+		!R_GEEX0000_RCTEXC(A)
+		R_GEEX0000_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX0000_HEUEXC(time("now" ,"%H%M%S"))
+		!R_GEEX0000_NUMEXC(A)
+		!R_GEEX0000_ACQEXC(A)
+		!R_GEEX0000_VEREXC(A)
+		!R_GEEX0000_NOMSYS(A)
+		!R_GEEX0000_NOMDTQ(A)
+		!R_GEEX0000_BIBDTQ(A)
+		!R_GEEX0000_LIBEXC(A)
+		!R_GEEX0000_BIBDST(A)
+		!R_GEEX0000_PGMDST(A)
+		!R_GEEX0000_PARDST(A)
+		!R_GEEX0000_CODACT(A)
+		!R_GEEX0000_IGLSIT(A)
+		!R_GEEX0000_EDISIT(A)
+		!R_GEEX0000_IMAEXC(A)
+		!R_GEEX0000_IDEMSG(A)
+		!R_GEEX0000_NATEXC(A)
+		!R_GEEX0000_EMTORI(A)
+		!R_GEEX0000_DISEXC(A)
+
+	! 00.00
+
+	while tIndex in taTRTEXC do
+
+		! 49.00
+			R_GEEX4900_CODEXC(49)
+			R_GEEX4900_SEPEXC(".")
+			R_GEEX4900_SCOEXC(00)
+			R_GEEX4900_TRTEXC(taTRTEXC[tIndex])
+			R_GEEX4900_CODFOU(taCODFOU[tIndex])
+			R_GEEX4900_AVIREF(taAVIREF[tIndex])
+			R_GEEX4900_CODACT(taCODACT[tIndex])
+			R_GEEX4900_REFLET(taREFLET[tIndex])
+			R_GEEX4900_EDIFOU(taEDIFOU[tIndex])
+			R_GEEX4900_EDIACT(taEDIACT[tIndex])
+			R_GEEX4900_EDITRA(taEDITRA[tIndex])
+			R_GEEX4900_CODTRA(taCODTRA[tIndex])
+			R_GEEX4900_DATEXP(taDATEXP[tIndex])
+			R_GEEX4900_HEUEXP(taHEUEXP[tIndex])
+			R_GEEX4900_DATLIV(taDATLIV[tIndex])
+			R_GEEX4900_HEULIV(taHEULIV[tIndex])
+			R_GEEX4900_TYPTPT(taTYPTPT[tIndex])
+			R_GEEX4900_TYPCHT(taTYPCHT[tIndex])
+			R_GEEX4900_REFPLB(taREFPLB[tIndex])
+			R_GEEX4900_CAMCOD(taCAMCOD[tIndex])
+			R_GEEX4900_DIPAVI(taDIPAVI[tIndex])
+			R_GEEX4900_SITRCT(taSITRCT[tIndex])
+			R_GEEX4900_CRERCP(taCRERCP[tIndex])
+			R_GEEX4900_NUMTOU(taNUMTOU[tIndex])
+			R_GEEX4900_INDSBY(taINDSBY[tIndex])
+			R_GEEX4900_CODTRE(taCODTRE[tIndex])
+			R_GEEX4900_TYPRMT(taTYPRMT[tIndex])
+			R_GEEX4900_DISEXC(taDISEXC[tIndex])
+
+		! 49.00
+
+		! 49.10
+			R_GEEX4910_CODEXC(49)
+			R_GEEX4910_SEPEXC(".")
+			R_GEEX4910_SCOEXC(10)
+			R_GEEX4910_TRTEXC(taTRTEXC[tIndex])
+			R_GEEX4910_CODFOU(taCODFOU[tIndex])
+			R_GEEX4910_AVIREF(taAVIREF[tIndex])
+			R_GEEX4910_CODOBL(taCODOBL[tIndex])    
+			R_GEEX4910_CODACT(taCODACT[tIndex])    
+			R_GEEX4910_AVINLI(taAVINLI[tIndex])    
+			R_GEEX4910_CUMCOL(taCUMCOL[tIndex])    
+			R_GEEX4910_TYPMQG(taTYPMQG[tIndex])    
+			R_GEEX4910_CODEB1(taCODEB1[tIndex])    
+			R_GEEX4910_CODEB2(taCODEB2[tIndex])    
+			R_GEEX4910_PDBOBL(taPDBOBL[tIndex])    
+			R_GEEX4910_UNIPDB(taUNIPDB[tIndex])    
+			R_GEEX4910_LNGOBL(taLNGOBL[tIndex])    
+			R_GEEX4910_LRGOBL(taLRGOBL[tIndex])    
+			R_GEEX4910_HAUOBL(taHAUOBL[tIndex])    
+			R_GEEX4910_UNIDIM(taUNIDIM[tIndex])    
+			R_GEEX4910_DATCRE(taDATCRE[tIndex])    
+			R_GEEX4910_HEUCRE(taHEUCRE[tIndex])    
+			R_GEEX4910_PROEMB(taPROEMB[tIndex])    
+			R_GEEX4910_CODTOB(taCODTOB[tIndex])    
+			R_GEEX4910_DATSUP(taDATSUP[tIndex])    
+			R_GEEX4910_HEUSUP(taHEUSUP[tIndex])    
+			R_GEEX4910_COEUOT(taCOEUOT[tIndex])    
+			R_GEEX4910_DISEXC(taDISEXC[tIndex])    
+
+		! 49.10
+
+		while taIndexLinha in taNLIOBL do
+			if naCountLinha[taIndexLinha] = number(tIndex) then
+				! 49.20
+					R_GEEX4920_CODEXC(49)
+					R_GEEX4920_SEPEXC(".")
+					R_GEEX4920_SCOEXC(20)
+					R_GEEX4920_TRTEXC(taTRTEXC[taIndexLinha])
+					R_GEEX4920_CODFOU(taCODFOU[taIndexLinha])
+					R_GEEX4920_AVIREF(taAVIREF[taIndexLinha])
+					R_GEEX4920_CODOBL(taCODOBL[taIndexLinha])    
+					R_GEEX4920_NLIOBL(taNLIOBL[taIndexLinha])
+					R_GEEX4920_CODACT(taCODACT[taIndexLinha])
+					R_GEEX4920_AVINLI(taAVINLI[taIndexLinha])    
+					R_GEEX4920_CODOBI(taCODOBI[taIndexLinha])
+					R_GEEX4920_EDIPRO(taEDIPRO[taIndexLinha])
+					R_GEEX4920_CODPRO(taCODPRO[taIndexLinha])
+					R_GEEX4920_VALPRO(taVALPRO[taIndexLinha])
+					R_GEEX4920_EDICLI(taEDICLI[taIndexLinha])
+					R_GEEX4920_CODCLI(taCODCLI[taIndexLinha])
+					R_GEEX4920_CODPAY(taCODPAY[taIndexLinha])
+					R_GEEX4920_NATSTK(taNATSTK[taIndexLinha])
+					R_GEEX4920_CODLOT(taCODLOT[taIndexLinha])
+					R_GEEX4920_PDNLIV(taPDNLIV[taIndexLinha])
+					R_GEEX4920_PCBPRO(taPCBPRO[taIndexLinha])
+					R_GEEX4920_DISEXC(taDISEXC[taIndexLinha])
+
+				! 49.20
+
+				! 49.21
+					R_GEEX4921_CODEXC(49)
+					R_GEEX4921_SEPEXC(".")
+					R_GEEX4921_SCOEXC(21)
+					R_GEEX4921_TRTEXC(taTRTEXC[taIndexLinha])
+					R_GEEX4921_CODFOU(taCODFOU[taIndexLinha])
+					R_GEEX4921_AVIREF(taAVIREF[taIndexLinha])
+					R_GEEX4921_CODOBL(taCODOBL[taIndexLinha])
+					R_GEEX4921_NLIOBL(taNLIOBL[taIndexLinha])
+					R_GEEX4921_CODACT(taCODACT[taIndexLinha])
+					R_GEEX4921_DATFVI(taDATFVI[taIndexLinha])
+					R_GEEX4921_DATFAB(taDATFAB[taIndexLinha])
+					R_GEEX4921_UVCOBI(taUVCOBI[taIndexLinha])
+					R_GEEX4921_UNIUVC(taUNIUVC[taIndexLinha])
+					R_GEEX4921_NUOOBI(taNUOOBI[taIndexLinha])
+					R_GEEX4921_UNIUOA(taUNIUOA[taIndexLinha])
+					R_GEEX4921_MOTIMM(taMOTIMM[taIndexLinha])
+					R_GEEX4921_EDICLF(taEDICLF[taIndexLinha])
+					R_GEEX4921_CLILIV(taCLILIV[taIndexLinha])
+					R_GEEX4921_REFREC(taREFREC[taIndexLinha])
+					R_GEEX4921_NLIREC(taNLIREC[taIndexLinha])
+					R_GEEX4921_DIPAVI(taDIPAVI[taIndexLinha])
+					R_GEEX4921_TYPREF(taTYPREF[taIndexLinha])
+					R_GEEX4921_DISEXC(taDISEXC[taIndexLinha])
+
+
+				! 49.21
+
+				! 49.22
+					R_GEEX4922_CODEXC(49)
+					R_GEEX4922_SEPEXC(".")
+					R_GEEX4922_SCOEXC(22)
+					R_GEEX4922_TRTEXC(taTRTEXC[taIndexLinha])
+					R_GEEX4922_CODEXC(taCODEXC[taIndexLinha])
+					R_GEEX4922_SEPEXC(taSEPEXC[taIndexLinha])
+					R_GEEX4922_SCOEXC(taSCOEXC[taIndexLinha])
+					R_GEEX4922_TRTEXC(taTRTEXC[taIndexLinha])
+					R_GEEX4922_CODFOU(taCODFOU[taIndexLinha])
+					R_GEEX4922_AVIREF(taAVIREF[taIndexLinha])
+					R_GEEX4922_CODOBL(taCODOBL[taIndexLinha])
+					R_GEEX4922_NLIOBL(taNLIOBL[taIndexLinha])
+					R_GEEX4922_CODACT(taCODACT[taIndexLinha])
+					R_GEEX4922_EANUVC(taEANUVC[taIndexLinha])
+					R_GEEX4922_PRXAVI(taPRXAVI[taIndexLinha])
+					R_GEEX4922_PDNAVI(taPDNAVI[taIndexLinha])
+					R_GEEX4922_REFLIV(taREFLIV[taIndexLinha])
+					R_GEEX4922_NLILIV(taNLILIV[taIndexLinha])
+					R_GEEX4922_DS1PRO(taDS1PRO[taIndexLinha])
+					R_GEEX4922_DS2PRO(taDS2PRO[taIndexLinha])
+					R_GEEX4922_TOPLIV(taTOPLIV[taIndexLinha])
+					R_GEEX4922_PDNLIV(taPDNLIV[taIndexLinha])
+					R_GEEX4922_PCBPRO(taPCBPRO[taIndexLinha])
+					R_GEEX4922_VOLCOL(taVOLCOL[taIndexLinha])
+					R_GEEX4922_CODTLI(taCODTLI[taIndexLinha])
+					R_GEEX4922_DISEXC(taDISEXC[taIndexLinha])
+
+				! 49.22
+
+			endif
+		endwhile
+
+		! 49.99
+			R_GEEX4999_CODEXC(49)
+			R_GEEX4999_SEPEXC(".")
+			R_GEEX4999_SCOEXC(99)
+			R_GEEX4999_TRTEXC(taTRTEXC[tIndex])
+			R_GEEX4999_CODFOU(taCODFOU[tIndex])
+			R_GEEX4999_AVIREF(taAVIREF[tIndex])
+			R_GEEX4999_CODACT(taCODACT[tIndex])
+			R_GEEX4999_CUMLIG(taCUMLIG[tIndex])
+			R_GEEX4999_DISEXC(taDISEXC[tIndex])
+
+		! 49.99
+
+	endwhile
+
+	! 99.00
+		R_GEEX9900_CODEXC(99)
+		R_GEEX9900_SEPEXC(".")
+		R_GEEX9900_SCOEXC(00)
+		!R_GEEX9900_TRTEXC(A)
+		R_GEEX9900_EMTEXC("PTDF")
+		!R_GEEX9900_RCTEXC(A)
+		R_GEEX9900_DATEXC(time("now" ,"%Y%m%d"))
+		R_GEEX9900_HEUEXC(time("now" ,"%H%M%S"))
+		R_GEEX9900_NUMEXC(build(nCount:R08.0))
+		!R_GEEX9900_CPTEXC(A)
+		!R_GEEX9900_NOMSYS(A)
+		!R_GEEX9900_NOMDTQ(A)
+		!R_GEEX9900_BIBDTQ(A)
+		!R_GEEX9900_IDEMSG(A)
+		!R_GEEX9900_DISEXC(A)
+	! 99.00
+
+	log("########################################################", NL)
+	log("Fim: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("########################################################", NL)
+
+endend
+
+!===========================================================================================================

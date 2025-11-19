@@ -1,0 +1,602 @@
+message "XML/PTDF/M51_V1.4.xsd" receiving, passthru
+! message "XML/PHARMA/DTD/responseAPI.dtd" receiving, passthru
+
+base "syslog.cfg" SYSLOG
+base "documenttracker.cfg" TRACE
+
+!===========================================================================================================
+
+#define SYS_SOURCE_ID "PTDF"
+#define CODACT "001"
+#define VIRTUAL_SEPARATOR(A)	replace(build(number(A):R08.3),".","")	
+
+#include "include/GEEXM41.inc"
+ 
+#define _VERSION_ "1.0.0 01-07-2024"
+#define LOG(LOG_label,LOG_value) log("* ",LOG_label:5.5," :",LOG_value,NL)
+#define PRINT(LOG_label,LOG_value) print("* ",LOG_label:5.5," :",time ("%d.%m.%y %H:%M:%S")," :",LOG_value,NL)
+#define PRINT_FATAL(A) PRINT("FATAL",A)
+#define LOG_INFO(A) LOG("INFO",A)
+#define LOG_FATAL(A) LOG("FATAL",A)
+#define GET_CONF(A)	taPARAM[A]
+#define PEEL(A)  peel(A," ")
+#define REPLACE(A) replace(A, "\"", " ")
+
+!===========================================================================================================
+! Initialization section
+begin
+	nRec := 1
+	nPos := 1
+	nMessageID := cMessageID
+	
+    TRACE := new(build(sHOME,"/documenttracker"))
+
+   	if (pINDEX) <> EMPTY then
+		SYSLOG := find(sSYSLOG,INDEX=number(pINDEX))
+	endif
+
+    tInputFileName := pFTP.ORIGINAL.FILENAME
+	if tInputFileName = EMPTY then
+		tInputFileName := pEDISEND.ORIGINAL.NAME
+	endif
+
+    ! tNameFile := build("/tmp/DF0MA30",nMessageID,".DAT")
+    ! tFileOut := build(sHOME, tNameFile)
+
+	!Inicio do processo
+		log("########################################################", NL)
+		log("Inicio: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+		log("Arquivo de entrada: ",tInputFileName, NL)
+		log("########################################################", NL)
+
+	!Variaveis Gerais
+		nCount := 0
+		
+
+endbegin
+
+!===========================================================================================================
+
+line(1:"00.00")
+	tDATEXC_0000 := S_GEEX0000_DATEXC
+	tHEUEXC_0000 := S_GEEX0000_HEUEXC
+endline
+
+!===========================================================================================================
+
+line(1:"51.00") ! HEADER
+
+	! Cabeçalho por Variavel
+		tCODEXC := S_GEEX5100_CODEXC
+		tSEPEXC := S_GEEX5100_SEPEXC
+		tSCOEXC := S_GEEX5100_SCOEXC
+		tTRTEXC := S_GEEX5100_TRTEXC
+		tNUMLIV := S_GEEX5100_NUMLIV
+		tSNULIV := S_GEEX5100_SNULIV
+		tCODACT := S_GEEX5100_CODACT
+		tCODCLI := S_GEEX5100_CODCLI
+		tREFLIV := S_GEEX5100_REFLIV
+		tCODTLI := S_GEEX5100_CODTLI
+		tCODACL := S_GEEX5100_CODACL
+		tORICDE := S_GEEX5100_ORICDE
+		tDATLIV := S_GEEX5100_DATLIV
+		tHEULIV := S_GEEX5100_HEULIV
+		tCLILIV := S_GEEX5100_CLILIV
+		tTYPLIV := S_GEEX5100_TYPLIV
+		tNUMVAG := S_GEEX5100_NUMVAG
+		tDATPRP := S_GEEX5100_DATPRP
+		tCODRGT := S_GEEX5100_CODRGT
+		tTOULIV := S_GEEX5100_TOULIV
+		tORDLIV := S_GEEX5100_ORDLIV
+		tNUMTOU := S_GEEX5100_NUMTOU
+		tDATEXP := S_GEEX5100_DATEXP
+		tHEUEXP := S_GEEX5100_HEUEXP
+		tCODTRA := S_GEEX5100_CODTRA
+		tCODCAM := S_GEEX5100_CODCAM
+		tCODCHF := S_GEEX5100_CODCHF
+		tCTRLIV := S_GEEX5100_CTRLIV
+		tREFCNT := S_GEEX5100_REFCNT
+		tCODSIT := S_GEEX5100_CODSIT
+		tNUMPLB := S_GEEX5100_NUMPLB
+		tCODLDR := S_GEEX5100_CODLDR
+		tLIVSOL := S_GEEX5100_LIVSOL
+		tNUMCNT := S_GEEX5100_NUMCNT
+		tNUMTPT := S_GEEX5100_NUMTPT
+		tINDRLQ := S_GEEX5100_INDRLQ
+
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment STRTEXC gGEXPEDITION_CONFIRMATION,gGHEADER
+			eETRTEXC := S_GEEX5100_TRTEXC
+		endsegment
+
+		segment SNUMLIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eENUMLIV := S_GEEX5100_NUMLIV
+		endsegment
+
+		segment SSNULIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eESNULIV := S_GEEX5100_SNULIV
+		endsegment
+
+		segment SCODACT gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODACT := S_GEEX5100_CODACT
+		endsegment
+
+		segment SCODCLI gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODCLI := S_GEEX5100_CODCLI
+		endsegment
+
+		segment SREFLIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEREFLIV := S_GEEX5100_REFLIV
+		endsegment
+
+		segment SCODTLI gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODTLI := S_GEEX5100_CODTLI
+		endsegment
+
+		segment SCODACL gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODACL := S_GEEX5100_CODACL
+		endsegment
+
+		segment SORICDE gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEORICDE := S_GEEX5100_ORICDE
+		endsegment
+
+		segment SDATLIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEDATLIV := S_GEEX5100_DATLIV
+		endsegment
+
+		segment SHEULIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEHEULIV := S_GEEX5100_HEULIV
+		endsegment
+
+		segment SCLILIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECLILIV := S_GEEX5100_CLILIV
+		endsegment
+
+		segment STYPLIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eETYPLIV := S_GEEX5100_TYPLIV
+		endsegment
+
+		segment SNUMVAG gGEXPEDITION_CONFIRMATION,gGHEADER
+			eENUMVAG := S_GEEX5100_NUMVAG
+		endsegment
+
+		segment SDATPRP gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEDATPRP := S_GEEX5100_DATPRP
+		endsegment
+
+		segment SCODRGT gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODRGT := S_GEEX5100_CODRGT
+		endsegment
+
+		segment STOULIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eETOUILV := S_GEEX5100_TOULIV
+		endsegment
+
+		segment SORDLIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEORDLIV := S_GEEX5100_ORDLIV
+		endsegment
+
+		segment SNUMTOU gGEXPEDITION_CONFIRMATION,gGHEADER
+			eENUMTOU := S_GEEX5100_NUMTOU
+		endsegment
+
+		segment SDATEXP gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEDATEXP := S_GEEX5100_DATEXP
+		endsegment
+
+		segment SHEUEXP gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEHEUEXP := S_GEEX5100_HEUEXP
+		endsegment
+
+		segment SCODTRA gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODTRA := S_GEEX5100_CODTRA
+		endsegment
+
+		segment SCODCAM gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODCAM := S_GEEX5100_CODCAM
+		endsegment
+
+		segment SCODCHF gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODCHF := S_GEEX5100_CODCHF
+		endsegment
+
+		segment SCTRLIV gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECTRLIV := S_GEEX5100_CTRLIV
+		endsegment
+
+		segment SREFCNT gGEXPEDITION_CONFIRMATION,gGHEADER
+			eEREFCNT := S_GEEX5100_REFCNT
+		endsegment
+
+		segment SCODSIT gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODSIT := S_GEEX5100_CODSIT
+		endsegment
+
+		segment SNUMPLB gGEXPEDITION_CONFIRMATION,gGHEADER
+			eENUMPLB := S_GEEX5100_NUMPLB
+		endsegment
+
+		segment SCODLDR gGEXPEDITION_CONFIRMATION,gGHEADER
+			eECODLDR := S_GEEX5100_CODLDR
+		endsegment
+
+		segment SLIVSOL gGEXPEDITION_CONFIRMATION,gGHEADER
+			eELIVSOL := S_GEEX5100_LIVSOL
+		endsegment
+
+		segment SNUMCNT gGEXPEDITION_CONFIRMATION,gGHEADER
+			eENUMCNT := S_GEEX5100_NUMCNT
+		endsegment
+
+		segment SNUMTPT gGEXPEDITION_CONFIRMATION,gGHEADER
+			eENUMTPT := S_GEEX5100_NUMTPT
+		endsegment
+
+	! Cabeçalho por segmento
+
+endline
+
+!===========================================================================================================
+
+line(1:"51.20") ! ITEM
+
+	! Cabeçalho por Variavel
+		tCODEXC := S_GEEX5120_CODEXC
+		tSEPEXC := S_GEEX5120_SEPEXC
+		tSCOEXC := S_GEEX5120_SCOEXC
+		tTRTEXC := S_GEEX5120_TRTEXC
+		tNUMLIV := S_GEEX5120_NUMLIV
+		tSNULIV := S_GEEX5120_SNULIV
+		tCODACT := S_GEEX5120_CODACT
+		tCODCLI := S_GEEX5120_CODCLI
+		tREFLIV := S_GEEX5120_REFLIV
+		tNLILIV := S_GEEX5120_NLILIV
+		tCODPRO := S_GEEX5120_CODPRO
+		tVALPRO := S_GEEX5120_VALPRO
+		tEDIPRO := S_GEEX5120_EDIPRO
+		tUVCCDE := S_GEEX5120_UVCCDE
+		tUNICDE := S_GEEX5120_UNICDE
+		tLIVSOL := S_GEEX5120_LIVSOL
+		tUVCLIV := S_GEEX5120_UVCLIV
+		tMESPRO := S_GEEX5120_MESPRO
+		tPDNLIV := S_GEEX5120_PDNLIV
+		tCODACL := S_GEEX5120_CODACL
+		tMOTMVT := S_GEEX5120_MOTMVT
+		tTYPSTK := S_GEEX5120_TYPSTK
+		tTYPOPE := S_GEEX5120_TYPOPE
+		tNUMOPE := S_GEEX5120_NUMOPE
+		tSPCPRO := S_GEEX5120_SPCPRO
+		tPCBPRO := S_GEEX5120_PCBPRO
+		tTOPLIV := S_GEEX5120_TOPLIV
+		tDIPLIV := S_GEEX5120_DIPLIV
+		tUVCSRV := S_GEEX5120_UVCSRV
+		tUVCINI := S_GEEX5120_UVCINI
+		tNUMEBL := S_GEEX5120_NUMEBL
+		tSNUEBL := S_GEEX5120_SNUEBL
+		tINDPRO := S_GEEX5120_INDPRO
+
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment SNUMLIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eENUMLIV := S_GEEX5120_NUMLIV
+		endsegment
+
+		segment SSNULIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eESNULIV := S_GEEX5120_SNULIV
+		endsegment
+
+		segment SCODACT gGEXPEDITION_CONFIRMATION,gGITEM
+			eECODACT := S_GEEX5120_CODACT
+		endsegment
+
+		segment SCODCLI gGEXPEDITION_CONFIRMATION,gGITEM
+			eECODCLI := S_GEEX5120_CODCLI
+		endsegment
+
+		segment SREFLIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eEREFLIV := S_GEEX5120_REFLIV
+		endsegment
+
+		segment SNLILIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eENLILIV := S_GEEX5120_NLILIV
+		endsegment
+
+		segment SCODPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eECODPRO := S_GEEX5120_CODPRO
+		endsegment
+
+		segment SVALPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eEVALPRO := S_GEEX5120_VALPRO
+		endsegment
+
+		segment SEDIPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eEEDIPRO := S_GEEX5120_EDIPRO
+		endsegment
+
+		segment SUVCCDE gGEXPEDITION_CONFIRMATION,gGITEM
+			eEUVCCDE := S_GEEX5120_UVCCDE
+		endsegment
+
+		segment SUNICDE gGEXPEDITION_CONFIRMATION,gGITEM
+			eEUNICDE := S_GEEX5120_UNICDE
+		endsegment
+
+		segment SLIVSOL gGEXPEDITION_CONFIRMATION,gGITEM
+			eELIVSOL := S_GEEX5120_LIVSOL
+		endsegment
+
+		segment SUVCLIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eEUVCLIV := S_GEEX5120_UVCLIV
+		endsegment
+
+		segment SMESPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eEMESPRO := S_GEEX5120_MESPRO
+		endsegment
+
+		segment SPDNLIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eEPDNLIV := S_GEEX5120_PDNLIV
+		endsegment
+
+		segment SCODACL gGEXPEDITION_CONFIRMATION,gGITEM
+			eECODACL := S_GEEX5120_CODACL
+		endsegment
+
+		segment SMOTMVT gGEXPEDITION_CONFIRMATION,gGITEM
+			eEMOTMVT := S_GEEX5120_MOTMVT
+		endsegment
+
+		segment STYPSTK gGEXPEDITION_CONFIRMATION,gGITEM
+			eETYPSTK := S_GEEX5120_TYPSTK
+		endsegment
+
+		segment STYPOPE gGEXPEDITION_CONFIRMATION,gGITEM
+			eETYPOPE := S_GEEX5120_TYPOPE
+		endsegment
+
+		segment SNUMOPE gGEXPEDITION_CONFIRMATION,gGITEM
+			eENUMOPE := S_GEEX5120_NUMOPE
+		endsegment
+
+		segment SSPCPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eESPCPRO := S_GEEX5120_SPCPRO
+		endsegment
+
+		segment SPCBPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eEPCBPRO := S_GEEX5120_PCBPRO
+		endsegment
+
+		segment STOPLIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eETOPLIV := S_GEEX5120_TOPLIV
+		endsegment
+
+		segment SDIPLIV gGEXPEDITION_CONFIRMATION,gGITEM
+			eEDIPLIV := S_GEEX5120_DIPLIV
+		endsegment
+
+		segment SUVCSRV gGEXPEDITION_CONFIRMATION,gGITEM
+			eEUVCSRV := S_GEEX5120_UVCSRV
+		endsegment
+
+		segment SUVCINI gGEXPEDITION_CONFIRMATION,gGITEM
+			eEUVCINI := S_GEEX5120_UVCINI
+		endsegment
+
+		segment SNUMEBL gGEXPEDITION_CONFIRMATION,gGITEM
+			eENUMEBL := S_GEEX5120_NUMEBL
+		endsegment
+
+		segment SSNUEBL gGEXPEDITION_CONFIRMATION,gGITEM
+			eESNUEBL := S_GEEX5120_SNUEBL
+		endsegment
+
+		segment SINDPRO gGEXPEDITION_CONFIRMATION,gGITEM
+			eEINDPRO := S_GEEX5120_INDPRO
+		endsegment
+
+
+
+	! Cabeçalho por segmento
+
+endline
+
+!===========================================================================================================
+
+line(1:"51.30") ! DETAIL
+
+	! Cabeçalho por Variavel
+		tCODEXC := S_GEEX5130_CODEXC
+		tSEPEXC := S_GEEX5130_SEPEXC
+		tSCOEXC := S_GEEX5130_SCOEXC
+		tTRTEXC := S_GEEX5130_TRTEXC
+		tNUMLIV := S_GEEX5130_NUMLIV
+		tSNULIV := S_GEEX5130_SNULIV
+		tCODACT := S_GEEX5130_CODACT
+		tCODCLI := S_GEEX5130_CODCLI
+		tREFLIV := S_GEEX5130_REFLIV
+		tNLILIV := S_GEEX5130_NLILIV
+		tCODPRO := S_GEEX5130_CODPRO
+		tVALPRO := S_GEEX5130_VALPRO
+		tUVCLIV := S_GEEX5130_UVCLIV
+		tMESPRO := S_GEEX5130_MESPRO
+		tPDNLIV := S_GEEX5130_PDNLIV
+		tMOTMVT := S_GEEX5130_MOTMVT
+		tCODLOT := S_GEEX5130_CODLOT
+		tNUMLOT := S_GEEX5130_NUMLOT
+		tCODPAL := S_GEEX5130_CODPAL
+		tDATFVI := S_GEEX5130_DATFVI
+		tNUMSUP := S_GEEX5130_NUMSUP
+		tSNUSUP := S_GEEX5130_SNUSUP
+		tCODPRP := S_GEEX5130_CODPRP
+		tPRPPIC := S_GEEX5130_PRPPIC
+		tSPCPRO := S_GEEX5130_SPCPRO
+		tPCBPRO := S_GEEX5130_PCBPRO
+		tCOLCOU := S_GEEX5130_COLCOU
+		tCOUPAL := S_GEEX5130_COUPAL
+		tGERPAL := S_GEEX5130_GERPAL
+		tCODEMB := S_GEEX5130_CODEMB
+		tCODACL := S_GEEX5130_CODACL
+		tUVCSRV := S_GEEX5130_UVCSRV
+		tSSCHET := S_GEEX5130_SSCHET
+		tHEUSUP := S_GEEX5130_HEUSUP
+		tMOTIMM := S_GEEX5130_MOTIMM
+		tNUMCLS := S_GEEX5130_NUMCLS
+	! Cabeçalho por Variavel
+
+	! Cabeçalho por segmento
+		segment SNUMLIV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eENUMLIV := S_GEEX5130_NUMLIV
+		endsegment
+
+		segment SSNULIV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eESNULIV := S_GEEX5130_SNULIV
+		endsegment
+
+		segment SCODACT gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODACT := S_GEEX5130_CODACT
+		endsegment
+
+		segment SCODCLI gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODCLI := S_GEEX5130_CODCLI
+		endsegment
+
+		segment SREFLIV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEREFLIV := S_GEEX5130_REFLIV
+		endsegment
+
+		segment SNLILIV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eENLILIV := S_GEEX5130_NLILIV
+		endsegment
+
+		segment SCODPRO gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODPRO := S_GEEX5130_CODPRO
+		endsegment
+
+		segment SVALPRO gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEVALPRO := S_GEEX5130_VALPRO
+		endsegment
+
+		segment SUVCLIV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEUVCLIV := S_GEEX5130_UVCLIV
+		endsegment
+
+		segment SMESPRO gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEMESPRO := S_GEEX5130_MESPRO
+		endsegment
+
+		segment SPDNLIV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPDNLIV := S_GEEX5130_PDNLIV
+		endsegment
+
+		segment SMOTMVT gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEMOTMVT := S_GEEX5130_MOTMVT
+		endsegment
+
+		segment SCODLOT gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODLOT := S_GEEX5130_CODLOT
+		endsegment
+
+		segment SNUMLOT gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eENUMLOT := S_GEEX5130_NUMLOT
+		endsegment
+
+		segment SCODPAL gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODPAL := S_GEEX5130_CODPAL
+		endsegment
+
+		segment SDATFVI gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEDATFVI := S_GEEX5130_DATFVI
+		endsegment
+
+		segment SNUMSUP gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eENUMSUP := S_GEEX5130_NUMSUP
+		endsegment
+
+		segment SSNUSUP gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eESNUSUP := S_GEEX5130_SNUSUP
+		endsegment
+
+		segment SCODPRP gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODPRP := S_GEEX5130_CODPRP
+		endsegment
+
+		segment SPRPPIC gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPRPPIC := S_GEEX5130_PRPPIC
+		endsegment
+
+		segment SSPCPRO gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eESPCPRO := S_GEEX5130_SPCPRO
+		endsegment
+
+		segment SPCBPRO gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEPCBPRO := S_GEEX5130_PCBPRO
+		endsegment
+
+		segment SCOLCOU gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECOLCOU := S_GEEX5130_COLCOU
+		endsegment
+
+		segment SCOUPAL gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECOUPAL := S_GEEX5130_COUPAL
+		endsegment
+
+		segment SGERPAL gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEGERPAL := S_GEEX5130_GERPAL
+		endsegment
+
+		segment SCODEMB gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODEMB := S_GEEX5130_CODEMB
+		endsegment
+
+		segment SCODACL gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eECODACL := S_GEEX5130_CODACL
+		endsegment
+
+		segment SUVCSRV gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEUVCSRV := S_GEEX5130_UVCSRV
+		endsegment
+
+		segment SSSCHET gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eESCHET := S_GEEX5130_SSCHET
+		endsegment
+
+		segment SHEUSUP gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEHEUSUP := S_GEEX5130_HEUSUP
+		endsegment
+
+		segment SMOTIMM gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eEMOTIMM := S_GEEX5130_MOTIMM
+		endsegment
+
+		segment SNUMCLS gGEXPEDITION_CONFIRMATION,gGITEM,gGDETAIL
+			eENUMCLS := S_GEEX5130_NUMCLS
+		endsegment
+
+	! Cabeçalho por segmento
+
+endline
+
+!===========================================================================================================
+! Default statements section
+default
+
+enddefault
+
+!===========================================================================================================
+! End statements section
+end
+    log("tTRTEXC = ", tTRTEXC, NL)
+    log("tCODPRO = ", tCODPRO, NL)
+
+	!print(MESSAGE) >> tFileOutTemp
+
+	log("########################################################", NL)
+	log("Fim: ", time("now","%Y-%m-%d %H:%M:%S"), NL)
+	log("########################################################", NL)
+
+endend
+
+!===========================================================================================================

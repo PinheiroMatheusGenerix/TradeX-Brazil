@@ -1,0 +1,804 @@
+<!-- edited with XMLSpy v2006 sp2 U (http://www.altova.com) by Influe Portugal, Sistemas de Informação, S.A. (Influe Portugal, Sistemas de Informação, S.A.) -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="MESSAGE">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MOVEMENT" maxOccurs="100000">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="DATMVT">
+								<xs:annotation>
+									<xs:documentation>Date of movement</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="8"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="HEUMVT">
+								<xs:annotation>
+									<xs:documentation>Movement Time</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="6"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="DATRGL" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Date regularization</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="8"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODMDU">
+								<xs:annotation>
+									<xs:documentation>Module code</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="2"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODFON">
+								<xs:annotation>
+									<xs:documentation>Function code</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="1"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODMVT">
+								<xs:annotation>
+									<xs:documentation>Code logging movement</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="2"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="SENMVT">
+								<xs:annotation>
+									<xs:documentation>physical movement direction</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="1"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="MOTMVT">
+								<xs:annotation>
+									<xs:documentation>movement pattern Journaled</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="EDIMVT">
+								<xs:annotation>
+									<xs:documentation>Code movement E.D.I.</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="REFMVT">
+								<xs:annotation>
+									<xs:documentation>Movement Reference</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="30"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="UVCMVT">
+								<xs:annotation>
+									<xs:documentation>Number of units of regularization movement</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="9"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODACT">
+								<xs:annotation>
+									<xs:documentation>Code logistics business</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODCLI">
+								<xs:annotation>
+									<xs:documentation>Code of customer Owner stock</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="14"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODPRO">
+								<xs:annotation>
+									<xs:documentation>Product Code</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="17"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="VALPRO">
+								<xs:annotation>
+									<xs:documentation>variant logistics</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="2"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODPRN">
+								<xs:annotation>
+									<xs:documentation>Product code of nomenclature</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="17"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="SPCPRO">
+								<xs:annotation>
+									<xs:documentation>Sub by how much of the product</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="4"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="PCBPRO">
+								<xs:annotation>
+									<xs:documentation>For how much of the product</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="5"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODSIT">
+								<xs:annotation>
+									<xs:documentation>Code storage site</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="ZONSTS">
+								<xs:annotation>
+									<xs:documentation>warehouse storage area</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="1"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="ALLSTS">
+								<xs:annotation>
+									<xs:documentation>Code of the aisle in area</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="DPLSTS">
+								<xs:annotation>
+									<xs:documentation>location shift in the driveway</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="4"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="NIVSTS">
+								<xs:annotation>
+									<xs:documentation>location level in the column</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="2"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODLOT">
+								<xs:annotation>
+									<xs:documentation>Batch code stored</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="20"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="NUMLOT">
+								<xs:annotation>
+									<xs:documentation>Internal number of commodity lot</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="9"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODPAL">
+								<xs:annotation>
+									<xs:documentation>Code stored pallet</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="18"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="DATFVI">
+								<xs:annotation>
+									<xs:documentation>Date of end of life of the product (obsolescence)</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="8"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="NUMDIM">
+								<xs:annotation>
+									<xs:documentation>Number Unlocking</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="8"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODTIE">
+								<xs:annotation>
+									<xs:documentation>third code (Supplier or Customer)</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="14"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="TYPTIE">
+								<xs:annotation>
+									<xs:documentation>Type thirds for the management of packaging</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="1"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="NUMCDE">
+								<xs:annotation>
+									<xs:documentation>Order number (Reception or delivery)</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="8"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="SNUCDE">
+								<xs:annotation>
+									<xs:documentation>control subsystem number (Receiving / Shipping)</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="CODUTI" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>User code responsible for movement</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="10"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="UNIPRO">
+								<xs:annotation>
+									<xs:documentation>Product measuring unit</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:maxLength value="3"/>
+										<xs:minLength value="1"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element name="MOVEMENT_COMPLEMENT_01" minOccurs="0">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="REFMVT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN movement reference</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODACT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code logistics business</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Internal product code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="VALPRO" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Logistics variant (EAN)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="PDBPAL" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N gross weight of the pallet in Kg</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="PDBMVT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N eventful gross weight</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="ANAPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Product code analysis</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="FAMPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Product Classification Family</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="INDPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Product configurable indicators</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="NLILIV" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Line number for delivery interface</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODTLI" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN type of delivery code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODPAL" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code stored pallet standards EAN128</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATFAB" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Date of manufacture</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="MOTSAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN S.A.P. pattern</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODSAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN S.A.P. code (+/-)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="STOSAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN storage location S.A.P. (+/-)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="STASAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN S.A.P. status (+/-)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="MOVEMENT_INFORMATION" minOccurs="0" maxOccurs="100000">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="CODMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of Logging movement</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="SENMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN physical movement direction</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="MOTMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN movement pattern journaled</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="REFMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN movement reference</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="NLILIV" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Line number for delivery interface</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="UVCMVT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Number of units of regularization</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODACT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code logistics business</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODCLI" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of the client owns the stock</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Product Code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="VALPRO" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N logistics variant</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="PCBPRO" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N By how much of the product</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="SPCPRO" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Sub by how much of the product</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODLOT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Lot code stored</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODPAL" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code stored pallet</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATFVI" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Date of end of life of the product </xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="SITPAL" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Site origin of the updated range</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CLILIV" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN delivering customer code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="MOVEMENT_ASSET_INFORMATION" minOccurs="0" maxOccurs="100000">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="CODCLI" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of the client owns the stock</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Product Code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="VALPRO" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N logistics variant</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="MOTIMM" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN immobilization pattern</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATIMM1" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation> C N Start Date immobilization</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATIMM2" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation> C N End date capital</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATFVI" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Date of end of life of the product </xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATMVT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Date of movement</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="HEUMVT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N movement time</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of Logging movement</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="SENMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN physical movement direction</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="MOTMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN movement pattern journaled</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="EDIMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of the movement for E.D.I.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="REFMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN movement reference</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="UVCMVT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Number of units of regularization</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="UNIPRO" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Product Measurement Unit</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="SITPAL" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Site origin of the updated range</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODPAL" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code stored pallet standards EAN128</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODLOT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Lot code stored</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="NUMLOT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Internal number of commodity lot</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="HEUIMM1" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation> C N early immobilization time</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="HEUIMM2" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation> C N end of immobilization time</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODSAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN S.A.P. code (+/-)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="STOSAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN storage location S.A.P. (+/-)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="STASAP" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN S.A.P. status (+/-)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="MOVEMENT_ACCOUNTED_PACKAGE_INFORMATION" minOccurs="0" maxOccurs="100000">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="CODEMB" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code handling packaging</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="PROEMB" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code Product Packaging for interfac</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="PRXEMB" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Indicative price of the package</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="TYPTIE" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Type third for the management of pa</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODTIE" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN third code (Supplier / Customer </xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="MOTMVB" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Reason packaging movement</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="REFMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN movement reference</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CMTMVB" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Comments for Regul. packing</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="QTBENT" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Amount input containers</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="QTBSOR" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Output quantity of packaging</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODACT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code logistics business</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DATEMB" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C N Date of physical motion capture</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODTRA" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Carrier Code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODFOU" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Supplier code</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="CODCLI" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of the client owns the stock</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="EDIMVT" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>C AN Code of the movement for E.D.I.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="MOVEMENT_ACCOUNTED_PACKAGE_INFORMATION_COMPLEMENT_04" minOccurs="0">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="LIBTYP" type="xs:string" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>C AN Wording the type of treatment immat</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+													<xs:element name="CODIMA" type="xs:string" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>C AN Registration packaging</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
