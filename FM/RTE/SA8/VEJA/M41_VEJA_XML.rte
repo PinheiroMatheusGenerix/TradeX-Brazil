@@ -79,6 +79,7 @@ begin
 		nCountItemIn := 0
 		nCount4020_M01 := 0
 		nContItemCAR := 0
+		nCountTXR := 0
 		bGeraM01 := TRUE
 		bGeraM41 := TRUE
 		bTodos_Carton_zero := TRUE
@@ -211,7 +212,7 @@ line(1:"41.00")
 	! FIM QUERY bGeraM01, taVALRUB_GERERUB[peel(taDb2Array["CODRUB"], " ")]
 
 	! QUERY bINDARV3
-		tQuery := build("SELECT  INDARV", NL," "\
+		tQuery := build("SELECT INDARV", NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GERECE", NL," "\
 						"WHERE NUMREC = '",tNUMREC,"'", NL," "\
 						"AND SNUREC = '",tSNUREC,"'")
@@ -244,6 +245,43 @@ line(1:"41.00")
 			exit(1)
 		endif
 	! FIM QUERY bINDARV3
+
+	! QUERY LIBTXR
+		tQuery := build("SELECT   NUMREC                                                 AS NUMREC ", NL," "\
+						"       ,SEQTXR                                                 AS SEQTXR ", NL," "\
+						"       ,REPLACE(TRIM(SUBSTR(LIBTXR,1,60)),'<custom_property>') AS LIBTXR1 ", NL," "\
+						"       ,TRIM(SUBSTR(LIBTXR,60,60))                             AS LIBTXR2 ", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GETXR ", NL," "\
+						"WHERE NUMREC = '",tNUMREC,"'", NL," "\
+						"AND SNUREC = '",tSNUREC,"' ORDER BY 1, 2, 3 ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			bfSqlErro()
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			nCountTXR++
+			taName[nCountTXR] := peel(taDb2Array["LIBTXR1"], " ")
+			taValue[nCountTXR] := peel(taDb2Array["LIBTXR2"], " ")
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+	! FIM QUERY LIBTXR
+
 endline
 
 !==============================================================================
@@ -379,6 +417,7 @@ line(1:"41.20")
 	taUVCREA[nCountLine] := S_GEEX4120_UVCREA
 	taCODLOT[nCountLine] := S_GEEX4120_CODLOT
 	taCODPRO[nCountLine] := S_GEEX4120_CODPRO
+	taMOTIMM[nCountLine] := S_GEEX4120_MOTIMM
 	taNUMOPE[nCountLine] := S_GEEX4120_NUMOPE
 	taUNICDE[nCountLine] := S_GEEX4120_UNICDE
 	taUVCREA_SUM[taUNICDE[nCountLine]] := build(number(taUVCREA_SUM[taUNICDE[nCountLine]]) + number(S_GEEX4120_UVCREA))
@@ -1004,6 +1043,7 @@ end
 				if tCODTRE = "DV" then
 					bfCriarBodyReturnDelivery(taCODLOT[tIndex], \
 												taCODPRO[tIndex], \
+												taMOTIMM[tIndex], \
 												taEDIPRO[tIndex], \
 												taUVCREC[tIndex], \
 												taUVCREA[tIndex], \
@@ -1211,20 +1251,89 @@ function bfCriarHeader(tEDIACT_FUNC, tCODTRE_FUNC, tDTRREC_FUNC, tREFREC_FUNC)
 		if tCODTRE_FUNC = "DV" then
 			eEname := "Return Delivery"
 		else
-			eEname := "Inbound Delivery "
+			eEname := "Inbound Delivery"
 		endif
 	endsegment
 
 	segment Svalue gGreceiving_confirmation,gGreceiving_confirmation_header,gGcustom_properties,gGcustom_property
 		eEvalue := tREFREC_FUNC
 	endsegment
+
+	while tIndexTXR in taName do
+		segment Sname gGreceiving_confirmation,gGreceiving_confirmation_header,gGcustom_properties,gGcustom_property
+			eEname := taName[tIndexTXR]
+		endsegment
+
+		segment Svalue gGreceiving_confirmation,gGreceiving_confirmation_header,gGcustom_properties,gGcustom_property
+			eEvalue := taValue[tIndexTXR]
+		endsegment
+	endwhile
+
 endfunction
 
 !===========================================================
 
-function bfCriarBodyReturnDelivery(tCODLOT_FUNC, tCODPRO_FUNC, tEDIPRO_FUNC, tUVCREC_FUNC, tUVCREA_FUNC, tNUMOPE_FUNC, tReceived_FUNC)
+function bfCriarBodyReturnDelivery(tCODLOT_FUNC, tCODPRO_FUNC, tMOTIMM_FUNC, tEDIPRO_FUNC, tUVCREC_FUNC, tUVCREA_FUNC, tNUMOPE_FUNC, tReceived_FUNC)
+
 	segment Ssku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku
-		eAslot := taVALRUB_1["*SLO"]
+			! QUERY tSLOT
+				tQuery := build("SELECT   RD.NUMREC ", NL," "\
+								"       ,RD.CODPRO ", NL," "\
+								"       ,RD.MOTIMM ", NL," "\
+								"       ,CASE RD.MOTIMM WHEN '' THEN 'Q1' ELSE LEFT(IM.CODSAP1,2) END ||LEFT(RD.CODCLI,2) AS SLOT ", NL," "\
+								"FROM FGE50FM",tToInfologPrefixFilename,".GERECD AS RD", NL," "\
+								"JOIN FGE50FM",tToInfologPrefixFilename,".GEZIMO AS IM", NL," "\
+								"  ON RD.MOTIMM = IM.MOTIMM ", NL," "\
+								"WHERE RD.NUMREC = '",tNUMREC,"'", NL," "\
+								"  AND RD.SNUREC = '",tSNUREC,"'", NL," "\
+								"  AND RD.CODPRO = '",tCODPRO_FUNC,"'", NL," "\
+								"ORDER BY 1, 2, 3 ")
+
+				log("------------------------------------------------------------", NL)
+				log(tQuery,NL)
+				log("------------------------------------------------------------", NL)
+
+				if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)					
+				endif
+
+				if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL ", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+
+				while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do	
+					tSLOT:= taDb2Array["SLOT"]
+
+					remove(taDb2Array)
+				endwhile
+
+				if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+					print("FATAL", tfSqlErrorStr())
+					bfMajtrace("Erro de Traducao", \
+								"1", \
+								"", \
+								time("now","%Y-%m-%d"), \
+								tFileOut, \
+								build("Erro na abertura do banco de dados: ",tfSqlErrorStr()))
+					exit(1)
+				endif
+			! FIM QUERY tSLOT
+
+		eAslot := tSLOT
 	endsegment
 
 	segment Sbarcode_sku gGreceiving_confirmation,gGreceiving_confirmation_header,gGreceiving_confirmation_body,gGpieces,gGsku

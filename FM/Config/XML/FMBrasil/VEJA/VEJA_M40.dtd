@@ -4,6 +4,7 @@
 		<!ELEMENT ra_number (#PCDATA)>
 		<!ELEMENT receiving_reference (#PCDATA)>
 		<!ELEMENT expected_arrival_date (#PCDATA)>
+		<!ELEMENT cancel (#PCDATA)>
 		<!ELEMENT custom_properties (custom_property)*>
 			<!ELEMENT custom_property (name,value)*>
 				<!ELEMENT name (#PCDATA)>

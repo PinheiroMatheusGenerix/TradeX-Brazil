@@ -68,6 +68,7 @@ begin
 		pXML.INCONVIN := "UTF-8"
 		pXML.INCOVIN := "UTF-8"
 		pXML.ENCODING := "UTF-8"
+		nCountTXL := 0
 
 endbegin
 
@@ -109,11 +110,11 @@ end
     ! Verifica se todo o pedido esta expedido
 		tQuery := build("SELECT DISTINCT 1 AS VAL", NL," "\
 						"FROM FGE50FM",tToInfologPrefixFilename,".GELIVE AS LE ", NL," "\
-						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD AS LD ", NL," "\
+						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD AS LD ", NL," "\
 						"  ON LE.NUMLIV = LD.NUMLIV ", NL," "\
 						" AND LE.SNULIV = LD.SNULIV ", NL," "\
-						" AND LD.CODACL = '' ", NL," "\
-						" AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
+						"-- AND LD.CODACL = '' ", NL," "\
+						"-- AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPE AS SE ", NL," "\
 						"  ON LE.NUMLIV = SE.NUMLIV ", NL," "\
 						" AND LE.SNULIV = SE.SNULIV ", NL," "\
@@ -195,6 +196,42 @@ end
         endif
     ! FIM QUERY tEDIACT
 
+	! QUERY LIBTXL
+		tQuery := build("SELECT   DISTINCT NUMLIV                                        AS NUMLIV ", NL," "\
+						"       ,SEQTXL                                                 AS SEQTXR ", NL," "\
+						"       ,REPLACE(TRIM(SUBSTR(LIBTXL,1,60)),'<custom_property>') AS LIBTXL1 ", NL," "\
+						"       ,TRIM(SUBSTR(LIBTXL,60,60))                             AS LIBTXL2 ", NL," "\
+						"FROM FGE50FM",tToInfologPrefixFilename,".GETXL ", NL," "\
+						"WHERE NUMLIV = '",tNUMLIV,"'", NL," "\
+						"ORDER BY 1, 2, 3 ")
+
+		log("------------------------------------------------------------", NL)
+		log(tQuery,NL)
+		log("------------------------------------------------------------", NL)
+
+		if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+			bfSqlErro()
+			exit(1)					
+		endif
+
+		if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+
+		while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+			nCountTXL++
+			taName[nCountTXL] := peel(taDb2Array["LIBTXL1"], " ")
+			taValue[nCountTXL] := peel(taDb2Array["LIBTXL2"], " ")
+			remove(taDb2Array)
+		endwhile
+
+		if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+			bfSqlErro()
+			exit(1)
+		endif
+	! FIM QUERY LIBTXL
+
     ! QUERY bfWriteHeader, bfWriteBoxesCarton, bfWriteBoxesSKU
 		tQuery := build("SELECT   TRIM(LE.REFLIV)                           AS REFLIV", NL," "\
 						"       ,CAST(SUM(", NL," "\
@@ -216,7 +253,7 @@ end
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD     AS SD", NL," "\
 						"  ON SE.NUMSUP = SD.NUMSUP ", NL," "\
 						" AND SE.SNUSUP = SD.SNUSUP ", NL," "\
-						" AND SD.UVCLIV > 0 ", NL," "\
+						"-- AND SD.UVCLIV > 0 ", NL," "\
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GELIVE     AS LE", NL," "\
 						"  ON SD.LIVNUM = LE.NUMLIV ", NL," "\
 						" AND SD.LIVSNU = LE.SNULIV", NL," "\
@@ -278,7 +315,7 @@ end
 								peel(tDATEXP, " "))
 			endif
 
-			if tCurrentNUMSUP <> peel(taDb2Array["NUMSUP"], " ") then
+			if tCurrentNUMSUP <> peel(taDb2Array["NUMSUP"], " ") and number(peel(taDb2Array["UVCLIV"], " ")) > 0 then
 				bfWriteBoxesCarton(peel(taDb2Array["NUMSUP"], " "), \
 									peel(taDb2Array["RAST"], " "), \
 									peel(taDb2Array["VOL_SUP"], " "), \
@@ -286,9 +323,11 @@ end
 				tCurrentNUMSUP := peel(taDb2Array["NUMSUP"], " ")
 			endif
 
-			bfWriteBoxesSKU(peel(taDb2Array["CODPRO"], " "), \
-							peel(taDb2Array["UVCLIV"], " "), \
-							peel(taDb2Array["VALRUB"], " "))
+			if number(peel(taDb2Array["UVCLIV"], " ")) > 0 then
+				bfWriteBoxesSKU(peel(taDb2Array["CODPRO"], " "), \
+								peel(taDb2Array["UVCLIV"], " "), \
+								peel(taDb2Array["VALRUB"], " "))
+			endif
 
             remove(taDb2Array)
         endwhile
@@ -308,7 +347,7 @@ end
 						"JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD SD", NL," "\
 						"  ON SE.NUMSUP = SD.NUMSUP ", NL," "\
 						" AND SE.SNUSUP = SD.SNUSUP ", NL," "\
-						" AND SD.UVCLIV > 0 ", NL," "\
+						"-- AND SD.UVCLIV > 0 ", NL," "\
 						"LEFT JOIN FGE50FM",tToInfologPrefixFilename,".GEPRO PR", NL," "\
 						"  ON SD.CODACT = PR.CODACT ", NL," "\
 						" AND SD.CODPRO = PR.CODPRO ", NL," "\
@@ -406,6 +445,19 @@ function bfWriteHeader(tEDIACT_FUNC, tREFLIV_FUNC, tVOLPED_FUNC, tCODTRA_FUNC, t
 	segment Sshipping_date gGconfirm_shipping,gGconfirm_shipping_header
 		eEshipping_date := tfConvertDate(tDATEXP_FUNC, "YYYYMMDD" , "YYYY-MM-DD")
 	endsegment
+
+	! Custom Properties
+		while tIndexTXL in taName do
+			segment Sname gGconfirm_shipping,gGconfirm_shipping_header,gGcustom_properties,gGcustom_property
+				eEname := taName[tIndexTXL]
+			endsegment
+
+			segment Svalue gGconfirm_shipping,gGconfirm_shipping_header,gGcustom_properties,gGcustom_property
+				eEvalue := taValue[tIndexTXL]
+			endsegment
+		endwhile
+	! FIM Custom Properties
+
 endfunction
 
 !==============================================================================

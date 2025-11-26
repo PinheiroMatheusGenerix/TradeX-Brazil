@@ -1,29 +1,33 @@
 <!ELEMENT confirm_shipping (confirm_shipping_header)>
-	<!ELEMENT confirm_shipping_header (warehouse,picking_reference,gross_weight,carrier_scac,shipping_date,confirm_shipping_body)+>
-    <!ELEMENT confirm_shipping_body (boxes,pieces)+>
-    
-    <!ELEMENT boxes (carton)+>
-    <!ELEMENT carton (carton_number,tracking_number,gross_weight,volume,skus)+>
-    <!ELEMENT skus (sku)+>
-    <!ELEMENT sku (barcode_sku,barcode_upc?,barcode_ean?,qty,order_line)+>
-    
-    <!ELEMENT pieces (sku)+>
-    <!ELEMENT order_line (primary_reference,quantity)+>
+<!ELEMENT confirm_shipping_header (warehouse,picking_reference,gross_weight,carrier_scac,shipping_date,custom_properties,confirm_shipping_body)+>
+<!ELEMENT confirm_shipping_body (boxes,pieces)+>
+<!ELEMENT custom_properties (#PCDATA|custom_property)*>
+<!ELEMENT custom_property (name,value)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
 
-    <!ELEMENT warehouse (#PCDATA)>
-    <!ELEMENT picking_reference (#PCDATA)>
-    <!ELEMENT gross_weight (#PCDATA)>
-    <!ELEMENT carrier_scac (#PCDATA)>
-    <!ELEMENT shipping_date (#PCDATA)>
-    
-    <!ELEMENT carton_number (#PCDATA)>
-    <!ELEMENT tracking_number (#PCDATA)>
-    <!ELEMENT volume (#PCDATA)>
-    
-    <!ELEMENT barcode_sku (#PCDATA)>
-    <!ELEMENT barcode_upc (#PCDATA)>
-    <!ELEMENT barcode_ean (#PCDATA)>
-    <!ELEMENT qty (#PCDATA)>
-    
-    <!ELEMENT primary_reference (#PCDATA)>
-    <!ELEMENT quantity (#PCDATA)>
+<!ELEMENT boxes (carton)+>
+<!ELEMENT carton (carton_number,tracking_number,gross_weight,volume,skus)+>
+<!ELEMENT skus (sku)+>
+<!ELEMENT sku (barcode_sku,barcode_upc?,barcode_ean?,qty,order_line)+>
+
+<!ELEMENT pieces (sku)+>
+<!ELEMENT order_line (primary_reference,quantity)+>
+
+<!ELEMENT warehouse (#PCDATA)>
+<!ELEMENT picking_reference (#PCDATA)>
+<!ELEMENT gross_weight (#PCDATA)>
+<!ELEMENT carrier_scac (#PCDATA)>
+<!ELEMENT shipping_date (#PCDATA)>
+
+<!ELEMENT carton_number (#PCDATA)>
+<!ELEMENT tracking_number (#PCDATA)>
+<!ELEMENT volume (#PCDATA)>
+
+<!ELEMENT barcode_sku (#PCDATA)>
+<!ELEMENT barcode_upc (#PCDATA)>
+<!ELEMENT barcode_ean (#PCDATA)>
+<!ELEMENT qty (#PCDATA)>
+
+<!ELEMENT primary_reference (#PCDATA)>
+<!ELEMENT quantity (#PCDATA)>

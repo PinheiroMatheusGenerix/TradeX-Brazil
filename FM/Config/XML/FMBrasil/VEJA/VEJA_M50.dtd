@@ -19,7 +19,11 @@
 		<!ELEMENT lock_type (#PCDATA)>
 		<!ELEMENT channel (#PCDATA)>
 		<!ELEMENT delivery_type (#PCDATA)>
-		<!ELEMENT store (#PCDATA|name)>
+		<!ELEMENT store (#PCDATA)>		
+		<!ELEMENT custom_properties (custom_property)*>
+			<!ELEMENT custom_property (name,value)*>
+				<!ELEMENT name (#PCDATA)>
+				<!ELEMENT value (#PCDATA)>
 
 		<!ELEMENT ship_to (client_code, contact_phone, name, name1, address, number, adress2, additional_address, city, country, state, zip, email)>
 		<!ELEMENT sold_to (client_code, contact_phone, name, name1, address, adress1, city, country, state, zip, email)>

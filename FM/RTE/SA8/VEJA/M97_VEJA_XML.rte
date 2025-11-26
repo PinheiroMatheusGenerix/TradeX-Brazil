@@ -75,6 +75,7 @@ begin
         pXML.INCOVIN := "UTF-8"
         pXML.ENCODING := "UTF-8"
 
+
 endbegin
 
 !==============================================================================
@@ -107,8 +108,9 @@ line(1:"97.50")
                             "JOIN FGE50FM",tToInfologPrefixFilename,".GELIVD AS LD ", NL," "\
                             "  ON LE.NUMLIV = LD.NUMLIV ", NL," "\
                             " AND LE.SNULIV = LD.SNULIV ", NL," "\
-						    " AND LD.CODACL = '' ", NL," "\
-                            " AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
+						    " AND LE.ETALIV <> 30 ", NL," "\
+						    "-- AND LD.CODACL = '' ", NL," "\
+                            "-- AND LD.UVCCDE - LD.UVCSRV != 0 ", NL," "\
                             "WHERE 1 = 1 ", NL," "\
                             " AND LE.CODACT = '",tCODACT,"' ", NL," "\
                             " AND LE.REFLIV = '",tREFLIV,"' ")
@@ -566,6 +568,42 @@ line(1:"97.50")
                 endif
             ! FIM QUERY tEDIACT_Query
 
+            ! QUERY LIBTXL
+                tQuery := build("SELECT   DISTINCT NUMLIV                                        AS NUMLIV ", NL," "\
+                                "       ,SEQTXL                                                 AS SEQTXR ", NL," "\
+                                "       ,REPLACE(TRIM(SUBSTR(LIBTXL,1,60)),'<custom_property>') AS LIBTXL1 ", NL," "\
+                                "       ,TRIM(SUBSTR(LIBTXL,60,60))                             AS LIBTXL2 ", NL," "\
+                                "FROM FGE50FM",tToInfologPrefixFilename,".GETXL ", NL," "\
+                                "WHERE NUMLIV = '",tNUMLIV,"'", NL," "\
+                                "ORDER BY 1, 2, 3 ")
+
+                log("------------------------------------------------------------", NL)
+                log(tQuery,NL)
+                log("------------------------------------------------------------", NL)
+
+                if bfSqlSet(tDbBase, "SELECTdb2", tQuery) = FALSE then
+                    bfSqlErro()
+                    exit(1)					
+                endif
+
+                if bfSqlOpen(tDbBase, "SELECTdb2") = FALSE then
+                    bfSqlErro()
+                    exit(1)
+                endif
+
+                while bfSqlFetchArray(tDbBase, "SELECTdb2", taDb2Array) = TRUE do
+                    nCountTXL++
+                    taName[nCountTXL] := peel(taDb2Array["LIBTXL1"], " ")
+                    taValue[nCountTXL] := peel(taDb2Array["LIBTXL2"], " ")
+                    remove(taDb2Array)
+                endwhile
+
+                if bfSqlFree(tDbBase, "SELECTdb2") = FALSE then
+                    bfSqlErro()
+                    exit(1)
+                endif
+            ! FIM QUERY LIBTXL
+
             ! QUERY tVALRUB_DTYP
                 tQuery := build("SELECT VALRUB", NL," "\
                                 "FROM FGE50FM",tToInfologPrefixFilename,".GELIRUB", NL," "\
@@ -615,7 +653,7 @@ line(1:"97.50")
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD AS SD", NL," "\
                                 "  ON SE.NUMSUP = SD.NUMSUP", NL," "\
                                 " AND SE.SNUSUP = SD.SNUSUP", NL," "\
-                                " AND SD.UVCLIV > 0 ", NL," "\
+                                "-- AND SD.UVCLIV > 0 ", NL," "\
                                 " AND SE.SNUSUP = 0 ", NL," "\
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GERILP AS RP", NL," "\
                                 "  ON SD.NUMLIV = RP.NUMLIV", NL," "\
@@ -678,13 +716,15 @@ line(1:"97.50")
                                         peel(taDb2Array["DATPRP"], " "), \
                                         tVALRUB_DTYP)
                     endif
-
-                    bfWriteBoxes(peel(taDb2Array["NUMSUP"], " "), \
-                                    peel(taDb2Array["VOL_SUP"], " "), \
-                                    peel(taDb2Array["CUMVOL"], " "), \
-                                    peel(taDb2Array["CODPRO"], " "), \
-                                    peel(taDb2Array["UVCLIV"], " "), \
-                                    peel(taDb2Array["VALRUB"], " "))
+                    
+                    if number(peel(taDb2Array["UVCLIV"], " ")) > 0 then
+                        bfWriteBoxes(peel(taDb2Array["NUMSUP"], " "), \
+                                        peel(taDb2Array["VOL_SUP"], " "), \
+                                        peel(taDb2Array["CUMVOL"], " "), \
+                                        peel(taDb2Array["CODPRO"], " "), \
+                                        peel(taDb2Array["UVCLIV"], " "), \
+                                        peel(taDb2Array["VALRUB"], " "))
+                    endif
 
                     remove(taDb2Array)
                 endwhile
@@ -704,7 +744,7 @@ line(1:"97.50")
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GESUPD AS SD", NL," "\
                                 "  ON SE.NUMSUP = SD.NUMSUP", NL," "\
                                 " AND SE.SNUSUP = SD.SNUSUP", NL," "\
-                                " AND SD.UVCLIV > 0 ", NL," "\
+                                "-- AND SD.UVCLIV > 0 ", NL," "\
                                 " AND SE.SNUSUP = 0 ", NL," "\
                                 "JOIN FGE50FM",tToInfologPrefixFilename,".GERILP AS RP", NL," "\
                                 "  ON SD.NUMLIV = RP.NUMLIV", NL," "\
@@ -872,6 +912,19 @@ function bfWriteHeader(tEDIACT_FUNC, tREFLIV_FUNC, tVOLPED_FUNC, tCODTRA_FUNC, t
             eEdelivery_type := " "
         endif
     endsegment
+
+	! Custom Properties
+		while tIndexTXL in taName do
+			segment Sname gGconfirm_shipping,gGconfirm_shipping_header,gGcustom_properties,gGcustom_property
+				eEname := taName[tIndexTXL]
+			endsegment
+
+			segment Svalue gGconfirm_shipping,gGconfirm_shipping_header,gGcustom_properties,gGcustom_property
+				eEvalue := taValue[tIndexTXL]
+			endsegment
+		endwhile
+	! FIM Custom Properties
+
 endfunction
 
 !==============================================================================
