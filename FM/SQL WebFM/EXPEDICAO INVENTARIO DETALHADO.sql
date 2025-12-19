@@ -1,0 +1,123 @@
+SELECT  PLANTA
+       ,PEDIDO
+       ,SIT_PEDIDO
+       ,ORIGEM
+       ,DATA_INICIO
+       ,DATA_FIM
+       ,DATA_ENTREGA
+       ,ONDA
+       ,ETAPA_ONDA
+       ,SITUACAO_ONDA
+       ,ENCOMENDA
+       ,TIPO_SUPORTE
+       ,CIRCUITO
+       ,ROTA
+       ,REGIAO
+       ,DOCA
+       ,SUPORTE
+       ,ETAPA_SUPORTE
+       ,CLIENTE
+       ,TRANSP
+       ,FAMILIA
+       ,PESO_VARIAVEL
+       ,SKU
+       ,DESCRICAO
+       ,QTD_ONDA
+       ,QTD_SEP
+       ,UNI_MED
+       ,QTD_RUP
+       ,NUM_PAL
+       ,SSCC
+       ,LOTE
+       ,ENDERECO
+       ,QTD_CAIXAS
+       ,CAST(QTD_CAIXAS / (COLCOU * COUPAL)                                                       AS decimal(10,6)) QTD_PALETE
+       ,QTD_SSCC
+       ,CAST((CASE PESO_VARIAVEL WHEN 2 THEN QTD_SEP / 1000 ELSE QTD_SEP END)                     AS decimal(10,6)) QTD_REAL_UNI
+       ,cast(cast(QTD_CAIXAS AS float) * (VOLCOL / 1000)                                          AS decimal(10,6)) M3
+       ,CAST((CASE PESO_VARIAVEL WHEN 2 THEN (QTD_SEP / 1000) * PDNUVC ELSE QTD_SEP * PDNUVC END) AS decimal(10,6)) PESO_LIQ_UNI
+       ,(CASE WHEN ZONPIC IS NULL THEN 'BULK' ELSE 'CASE' END) BULK_CASE
+       ,SUPORTE_ORIGINAL
+       ,CFV
+       ,NOTAFISCAL
+       ,SERIENF
+       ,DTEMISSAONF CFV
+       ,NOTAFISCAL
+       ,SERIENF
+       ,DTEMISSAONF
+FROM
+(
+	SELECT  L.CODACT PLANTA
+	       ,D.REFLIV PEDIDO
+	       ,to_date(D.DATPRB1 || right('000000' || D.HEUPRB1,6),'YYYY-MM-DD hh24:mi:ss') DATA_INICIO
+	       ,to_date(D.DATPRB2 || right('000000' || D.HEUPRB2,6),'YYYY-MM-DD hh24:mi:ss') DATA_FIM
+	       ,to_date(J.DATLIV || '000000','YYYY-MM-DD hh24:mi:ss') DATA_ENTREGA
+	       ,L.NUMVAG ONDA
+	       ,D.NUMLIV ENCOMENDA
+	       ,D.CIRORI CIRCUITO
+	       ,D.NUMSUP SUPORTE
+	       ,D.CODCLI CLIENTE
+	       ,D.FAMPRO FAMILIA
+	       ,D.MESPRO PESO_VARIAVEL
+	       ,D.CODPRO SKU
+	       ,D.DS1PRO DESCRICAO
+	       ,D.UVCSRV QTD_ONDA
+	       ,D.UVCLIV QTD_SEP
+	       ,D.UNIPRO UNI_MED
+	       ,(CASE D.MOTMVT WHEN 'RUP' THEN D.UVCSRV - D.UVCLIV ELSE 0 END) QTD_RUP
+	       ,D.NUMPAL NUM_PAL
+	       ,D.CODPAL SSCC
+	       ,D.CODLOT LOTE
+	       ,D.ZONPIC||'-'||D.ALLPIC||'-'||D.DPLPIC||'-'||D.NIVPIC ENDERECO
+	       ,cast((CASE D.MESPRO WHEN 2 THEN (D.UVCLIV / 1000) / CAST( (D.PCBPRO / 1000) AS DECIMAL(10,4)) ELSE D.UVCLIV / D.PCBPRO END) AS decimal(10,0)) AS QTD_CAIXAS
+	       ,D.PCBPRO
+	       ,D.COLCOU
+	       ,D.COUPAL
+	       ,D.VOLCOL
+	       ,D.PDNUVC
+	       ,G1.ZONPIC
+	       ,(
+	SELECT  COUNT(DISTINCT LI.REFLIV)
+	FROM #BASE#.GELIVE LI
+	WHERE LI.NUMVAG = L.NUMVAG) QTD_PEDIDOS, CAST((
+	SELECT  COUNT(DISTINCT DD.CODPAL)
+	FROM #BASE#.GESUPD DD
+	WHERE DD.NUMLIV = L.NUMLIV
+	AND DD.SNULIV = L.SNULIV) AS decimal(10, 6)) QTD_SSCC, CASE WHEN TE.ETATOU = 10 THEN '(10)=Rota a preparar' WHEN TE.ETATOU = 20 THEN '(20)=Rota em preparação' WHEN TE.ETATOU = 30 THEN '(30)=Rota validada no cais' WHEN TE.ETATOU = 35 THEN '(35)=Sinal de partida' WHEN TE.ETATOU = 40 THEN '(40)=Rota expedida' WHEN TE.ETATOU = 50 THEN '(50)=Package round' WHEN TE.ETATOU = 60 THEN '(60)=Rota rearmazenada' WHEN TE.ETATOU = 90 THEN '(90)=Rota anulada' WHEN TE.ETATOU = 00 THEN '(00)=Em curso de constituição' else '???' end AS SIT_PEDIDO, CASE WHEN L.ORICDE = 1 THEN 'Interface' ELSE 'Manual' END AS Origem, CASE WHEN L.PTYDES = 10 THEN '(10)=** S.O.S.' WHEN L.PTYDES = 20 THEN '(20)=* S.O.S.' WHEN L.PTYDES = 30 THEN '(30)=** URGENT' WHEN L.PTYDES = 40 THEN '(40)=* URGENT' WHEN L.PTYDES = 50 THEN '(50)=**** NORMAL' WHEN L.PTYDES = 60 THEN '(60)=*** NORMAL' WHEN L.PTYDES = 70 THEN '(70)=** NORMAL' WHEN L.PTYDES = 80 THEN '(80)=* NORMAL' WHEN L.PTYDES = 90 THEN '(90)=BLOCAGE' WHEN L.PTYDES = 95 THEN '(95)=Interceptable' ELSE '???' END AS Prioridade, CASE WHEN L.ETALIV = 00 THEN '(00)=Entrada de dados' WHEN L.ETALIV = 10 THEN '(10)=A selecionar em uma onda' WHEN L.ETALIV = 20 THEN '(20)=Com onda' WHEN L.ETALIV = 30 THEN '(30)=Pedido extraído' WHEN L.ETALIV = 90 THEN '(90)=Cancelado' WHEN L.ETALIV = 95 THEN '(95)=Arquivado' ELSE '???' END AS Etapa_Onda, CASE WHEN G.ETAVAG = 00 THEN '(00)=No processo de constituição' WHEN G.ETAVAG = 10 THEN '(10)=Onda incorporada para servir' WHEN G.ETAVAG = 20 THEN '(20)=Serviço em andamento' WHEN G.ETAVAG = 25 THEN '(25)=Penuria' WHEN G.ETAVAG = 30 THEN '(30)=Preparação em andamento' WHEN G.ETAVAG = 40 THEN '(40)=Preparação concluída' WHEN G.ETAVAG = 70 THEN '(70)=Cancelamento em andamento' WHEN G.ETAVAG = 80 THEN '(80)=Incidente de serviço' WHEN G.ETAVAG = 90 THEN '(90)=Incidente de cancelamento' WHEN G.ETAVAG = 95 THEN '(95)=Cancelado' ELSE '???' END AS SITUACAO_ONDA, CASE WHEN J.TYPSUP = 1 THEN '(1)=Heterogeneo' WHEN J.TYPSUP = 2 THEN '(2)=Homogeneo' WHEN J.TYPSUP = 3 THEN '(3)=RPL casepicking' WHEN J.TYPSUP = 4 THEN '(4)=Destockage radio???' ELSE '???' END AS TIPO_SUPORTE, CASE WHEN J.ETASUP = 00 THEN '(00)=No processo de constituição' WHEN J.ETASUP = 10 THEN '(10)=Suporte para preparar' WHEN J.ETASUP = 20 THEN '(20)=Suporte em preparação' WHEN J.ETASUP = 30 THEN '(30)=Suporte separado (Cais)' WHEN J.ETASUP = 40 THEN '(40)=Suporte carregado' WHEN J.ETASUP = 45 THEN '(45)=Suporte na base do relé' WHEN J.ETASUP = 50 THEN '(50)=Suporte enviado' WHEN J.ETASUP = 60 THEN '(60)=Suporte re-armazenado' WHEN J.ETASUP = 70 THEN '(70)=Mídia embrulhada' WHEN J.ETASUP = 90 THEN '(90)=Cancelado' ELSE '???' END AS ETAPA_SUPORTE, TE.TOULIV AS ROTA, L.CODRGT AS REGIAO, L.KAILIV AS DOCA, G.LIBVAG AS TRANSP, te.MSGEXP1 cfv, SE.ORISUP SUPORTE_ORIGINAL, (
+	SELECT  r.VALRUB
+	FROM #BASE#.GELIRUB r
+	WHERE r.NUMLIV = l.NUMLIV
+	AND r.SNULIV = L.NUMLIV
+	AND r.CODRUB = 'NF01') AS NotaFiscal, (
+	SELECT  r.VALRUB
+	FROM #BASE#.GELIRUB r
+	WHERE r.NUMLIV = l.NUMLIV
+	AND r.SNULIV = L.NUMLIV
+	AND r.CODRUB = 'SE01') AS SerieNF, (
+	SELECT  r.VALRUB
+	FROM #BASE#.GELIRUB r
+	WHERE r.NUMLIV = l.NUMLIV
+	AND r.SNULIV = L.NUMLIV
+	AND r.CODRUB = 'DT01') AS DTEmissaoNF, P.PCBPRO qtd_unid_caixa, P.COUPAL1 qtd_camada, P.COLCOU1 qtd_cx_camada, P.STDPAL qtd_unid_plt
+	FROM #BASE#.GELIVE L
+	INNER JOIN #BASE#.GESUPD D
+	ON D.NUMLIV = L.NUMLIV AND D.SNULIV = L.SNULIV
+	INNER JOIN #BASE#.GESUPE SE
+	ON SE.NUMSUP = D.NUMSUP AND SE.SNULIV = D.SNULIV
+	INNER JOIN #BASE#.GESUPEJ J
+	ON J.NUMSUP = D.NUMSUP AND J.SNUSUP = D.SNUSUP AND J.NUMLIV = L.NUMLIV AND J.SNULIV = L.SNULIV
+	INNER JOIN #BASE#.GEVAG G
+	ON G.NUMVAG = D.NUMVAG AND G.NUMVAG = J.NUMVAG AND G.NUMVAG = L.NUMVAG
+	INNER JOIN #BASE#.GETOUD TD
+	ON TD.numliv = SE.numliv AND TD.SNULIV = SE.SNULIV
+	INNER JOIN #BASE#.GETOUE TE
+	ON TE.numtou = TD.numtou AND TE.touliv > 0
+	INNER JOIN #BASE#.GEPRO P
+	ON P.CODACT = L.CODACT AND P.CODPRO = D.CODPRO
+	LEFT OUTER JOIN #BASE#.GEPIC1 G1
+	ON G1.ZONPIC||'-'||G1.ALLPIC||'-'||G1.DPLPIC||'-'||G1.NIVPIC = D.ZONPIC||'-'||D.ALLPIC||'-'||D.DPLPIC||'-'||D.NIVPIC
+	WHERE D.CODACT = 'HAR'
+	AND D.DATPRB1 >= 20251110
+	AND D.DATPRB1 <= 20251110 
+) T
+ORDER BY pedido

@@ -1,0 +1,70 @@
+SELECT  le.codact CLIENTE
+       ,ld.codpro PRODUTO
+       ,LD.DS1PRO DESCRICAO
+       ,COUNT(DISTINCT LE.REFLIV) QTDE_PEDIDO_PRODUTO
+       ,SUM(ld.uvccde) QTDE_PEDIDO
+       ,(
+SELECT  SUM(nvl(EE.uvcsto,0))
+FROM FGE50FM0A9.GEpal EE
+WHERE EE.codpro = ld.codpro
+AND EE.etapal < 60) QTDE_ESTOQUE_GERAL, ZONA_ARMAZENAGEM, RUA_ARMAZENAGEM, CIR_SEM_PICK, CIRCUITO_PICKING, PCB, QTDE_MIN_PICKING, QTDE_MAX_PICKING, ZONA, RUA, PREDIO, NIVEL, TIPO, TIPO_PREPARACAO, PALETE, QTDE_ESTQ_PICK, IMO
+FROM FGE50FM0A9.GELIVE LE
+INNER JOIN FGE50FM0A9.GELIVD LD
+ON LE.NUMLIV = LD.NUMLIV
+LEFT JOIN
+(
+	SELECT  P.CODACT
+	       ,P.CODPRO
+	       ,p.zonprf zona_armazenagem
+	       ,p.allprf rua_armazenagem
+	       ,p.cirdet CIR_SEM_PICK
+	       ,NVL(L.CODPRO,'NAO CADASTRADO') PRODUTO_PICKING
+	       ,L.CIRPIC CIRCUITO_PICKING
+	       ,L.PCBPRO PCB
+	       ,L.MINPIC QTDE_MIN_PICKING
+	       ,L.MAXPIC QTDE_MAX_PICKING
+	       ,L.ZONPIC ZONA
+	       ,L.ALLPIC RUA
+	       ,L.DPLPIC PREDIO
+	       ,L.NIVPIC NIVEL
+	       ,L.TYPPIC TIPO
+	       ,CASE WHEN l.PRPPIC = 1 THEN 'PALETE'
+	             WHEN l.PRPPIC = 2 THEN 'CAMADA'
+	             WHEN l.PRPPIC = 3 THEN 'CAIXA'
+	             WHEN l.PRPPIC = 4 THEN 'INNER'
+	             WHEN l.PRPPIC = 5 THEN 'UNIDADE'  ELSE 'NADA' END tipo_preparacao
+	       ,E.CODPAL PALETE
+	       ,NVL(E.UVCSTO,0) QTDE_ESTQ_PICK
+	       ,E.MOTIMM IMO
+	FROM FGE50FM0A9.GEPRO P
+	LEFT JOIN FGE50FM0A9.GEPIC1 L
+	ON P.CODPRO = L.CODPRO
+	LEFT JOIN FGE50FM0A9.GEPAL E
+	ON E.CODPRO = L.CODPRO AND E.ZONSTS = L.ZONPIC AND E.ALLSTS = L.ALLPIC AND E.DPLSTS = L.DPLPIC AND E.NIVSTS = L.NIVPIC AND e.etapal = 10
+	WHERE P.codact = 'BRO' 
+) AS T
+ON T.CODACT = LE.CODACT AND T.CODPRO = LD.CODPRO
+WHERE LE.CODACT = 'BRO'
+AND LE.MAJCRE = 20251117
+GROUP BY  le.codact
+         ,ld.codpro
+         ,LD.DS1PRO
+         ,zona_armazenagem
+         ,rua_armazenagem
+         ,CIR_SEM_PICK
+         ,CIRCUITO_PICKING
+         ,PCB
+         ,QTDE_MIN_PICKING
+         ,QTDE_MAX_PICKING
+         ,ZONA
+         ,RUA
+         ,PREDIO
+         ,NIVEL
+         ,TIPO
+         ,TIPO_PREPARACAO
+         ,PALETE
+         ,QTDE_ESTQ_PICK
+         ,IMO
+ORDER BY  le.codact
+         ,ld.codpro
+         ,palate

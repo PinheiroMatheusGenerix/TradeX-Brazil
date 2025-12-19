@@ -1,0 +1,62 @@
+SELECT  DISTINCT A.CODACT PLANTA
+       ,C.datprp DATA_PREP
+       ,MAX(F.HEUHIS) HORA_PREP
+       ,C.datliv DATA_EXP
+       ,b.valrub NFE
+       ,a.codcli CLIENTE
+       ,A.CODPRO SKU
+       ,CASE WHEN D.MESPRO = 1 THEN 'NAO'  ELSE 'SIM' END PESO_VARIAVEL
+       ,A.NUMVAG ONDA
+       ,a.codpal SSCC
+       ,A.DATFVI VALIDADE
+       ,A.ZONPIC||'-'||A.ALLPIC||'-'||A.DPLPIC||'-'||A.NIVPIC ENDERECO
+       ,A.UVCCDE QTD_PEDIDA
+       ,A.UVCLIV QTD_SEP
+       ,A.UVCCDE-A.UVCLIV QTD_RUP
+       ,LEFT(A.DS1PRO,2) UNI_MED
+       ,A.REFLIV NUMERO_PEDIDO
+       ,right(e.majcre,2)||'/'||substr(e.majcre,5,2)||'/'||left(e.majcre,4) DATA_INTERFACE
+       ,e.majhms HORA_INTERFACE
+       ,(CASE INSTR(A.REFLIV,'/') WHEN 0 THEN 'PEDIDO NORMAL' ELSE 'PEDIDO MANUAL' END) AS TIPO_PEDIDO
+FROM FGE50FM0A9.gesupd a
+LEFT JOIN FGE50FM0A9.geSUPE C
+ON C.NUMSUP = A.NUMSUP AND C.CODACT = A.CODACT
+LEFT JOIN FGE50FM0A9.GELIRUB B
+ON B.numliv = C.numliv
+LEFT JOIN FGE50FM0A9.GEPRO D
+ON D.CODPRO = A.CODPRO AND D.CODACT = A.CODACT
+LEFT JOIN FGE50FM0A9.GECOMAT E
+ON E.TRIATT = A.REFLIV AND e.codexc = 53
+LEFT JOIN FGE50FM0A9.GEHSUP F
+ON F.NUMSUP = A.NUMSUP
+WHERE C.TYPSUP <> 3
+AND C.ETASUP <> 90
+AND F.ETASUP = 30
+AND A.CODACT = 'BRO'
+AND C.DATPRP >= 20251117
+AND C.DATPRP <= 20251117
+GROUP BY  A.CODACT
+         ,C.datprp
+         ,F.HEUHIS
+         ,A.CODPAL
+         ,A.DATFVI
+         ,A.ZONPIC
+         ,A.ALLPIC
+         ,A.DPLPIC
+         ,A.NIVPIC
+         ,D.MESPRO
+         ,C.datliv
+         ,b.valrub
+         ,a.codcli
+         ,A.CODPRO
+         ,A.REFLIV
+         ,A.NUMVAG
+         ,A.UVCCDE
+         ,LEFT(A.DS1PRO,2)
+         ,E.MAJCRE
+         ,E.MAJHMS
+         ,A.UVCLIV
+         ,A.UVCCDE
+ORDER BY  A.CODACT
+         ,C.DATPRP
+         ,A.REFLIV
