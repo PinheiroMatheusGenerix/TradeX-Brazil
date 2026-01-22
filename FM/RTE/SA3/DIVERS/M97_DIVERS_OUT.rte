@@ -261,7 +261,7 @@ line(1:"97.50")
 				endif
 			
 				if nContadorResultadosQuery > 0 then
-					bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+					bfMajtrace("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"M97 - UPDATE","")
 				endif
 			endif
 					
@@ -317,7 +317,7 @@ line(1:"97.50")
 					
 					flush(0,0,NL) >> tFileOutTemp
 					close(tFileOutTemp)
-					bfMajtraceExpedicao("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+					bfMajtraceExpedicao("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"M97 - EXPEDIÇÃO","")
 					
 					close(tFileOutTemp)
 					copy(tFileOutTemp,tFileOut)
@@ -462,7 +462,7 @@ line(1:"97.50")
 					endif
 					
 					close(tFileOutTemp)
-					bfMajtraceSeparacao("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"Produtos","")
+					bfMajtraceSeparacao("Recebida","0",build(tPlacaVeiculo,"-",tRomaneio),tDataDocumento,tFileInput,tFileOut,"M97 - CONF SEPARAÇÃO","")
 					
 					close(tFileOutTemp)
 					copy(tFileOutTemp,tFileOut)
