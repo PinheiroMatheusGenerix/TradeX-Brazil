@@ -512,7 +512,7 @@ end
 									"WHERE CODFOU = (", NL," "\
 									"	SELECT CODFOU", NL," "\
 									"	FROM FGE50FM",tToInfologPrefixFilename,".GERECE", NL," "\
-									"	WHERE REFREC = '",taREFLIV[nContadorHeaderTmp],"' AND CODACT = 'LAS'")
+									"	WHERE REFREC = '",taREFLIV[nContadorHeaderTmp],"' AND CODACT = 'LAS')")
 
 				log("------------------------------------------------------------", NL)
 				log(tQueryM41,NL)
