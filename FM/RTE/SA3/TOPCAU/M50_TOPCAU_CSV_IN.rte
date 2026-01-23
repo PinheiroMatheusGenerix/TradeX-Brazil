@@ -88,7 +88,7 @@ begin
 
 	tFileOut := build(sHOME,"/ToInfolog/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
 	tFileOutTemp := build(sHOME,"/ToInfolog/Temp/",tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
-	tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R015),".DAT")
+	tNameOut := build(tToInfologPrefixFilename,"50",build(nMessageID:R010),".DAT")
 
 	nContadorLinhasEscritas  := 0
 	nContadorHeader := 0
@@ -139,7 +139,7 @@ line(not "")
 			if S_Registo_TipoTrataramento = "1" then
 				tQuery := 	build("SELECT CODCLI ", NL," "\
 								"  FROM FGE50FM",tToInfologPrefixFilename,".GELIVE ", NL," "\
-								"  WHERE REFLIV LIKE  '%",S_Registo_Pedido,"%'")   
+								"  WHERE REFLIV LIKE '%",S_Registo_Pedido,"%'")   
 
 				log("------------------------------------------------------------", NL)
 				log(tQuery,NL)
@@ -512,7 +512,7 @@ end
 									"WHERE CODFOU = (", NL," "\
 									"	SELECT CODFOU", NL," "\
 									"	FROM FGE50FM",tToInfologPrefixFilename,".GERECE", NL," "\
-									"	WHERE REFREC = '",taREFLIV[nContadorHeaderTmp],"')")
+									"	WHERE REFREC = '",taREFLIV[nContadorHeaderTmp],"' AND CODACT = 'LAS'")
 
 				log("------------------------------------------------------------", NL)
 				log(tQueryM41,NL)
